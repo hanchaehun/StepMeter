@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+mlruns/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# 환경 변수·비밀 정보
+.env
+.env.*
+!.env.example
+
+# 데이터·산출물
+*.log
+screenshots/
+data/
+
+# 에디터·OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+~$*
