@@ -11,10 +11,10 @@ AI 에이전트가 웹사이트를 한 단계씩 써보며 UX를 숫자로 측�
 |---|---|
 | PM · 통합·QA | `tests/e2e`, `docs` |
 | 에이전트 코어 | `worker/driver`, `worker/agent`, `worker/replay` |
-| LLM·프롬프트 | `worker/llm`, `prompts`, `ml/prompt_opt` |
-| 측정 지표·규칙 | `worker/metrics`, `worker/rules`, `ml/timing` |
+| LLM·프롬프트 | `worker/llm`, `prompts` |
+| 측정 지표·규칙 | `worker/metrics`, `worker/rules`, `worker/a11y`, `ml/timing` |
 | 수집·매칭 | `worker/collect`, `worker/matching`, `ml/issue_clf` |
-| 플랫폼 백엔드 | `apps/api`, `worker/queue`, `ml/element_rank`, `ml/pipeline` |
+| 플랫폼 백엔드 | `apps/api`, `worker/queue`, `ml/pipeline` |
 | 회귀 비교·인프라 | `worker/compare`, `infra`, `benchmark`, `.github/workflows` |
 | 리포트 UI | `apps/web` (리포트), `human-study` (수집 스크립트) |
 | 대시보드 UI | `apps/web` (대시보드), `human-study` (동의서·세션) |
