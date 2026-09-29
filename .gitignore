@@ -29,3 +29,6 @@ data/
 .DS_Store
 Thumbs.db
 ~$*
+
+# 문서 수정 전 백업
+*_backup.docx
