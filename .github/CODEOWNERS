@@ -1,0 +1,6 @@
+# 공용 인터페이스는 PM 또는 소유 역할 1인의 승인이 있어야 머지된다 (개발계획서 13.1, 15.2)
+/worker/schemas.py      @hanchaehun @doithyun
+/apps/api/openapi.yaml  @hanchaehun @doithyun
+
+# CODEOWNERS 파일 자체는 PM만 바꿀 수 있다
+/.github/CODEOWNERS     @hanchaehun
