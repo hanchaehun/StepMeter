@@ -118,7 +118,7 @@ def parse_action_json(payload: str | bytes) -> ActionRequest:
         raw = json.loads(payload, object_pairs_hook=_unique_pairs, parse_constant=_reject_constant)
     except ActionInputError:
         raise
-    except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError, RecursionError):
         raise ActionInputError("invalid_json") from None
     if not isinstance(raw, dict):
         raise ActionInputError("invalid_shape")

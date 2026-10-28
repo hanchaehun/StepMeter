@@ -17,7 +17,7 @@
 | `done` | `reason`: `goal_reached` / `safety_stop` | 목표 달성 주장 또는 위험 행동 전 중단 |
 | `fail` | 없음 | 에이전트가 진행을 포기 |
 
-`target`과 `option`은 모델에게 보여준 **현재 관찰의 번호**이며 양의 정수다. `text`는 0~4096자이고 공백을 포함해 그대로 유지한다. 스크롤 80%와 대기 1초는 이번 MVP의 기본값이다.
+`target`은 현재 관찰의 요소 번호, `option`은 그 `target` 드롭다운에 표시된 옵션 번호다. 둘 다 양의 정수다. `text`는 0~4096자이고 공백을 포함해 그대로 유지한다. 스크롤 80%와 대기 1초는 이번 MVP의 기본값이다.
 
 ## JSON 예시
 
@@ -42,7 +42,7 @@
 
 | `code` | 언제 |
 |---|---|
-| `invalid_json` | JSON이 아님, 객체 하나가 아님, `NaN`·`Infinity` 포함 |
+| `invalid_json` | JSON 구문 오류, 객체를 연달아 보냄, `NaN`·`Infinity` 포함 |
 | `invalid_shape` | 최상위가 객체가 아님 (배열 응답 등) |
 | `duplicate_key` | 같은 키가 두 번 (`{"action":"wait","action":"click"}`) |
 | `invalid_action` | `action`이 없거나 위 8개가 아님 |
