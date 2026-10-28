@@ -88,6 +88,9 @@ class ActionSchemaTests(unittest.TestCase):
             with self.subTest(raw=raw[:30]):
                 self.assert_rejected(raw, code)
 
+    def test_deeply_nested_json_is_rejected_as_invalid_json(self):
+        self.assert_rejected("[" * 10_000 + "0" + "]" * 10_000, "invalid_json")
+
     def test_error_does_not_echo_sensitive_text(self):
         raw = json.dumps({**COMMON, "action": "type", "target": 0, "text": "secret-example"})
         with self.assertRaises(ActionInputError) as caught:
