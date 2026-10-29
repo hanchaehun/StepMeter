@@ -60,6 +60,27 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.assertEqual(content[0]["type"], "image")  # 스크린샷이 글보다 먼저
         self.assertEqual(content[1], {"type": "text", "text": "과업: 회원가입하기"})
 
+    def test_only_haiku_and_sonnet_are_allowed(self):
+        client = fake_client([])
+        for model in ("claude-opus-5-5", "claude-fable-5-1", "claude-haiku-4-5"):
+            with self.subTest(model=model), self.assertRaises(ValueError):
+                ClaudeAdapter(model=model, client=client)
+
+    def test_models_without_forced_tool_use_auto(self):
+        # Sonnet 5.5는 tool_choice: tool을 받지 않는다 (보내면 400).
+        client = fake_client([tool_block(action="wait", thought="기다린다", expectation="목록이 나온다")])
+        asyncio.run(ClaudeAdapter(model="claude-sonnet-5-5", client=client).ask(make_request()))
+        self.assertEqual(client.messages.sent["tool_choice"], {"type": "auto"})
+
+    def test_action_tool_is_strict_without_unsupported_constraints(self):
+        client = fake_client([tool_block(action="wait", thought="기다린다", expectation="목록이 나온다")])
+        asyncio.run(ClaudeAdapter(client=client).ask(make_request()))
+        tool = client.messages.sent["tools"][0]
+        self.assertIs(tool["strict"], True)
+        self.assertIs(tool["input_schema"]["additionalProperties"], False)
+        for field in tool["input_schema"]["properties"].values():
+            self.assertNotIn("minimum", field)  # strict 모드는 숫자 제약을 지원하지 않는다
+
     def test_explain_request_has_no_action_tool(self):
         client = fake_client([SimpleNamespace(type="text", text="버튼이 작다.")])
         result = asyncio.run(ClaudeAdapter(client=client).ask(
