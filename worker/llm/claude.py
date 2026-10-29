@@ -20,12 +20,22 @@ from worker.llm.pricing import cost_usd
 DEFAULT_MODEL = "claude-haiku-5-5"  # 개발 중 기본 모델 (PM 결정, 16장 "소형 모델")
 DEFAULT_MAX_TOKENS = 1024  # 행동 JSON 하나에 충분 (16장: 단계당 출력 약 150토큰)
 
+# 쓸 수 있는 모델 (PM 결정 10/29). 개발·반복 실행은 Haiku, 결과를 내는 측정은 Sonnet.
+ALLOWED_MODELS = frozenset({"claude-haiku-5-5", "claude-sonnet-5-5"})
+
+# 도구 강제(tool_choice: tool)를 받는 모델. Haiku 5.5는 강제하면 생각 단계를 건너뛰어
+# 출력 토큰이 적다. Sonnet 5.5는 강제를 받지 않으므로(보내면 400) auto로 보내고,
+# 프롬프트의 "choose_action 도구를 한 번만 써서 답한다"와 도구의 strict: true로 형식을 지킨다.
+FORCED_TOOL_MODELS = frozenset({"claude-haiku-5-5"})
+
 
 class ClaudeAdapter:
     name = "claude"
 
     def __init__(self, model: str = DEFAULT_MODEL, client: Any | None = None,
                  max_tokens: int = DEFAULT_MAX_TOKENS):
+        if model not in ALLOWED_MODELS:
+            raise ValueError(f"쓸 수 없는 모델이다: {model} (가능: {sorted(ALLOWED_MODELS)})")
         if client is None:
             # 실제로 쓸 때만 라이브러리를 불러온다. 테스트는 가짜 client를 넣는다.
             from anthropic import AsyncAnthropic
@@ -59,9 +69,12 @@ class ClaudeAdapter:
             "messages": [{"role": "user", "content": content}],
         }
         if request.purpose == "action":
-            # 행동 선택은 반드시 choose_action 도구로 답하게 한다 (4.3 구조화 출력).
+            # 행동 선택은 choose_action 도구로 답하게 한다 (4.3 구조화 출력).
             params["tools"] = [ACTION_TOOL]
-            params["tool_choice"] = {"type": "tool", "name": ACTION_TOOL_NAME}
+            if self.model in FORCED_TOOL_MODELS:
+                params["tool_choice"] = {"type": "tool", "name": ACTION_TOOL_NAME}
+            else:
+                params["tool_choice"] = {"type": "auto"}
         return params
 
     async def ask(self, request: LLMRequest) -> LLMResult:

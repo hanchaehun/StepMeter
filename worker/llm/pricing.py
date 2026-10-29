@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# 한 요청의 입력(캐시 포함)이 이 토큰 수를 넘으면 비싼 단가가 붙는다 (Haiku 5.5).
+# 한 요청의 입력(캐시 포함)이 이 토큰 수를 넘으면 비싼 단가가 붙는다 (Haiku 5.5만 해당).
 LONG_PROMPT_THRESHOLD = 100_000
 
 
@@ -27,6 +27,11 @@ PRICES: dict[str, tuple[Rates, Rates]] = {
     "claude-haiku-5-5": (
         Rates(input=0.10, output=0.50, cache_write_5m=0.125, cache_read=0.01),
         Rates(input=0.50, output=2.50, cache_write_5m=0.625, cache_read=0.05),
+    ),
+    # Sonnet 5.5는 프롬프트 길이와 관계없이 단가가 같다. 2026-10-29 확인.
+    "claude-sonnet-5-5": (
+        Rates(input=2.00, output=10.00, cache_write_5m=2.50, cache_read=0.20),
+        Rates(input=2.00, output=10.00, cache_write_5m=2.50, cache_read=0.20),
     ),
 }
 

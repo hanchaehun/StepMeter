@@ -3,6 +3,9 @@
 모델에게 choose_action 도구를 반드시 쓰게 하면, 답이 자유로운 글이 아니라
 아래 항목을 가진 JSON 객체로 온다. 최종 검사는 worker/schemas.py의
 parse_action_json이 한다. 여기는 모델이 그 형식에 맞게 답하도록 돕는 안내일 뿐이다.
+
+strict: true면 도구 입력이 아래 스키마를 반드시 지킨다. strict 모드는 minimum 같은
+숫자 제약을 지원하지 않으므로 넣지 않는다 (양의 정수 검사는 parse_action_json이 한다).
 """
 
 from __future__ import annotations
@@ -11,6 +14,7 @@ ACTION_TOOL_NAME = "choose_action"
 
 ACTION_TOOL = {
     "name": ACTION_TOOL_NAME,
+    "strict": True,
     "description": (
         "다음에 할 행동 하나를 고른다. action에 맞는 필드만 넣는다. "
         "click: target / type: target, text / select: target, option / "
@@ -23,9 +27,9 @@ ACTION_TOOL = {
                 "type": "string",
                 "enum": ["click", "type", "select", "scroll", "back", "wait", "done", "fail"],
             },
-            "target": {"type": "integer", "minimum": 1, "description": "요소 번호"},
+            "target": {"type": "integer", "description": "요소 번호"},
             "text": {"type": "string", "description": "type일 때 입력할 글자 전체"},
-            "option": {"type": "integer", "minimum": 1, "description": "select일 때 옵션 번호"},
+            "option": {"type": "integer", "description": "select일 때 옵션 번호"},
             "direction": {"type": "string", "enum": ["up", "down"]},
             "reason": {"type": "string", "enum": ["goal_reached", "safety_stop"]},
             "thought": {"type": "string", "description": "이 행동을 고른 이유"},
@@ -33,5 +37,6 @@ ACTION_TOOL = {
             "confusion": {"type": "string", "description": "헷갈린 점. 없으면 넣지 않는다"},
         },
         "required": ["action", "thought", "expectation"],
+        "additionalProperties": False,
     },
 }
