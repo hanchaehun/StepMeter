@@ -1,0 +1,16 @@
+[
+  {
+    "id": 7,
+    "name": "우리 쇼핑몰",
+    "base_url": "https://shop.example",
+    "daily_run_limit": 10,
+    "created_at": "2026-10-28T05:00:00Z"
+  },
+  {
+    "id": 8,
+    "name": "예약 서비스",
+    "base_url": "https://booking.example",
+    "daily_run_limit": 10,
+    "created_at": "2026-10-27T09:30:00Z"
+  }
+]

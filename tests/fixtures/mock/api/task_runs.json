@@ -1,0 +1,84 @@
+[
+  {
+    "run": {
+      "id": 42,
+      "task_id": 12,
+      "viewport": "desktop",
+      "mode": "auto",
+      "base_run_id": null,
+      "repeat_n": 3,
+      "model": "claude-sonnet-5-5",
+      "prompt_version": "v1",
+      "status": "completed",
+      "progress": 100,
+      "cost_usd": 1.07,
+      "started_at": "2026-10-29T06:10:03Z",
+      "finished_at": "2026-10-29T06:15:40Z"
+    },
+    "success_count": 2,
+    "metrics": [
+      {
+        "key": "click_count",
+        "value": 5,
+        "unit": "회",
+        "spread": 0.2,
+        "spread_quality": "weak"
+      },
+      {
+        "key": "cursor_distance",
+        "value": 3120,
+        "unit": "px",
+        "spread": 0.08,
+        "spread_quality": "weak"
+      },
+      {
+        "key": "est_time",
+        "value": 24.6,
+        "unit": "초",
+        "spread": 0.12,
+        "spread_quality": "weak"
+      }
+    ]
+  },
+  {
+    "run": {
+      "id": 41,
+      "task_id": 12,
+      "viewport": "desktop",
+      "mode": "auto",
+      "base_run_id": null,
+      "repeat_n": 3,
+      "model": "claude-sonnet-5-5",
+      "prompt_version": "v1",
+      "status": "completed",
+      "progress": 100,
+      "cost_usd": 1.12,
+      "started_at": "2026-10-28T05:20:11Z",
+      "finished_at": "2026-10-28T05:26:02Z"
+    },
+    "success_count": 3,
+    "metrics": [
+      {
+        "key": "click_count",
+        "value": 7,
+        "unit": "회",
+        "spread": 0.14,
+        "spread_quality": "ok"
+      },
+      {
+        "key": "cursor_distance",
+        "value": 4010,
+        "unit": "px",
+        "spread": 0.06,
+        "spread_quality": "ok"
+      },
+      {
+        "key": "est_time",
+        "value": 31.2,
+        "unit": "초",
+        "spread": 0.09,
+        "spread_quality": "ok"
+      }
+    ]
+  }
+]

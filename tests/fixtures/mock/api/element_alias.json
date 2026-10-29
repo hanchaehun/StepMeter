@@ -1,0 +1,20 @@
+{
+  "id": 15,
+  "task_id": 12,
+  "from_fingerprint": {
+    "tag": "button",
+    "role": "button",
+    "name": "가입 완료",
+    "label_text": null,
+    "landmark": "form"
+  },
+  "to_fingerprint": {
+    "tag": "button",
+    "role": "button",
+    "name": "회원가입 완료하기",
+    "label_text": null,
+    "landmark": "form"
+  },
+  "confirmed_by": "팀원A",
+  "created_at": "2026-11-18T07:40:00Z"
+}

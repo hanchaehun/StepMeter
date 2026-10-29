@@ -1,0 +1,49 @@
+{
+  "participant_code": "P03",
+  "page_id": "shop-checkout-normal",
+  "device": "mouse",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "daily_computer_hours": 6,
+  "started_at": "2026-11-04T05:00:00Z",
+  "completed": true,
+  "events": [
+    {
+      "t_ms": 0,
+      "type": "move",
+      "x": 720,
+      "y": 450,
+      "target_key": null
+    },
+    {
+      "t_ms": 17,
+      "type": "move",
+      "x": 724,
+      "y": 446,
+      "target_key": null
+    },
+    {
+      "t_ms": 1200,
+      "type": "click",
+      "x": 410,
+      "y": 272,
+      "target_key": "a|러닝화 A"
+    },
+    {
+      "t_ms": 5200,
+      "type": "key",
+      "x": null,
+      "y": null,
+      "target_key": "input|이메일"
+    },
+    {
+      "t_ms": 5350,
+      "type": "key",
+      "x": null,
+      "y": null,
+      "target_key": "input|이메일"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": 42,
+  "task_id": 12,
+  "viewport": "desktop",
+  "mode": "auto",
+  "base_run_id": null,
+  "repeat_n": 3,
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "v1",
+  "status": "queued",
+  "progress": 0,
+  "cost_usd": 0,
+  "started_at": null,
+  "finished_at": null
+}

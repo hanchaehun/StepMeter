@@ -1,0 +1,72 @@
+{
+  "base_run_id": 41,
+  "target_run_id": 42,
+  "kind": "agent",
+  "diverged_at_step": null,
+  "spread_weak": true,
+  "metric_changes": [
+    {
+      "key": "click_count",
+      "base": 7,
+      "target": 5,
+      "change_rate": -0.286,
+      "threshold": 0.28,
+      "verdict": "better"
+    },
+    {
+      "key": "cursor_distance",
+      "base": 4010,
+      "target": 3120,
+      "change_rate": -0.222,
+      "threshold": 0.2,
+      "verdict": "better"
+    },
+    {
+      "key": "est_time",
+      "base": 31.2,
+      "target": 24.6,
+      "change_rate": -0.212,
+      "threshold": 0.24,
+      "verdict": "unchanged"
+    }
+  ],
+  "issues_new": [
+    {
+      "id": 501,
+      "rule_id": "R04",
+      "severity": "high",
+      "confidence": 0.82,
+      "step": {
+        "attempt_index": 1,
+        "idx": 1
+      },
+      "element_key": "button|구매|main",
+      "measured": null,
+      "threshold": null,
+      "explanation": "구매 버튼이 쿠키 배너에 가려져 눌리지 않았어요.",
+      "suggestion": "배너가 버튼을 덮지 않도록 위치를 옮기세요.",
+      "score_reason": "3회 중 3회 발견",
+      "is_reference": false
+    }
+  ],
+  "issues_resolved": [],
+  "issues_kept": [
+    {
+      "id": 503,
+      "rule_id": "R01",
+      "severity": "medium",
+      "confidence": 0.61,
+      "step": {
+        "attempt_index": 3,
+        "idx": 2
+      },
+      "element_key": "button|수량 증가|main",
+      "measured": 18,
+      "threshold": 24,
+      "explanation": "수량 + 버튼이 18px로 권장 최소 24px보다 작아요.",
+      "suggestion": "버튼을 24px 이상으로 키우세요.",
+      "score_reason": "기준 대비 25% 미달",
+      "is_reference": false
+    }
+  ]
+}

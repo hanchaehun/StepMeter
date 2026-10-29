@@ -1,0 +1,21 @@
+{
+  "id": 42,
+  "task_id": 12,
+  "viewport": "desktop",
+  "mode": "auto",
+  "base_run_id": null,
+  "repeat_n": 3,
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "v1",
+  "status": "running",
+  "progress": 35,
+  "cost_usd": 0.41,
+  "started_at": "2026-10-29T06:10:03Z",
+  "finished_at": null,
+  "latest_step": {
+    "attempt_index": 2,
+    "idx": 3,
+    "screenshot_url": "https://r2.example/runs/42/2/3.jpg?X-Amz-Expires=900&X-Amz-Signature=mock",
+    "thought": "쿠키 배너를 닫고 구매 버튼을 다시 누른다"
+  }
+}

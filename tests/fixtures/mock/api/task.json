@@ -1,0 +1,9 @@
+{
+  "id": 12,
+  "project_id": 7,
+  "description": "상품을 장바구니에 담고 결제 직전까지 가기",
+  "success_condition": {
+    "url_contains": "/checkout",
+    "text_present": "주문하기"
+  }
+}
