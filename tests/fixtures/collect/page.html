@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- 수집 JS 통합 테스트용. 800×600 뷰포트 기준으로 위치를 고정해 기대값을 손으로 계산한다. -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: rgb(240, 240, 240); height: 2000px; font: 16px sans-serif; }
+  .abs { position: absolute; margin: 0; padding: 0; border: 0; }
+</style>
+</head>
+<body>
+<header class="abs" style="left:0; top:0; width:800px; height:30px">
+  <a id="home" class="abs" href="#" style="left:0; top:0; width:60px; height:20px">홈</a>
+  <nav><a id="menu" class="abs" href="#" style="left:100px; top:0; width:60px; height:20px">메뉴</a></nav>
+</header>
+
+<main>
+  <button id="buy" class="abs" style="left:100px; top:100px; width:120px; height:40px;
+    color:rgb(119, 119, 119); background:rgb(255, 255, 255); font-size:16px; font-weight:700">구매</button>
+  <a id="near" class="abs" href="#" style="left:200px; top:100px; width:50px; height:20px">도움말</a>
+  <a id="far" class="abs" href="#" style="left:300px; top:100px; width:50px; height:20px">멀리</a>
+
+  <form class="abs" style="left:100px; top:200px">
+    <button id="submit" class="abs" style="left:0; top:0; width:80px; height:30px">제출</button>
+  </form>
+
+  <div class="abs" style="left:100px; top:300px; width:200px; height:30px">
+    <span>수량</span><button id="icon" class="abs" style="left:100px; top:0; width:24px; height:24px"></button>
+  </div>
+
+  <p class="abs" style="left:500px; top:40px">약관은 <a id="inline" href="#">여기</a>에서 확인</p>
+
+  <button id="covered" class="abs" style="left:100px; top:500px; width:100px; height:40px">결제</button>
+  <button id="later" class="abs" style="left:100px; top:1000px; width:100px; height:40px">더보기</button>
+
+  <button id="gone" class="abs" style="left:300px; top:300px; width:50px; height:20px; display:none">숨김1</button>
+  <button id="invisible" class="abs" style="left:300px; top:330px; width:50px; height:20px; visibility:hidden">숨김2</button>
+  <button id="transparent" class="abs" style="left:300px; top:360px; width:50px; height:20px; opacity:0">숨김3</button>
+  <button id="zero" class="abs" style="left:300px; top:390px; width:0; height:0; overflow:hidden">숨김4</button>
+
+  <div id="host" class="abs" style="left:500px; top:300px"></div>
+
+  <iframe id="frame" class="abs" style="left:400px; top:100px; width:300px; height:150px"
+    srcdoc="<body style='margin:0'><button style='position:absolute; left:10px; top:20px; width:80px; height:30px'>프레임</button></body>"></iframe>
+</main>
+
+<div id="banner" role="dialog" aria-label="쿠키 동의" style="position:fixed; left:0; top:480px; width:800px; height:120px; background:#000"></div>
+
+<script>
+  document.getElementById("host").attachShadow({ mode: "open" }).innerHTML =
+    '<button style="position:absolute; left:0; top:0; width:60px; height:30px">그림자</button>';
+</script>
+</body>
+</html>
