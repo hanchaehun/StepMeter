@@ -1,0 +1,126 @@
+{
+  "base_run_id": 41,
+  "target_run_id": 42,
+  "issues_new": [
+    {
+      "id": 102,
+      "rule_id": "R04",
+      "severity": "high",
+      "confidence": 0.91,
+      "step": {
+        "attempt_index": 2,
+        "idx": 1
+      },
+      "element_key": "button|button|구매||main",
+      "measured": null,
+      "threshold": null,
+      "explanation": "구매 버튼 중앙이 하단 배너에 가려져 있습니다. 클릭이 배너로 갈 수 있습니다.",
+      "suggestion": "하단 배너가 버튼을 덮지 않도록 위치를 옮기거나 닫기 버튼을 주세요.",
+      "score_reason": "과업 경로 위 요소",
+      "is_reference": false
+    }
+  ],
+  "issues_resolved": [
+    {
+      "id": 88,
+      "rule_id": "R10",
+      "severity": "high",
+      "confidence": 0.77,
+      "step": {
+        "attempt_index": 1,
+        "idx": 2
+      },
+      "element_key": "button|button|||main",
+      "measured": null,
+      "threshold": null,
+      "explanation": "아이콘 버튼에 접근 가능한 이름이 없습니다. 화면 낭독기 사용자는 버튼 용도를 알 수 없습니다.",
+      "suggestion": "버튼에 aria-label을 추가하세요.",
+      "score_reason": "과업 경로 위 요소",
+      "is_reference": false
+    }
+  ],
+  "issues_kept": [
+    {
+      "id": 101,
+      "rule_id": "R02",
+      "severity": "medium",
+      "confidence": 0.82,
+      "step": {
+        "attempt_index": 2,
+        "idx": 0
+      },
+      "element_key": "a|link|러닝화 A||main",
+      "measured": 2.9,
+      "threshold": 4.5,
+      "explanation": "상품 링크 글자와 배경의 대비가 2.9로 기준 4.5에 못 미칩니다. 저시력 사용자는 링크를 알아보기 어렵습니다.",
+      "suggestion": "링크 글자색을 더 어둡게 바꿔 대비를 4.5 이상으로 올리세요.",
+      "score_reason": "3회 중 3회 발견",
+      "is_reference": false
+    }
+  ],
+  "replay": {
+    "replay_status": "partial",
+    "diverged_at_step": 1,
+    "metric_changes": [
+      {
+        "key": "travel_distance",
+        "base": 420.0,
+        "target": 395.0,
+        "change_rate": -0.06,
+        "threshold": null,
+        "verdict": "unchanged"
+      }
+    ]
+  },
+  "agent": {
+    "spread_weak": true,
+    "metric_changes": [
+      {
+        "key": "click_count",
+        "base": 3,
+        "target": 2,
+        "change_rate": -0.33,
+        "threshold": 0.2,
+        "verdict": "better"
+      },
+      {
+        "key": "travel_distance",
+        "base": 1104.0,
+        "target": 812.5,
+        "change_rate": -0.26,
+        "threshold": 0.24,
+        "verdict": "better"
+      },
+      {
+        "key": "est_task_time",
+        "base": 10.3,
+        "target": 7.9,
+        "change_rate": -0.23,
+        "threshold": null,
+        "verdict": "not_comparable"
+      }
+    ]
+  },
+  "path_alignment": [
+    {
+      "op": "kept",
+      "base_idx": 0,
+      "target_idx": 0
+    },
+    {
+      "op": "removed",
+      "base_idx": 1,
+      "target_idx": null
+    },
+    {
+      "op": "kept",
+      "base_idx": 2,
+      "target_idx": 1
+    },
+    {
+      "op": "kept",
+      "base_idx": 3,
+      "target_idx": 2
+    }
+  ]
+}

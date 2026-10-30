@@ -1,0 +1,20 @@
+{
+  "id": 9,
+  "task_id": 7,
+  "from_fingerprint": {
+    "tag": "button",
+    "role": "button",
+    "name": "장바구니 담기",
+    "label_text": null,
+    "landmark": "main"
+  },
+  "to_fingerprint": {
+    "tag": "button",
+    "role": "button",
+    "name": "구매",
+    "label_text": null,
+    "landmark": "main"
+  },
+  "confirmed_by": "rater-a",
+  "created_at": "2026-10-29T05:10:00Z"
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "id": 1,
+    "name": "데모 쇼핑몰",
+    "base_url": "https://shop.example",
+    "daily_run_limit": 10,
+    "created_at": "2026-10-27T01:00:00Z",
+    "latest_run": {
+      "id": 42,
+      "task_id": 7,
+      "viewport": "desktop",
+      "status": "completed",
+      "created_at": "2026-10-29T05:00:00Z",
+      "success_count": 2,
+      "repeat_n": 3,
+      "issue_count": 2
+    }
+  },
+  {
+    "id": 2,
+    "name": "예약 사이트",
+    "base_url": "https://booking.example",
+    "daily_run_limit": 10,
+    "created_at": "2026-10-28T02:00:00Z",
+    "latest_run": null
+  }
+]

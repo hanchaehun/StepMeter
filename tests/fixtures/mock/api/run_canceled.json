@@ -1,0 +1,17 @@
+{
+  "id": 44,
+  "task_id": 7,
+  "viewport": "desktop",
+  "mode": "auto",
+  "base_run_id": 41,
+  "repeat_n": 3,
+  "model": "mock-model",
+  "prompt_version": null,
+  "status": "canceled",
+  "progress": 0,
+  "cost_usd": 0,
+  "created_at": "2026-10-30T04:00:00Z",
+  "started_at": null,
+  "finished_at": "2026-10-30T04:00:20Z",
+  "representative_attempt_index": null
+}

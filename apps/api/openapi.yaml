@@ -1,0 +1,1324 @@
+openapi: 3.1.0
+info:
+  title: StepMeter API
+  version: 0.1.0
+  description: |
+    플랫폼 백엔드 ↔ 리포트·대시보드 UI 합의본 (11장, 13.1).
+    괄호 속 숫자는 개발계획서 장·절 번호, F00은 서비스기획서 기능 번호다.
+    모든 요청은 `X-Access-Code` 헤더가 필요하다. 없거나 틀리면 401 (F17).
+    ID는 정수, 시각은 ISO 8601(UTC)이다.
+    `components.schemas` 끝의 Action·ElementSnapshot 계열은 `worker/schemas.py`에서 생성한 것이다.
+    직접 고치지 말고 `python -m tests.test_openapi_schema`로 다시 만든다.
+
+security:
+  - AccessCode: []
+
+paths:
+  /projects:
+    post:
+      summary: 프로젝트 생성
+      description: |
+        daily_run_limit은 서버가 기본값 10으로 정한다 (10장, F17).
+        owner_id는 요청의 X-Access-Code에 해당하는 access_code.id로 서버가 기록하고 응답에 넣지 않는다.
+        [검토 필요] PM 협의: 초대 코드별 프로젝트 분리 여부 (10장)
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProjectCreate'}
+      responses:
+        '201':
+          description: 생성됨
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Project'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+    get:
+      summary: 프로젝트 목록 (F11)
+      description: 프로젝트 카드와 최근 측정 결과 요약 (서비스기획서 화면 "프로젝트 목록")
+      operationId: listProjects
+      responses:
+        '200':
+          description: created_at 내림차순
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ProjectListItem'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /projects/{id}/tasks:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    post:
+      summary: 과업 생성 (F01)
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskCreate'}
+      responses:
+        '201':
+          description: 생성됨
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+
+  /tasks/{id}/runs:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    post:
+      summary: 측정 요청 (F01, F07, F08, F17)
+      description: |
+        run을 만들고 Redis 큐에 넣은 뒤 바로 돌려준다 (2.2). 진행은 `GET /runs/{id}`로 2초마다 폴링한다.
+        프로젝트의 당일 측정 수가 `daily_run_limit`을 넘으면 429 (F17).
+        - 당일: run.created_at 기준, 한국 시간(Asia/Seoul) 자정에 초기화
+        - 세지 않는 것: `mode=replay_only`
+      operationId: createRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RunCreate'}
+      responses:
+        '202':
+          description: 접수됨 (status=queued)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Run'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '429': {$ref: '#/components/responses/DailyLimitExceeded'}
+    get:
+      summary: 측정 이력과 지표 추이 (F11)
+      operationId: listTaskRuns
+      parameters:
+        - name: viewport
+          in: query
+          required: false
+          description: 같은 뷰포트끼리만 추이를 그린다 (7.1)
+          schema: {$ref: '#/components/schemas/ViewportPreset'}
+      responses:
+        '200':
+          description: created_at 내림차순
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/RunHistoryItem'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /runs/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    get:
+      summary: 상태·진행률 (F02)
+      description: 대시보드가 끝날 때까지 2초마다 폴링한다 (2.2)
+      operationId: getRun
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RunProgress'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /runs/{id}/report:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    get:
+      summary: 리포트 요약 (F04, F05, F06, F09, F10)
+      operationId: getRunReport
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Report'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/NotFinished'}
+
+  /runs/{id}/attempts/{n}/steps:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+      - {$ref: '#/components/parameters/AttemptIndex'}
+    get:
+      summary: 단계 상세 (F03, F06, F09)
+      operationId: listAttemptSteps
+      responses:
+        '200':
+          description: idx 오름차순
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Step'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /runs/{id}/attempts/{n}/steps/{idx}:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+      - {$ref: '#/components/parameters/AttemptIndex'}
+      - name: idx
+        in: path
+        required: true
+        description: 단계 번호 (step.idx, 0부터)
+        schema: {type: integer, minimum: 0}
+    get:
+      summary: 단계 하나 조회
+      description: |
+        리포트에서 이슈를 눌렀을 때 그 단계만 받는다. Issue.step의 (attempt_index, idx)를 그대로 넣는다.
+        [검토 필요] 11장 API 표에 없음, PM 검토 중
+      operationId: getAttemptStep
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Step'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /compare:
+    get:
+      summary: 재측정 비교 (F07)
+      description: |
+        (프로젝트, 과업, 뷰포트)가 같은 두 측정을 비교한다 (7.1). 결과는 comparison 테이블에 캐시한다.
+        회귀 비교·인프라 협의: 응답 형식 전체 (13장)
+      operationId: compareRuns
+      parameters:
+        - {name: base, in: query, required: true, description: 기준(이전) run id, schema: {type: integer}}
+        - {name: target, in: query, required: true, description: 비교 대상(새) run id, schema: {type: integer}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Comparison'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: 두 측정의 과업이나 뷰포트가 다르거나, 아직 끝나지 않음
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+
+  /runs/{id}/cancel:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    post:
+      summary: 측정 취소
+      description: 큐 작업을 멈추라고 요청한다. 워커가 멈추면 status=canceled
+      operationId: cancelRun
+      responses:
+        '202':
+          description: 취소 요청 접수
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Run'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: 이미 끝난 측정 (completed, failed, canceled)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+
+  /issues/{id}/label:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    post:
+      summary: 이슈 판정 라벨 입력 (9.2)
+      operationId: labelIssue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/IssueLabelCreate'}
+      responses:
+        '201':
+          description: 저장됨
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/IssueLabel'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+
+  /human-sessions:
+    post:
+      summary: 사람 데이터 세션 업로드 (9.1)
+      description: 수집 스크립트 전용, 화면 없음. IRB 확인 시에만 외부 참가자 데이터를 받는다
+      operationId: uploadHumanSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/HumanSessionCreate'}
+      responses:
+        '201':
+          description: 저장됨
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/HumanSessionCreated'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+
+  /tasks/{id}/aliases:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    post:
+      summary: 재생 대응 관계 저장 (7.2, F07)
+      description: 재생이 끊긴 지점에서 사용자가 고른 "이전 요소 = 새 요소". 같은 과업의 다음 재생부터 0순위로 적용
+      operationId: createElementAlias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ElementAliasCreate'}
+      responses:
+        '201':
+          description: 저장됨
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ElementAlias'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+
+components:
+  securitySchemes:
+    AccessCode:
+      type: apiKey
+      in: header
+      name: X-Access-Code
+      description: 초대 코드. 서버는 해시로만 저장한다 (access_code 테이블). active=false인 코드도 401 (F17)
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer}
+    AttemptIndex:
+      name: n
+      in: path
+      required: true
+      description: 반복 실행 번호 (attempt.index, 1부터)
+      schema: {type: integer, minimum: 1}
+
+  responses:
+    Unauthorized:
+      description: 초대 코드가 없거나 틀림
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFound:
+      description: 대상이 없음
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFinished:
+      description: 측정이 아직 끝나지 않음 (status가 queued 또는 running)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    DailyLimitExceeded:
+      description: 프로젝트의 당일 측정 상한 초과 (F17)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    ValidationFailed:
+      description: 요청 형식 오류 (FastAPI 기본 형식)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/HTTPValidationError'}
+
+  schemas:
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail: {type: string}
+    HTTPValidationError:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            required: [loc, msg, type]
+            properties:
+              loc:
+                type: array
+                items: {anyOf: [{type: string}, {type: integer}]}
+              msg: {type: string}
+              type: {type: string}
+
+    # --- project·task ---
+    ProjectCreate:
+      type: object
+      additionalProperties: false
+      required: [name, base_url]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+        base_url: {type: string, format: uri, description: 측정할 사이트의 기본 주소. 워커가 처음 여는 주소 (2.2)}
+    Project:
+      type: object
+      required: [id, name, base_url, daily_run_limit, created_at]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        base_url: {type: string, format: uri}
+        daily_run_limit: {type: integer, minimum: 1, description: 하루 측정 상한, 기본 10 (F17)}
+        created_at: {type: string, format: date-time}
+    ProjectListItem:
+      allOf:
+        - {$ref: '#/components/schemas/Project'}
+        - type: object
+          required: [latest_run]
+          properties:
+            latest_run:
+              description: |
+                프로젝트 카드의 "최근 측정 결과 요약" (서비스기획서 화면 "프로젝트 목록"). 측정이 없으면 null.
+                [검토 필요] 리포트·대시보드 UI 협의: 카드에 보여줄 값
+              anyOf: [{$ref: '#/components/schemas/RunSummary'}, {type: 'null'}]
+    RunSummary:
+      type: object
+      required: [id, task_id, viewport, status, created_at, success_count, repeat_n, issue_count]
+      properties:
+        id: {type: integer}
+        task_id: {type: integer}
+        viewport: {$ref: '#/components/schemas/ViewportPreset'}
+        status: {$ref: '#/components/schemas/RunStatus'}
+        created_at: {type: string, format: date-time}
+        success_count: {type: integer, minimum: 0, description: 성공한 반복 실행 수}
+        repeat_n: {type: integer}
+        issue_count: {type: integer, minimum: 0, description: is_reference=false인 이슈 수}
+
+    SuccessCondition:
+      description: |
+        done 뒤 실제 성공 여부를 판정하는 조건 (4.5). 둘 다 주면 둘 다 만족해야 성공.
+        과업에 조건이 없으면(null) LLM이 마지막 화면으로 판정하고 attempt.success_estimated=true.
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        url_contains: {type: string, minLength: 1}
+        text_present: {type: string, minLength: 1}
+    TaskCreate:
+      description: 테스트 계정(credentials_ref)은 암호화 저장소가 정해진 뒤 추가 (10장, M3 이후)
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        description: {type: string, minLength: 1, maxLength: 1000, description: 에이전트에게 주는 과업 설명 (4.4)}
+        success_condition:
+          anyOf: [{$ref: '#/components/schemas/SuccessCondition'}, {type: 'null'}]
+          default: null
+    Task:
+      type: object
+      required: [id, project_id, description, success_condition]
+      properties:
+        id: {type: integer}
+        project_id: {type: integer}
+        description: {type: string}
+        success_condition:
+          anyOf: [{$ref: '#/components/schemas/SuccessCondition'}, {type: 'null'}]
+
+    # --- run ---
+    ViewportPreset:
+      description: desktop = 1280×800, mobile = 390×844 (4.2, F08)
+      type: string
+      enum: [desktop, mobile]
+    RunMode:
+      description: |
+        auto = 기준 run의 대표 경로를 LLM 없이 먼저 재생, 끊기면 그 지점부터 에이전트 (재측정 기본)
+        agent = 재생 없이 에이전트로 repeat_n회 (첫 측정, 과업이 바뀐 경우)
+        replay_only = 재생만, 끊기면 멈춤. CI용, 일일 상한에 안 셈 (7.2, F14, F17)
+      type: string
+      enum: [auto, agent, replay_only]
+    RunStatus:
+      description: |
+        failed = 서비스 장애로 리포트를 못 만듦 (워커 충돌, 저장 실패).
+        에이전트 실패·사이트 차단은 completed이고 사유는 attempt.end_reason에 남는다.
+      type: string
+      enum: [queued, running, completed, failed, canceled]
+    RunCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        viewport: {$ref: '#/components/schemas/ViewportPreset', default: desktop}
+        repeat_n:
+          description: 기본 3, 고급 설정 5 (4.6)
+          type: integer
+          enum: [3, 5]
+          default: 3
+        model:
+          description: 생략하면 서버 기본 모델 (3장)
+          type: [string, 'null']
+          default: null
+        mode: {$ref: '#/components/schemas/RunMode', default: auto}
+        base_run_id:
+          description: 재생·비교 기준 run. 생략하면 같은 과업·뷰포트의 직전 완료 run (7.1)
+          type: [integer, 'null']
+          default: null
+    Run:
+      type: object
+      required: [id, task_id, viewport, mode, base_run_id, repeat_n, model, prompt_version, status, progress, cost_usd, created_at, started_at, finished_at, representative_attempt_index]
+      properties:
+        id: {type: integer}
+        task_id: {type: integer}
+        viewport: {$ref: '#/components/schemas/ViewportPreset'}
+        mode: {$ref: '#/components/schemas/RunMode'}
+        base_run_id: {type: [integer, 'null'], description: 첫 측정이면 null}
+        repeat_n: {type: integer}
+        model: {type: string}
+        prompt_version: {type: [string, 'null'], description: 워커가 시작하기 전이거나 replay_only면 null}
+        status: {$ref: '#/components/schemas/RunStatus'}
+        progress: {type: integer, minimum: 0, maximum: 100, description: '퍼센트. 계산식 미정'}
+        cost_usd: {type: number, minimum: 0, description: 이 run의 llm_call 비용 합계}
+        created_at:
+          description: 측정 요청을 받은 시각. 일일 상한 계산과 이력 정렬 기준. DB run 테이블에 칸 추가 (11장, F17)
+          type: string
+          format: date-time
+        started_at: {type: [string, 'null'], format: date-time, description: 워커가 꺼낸 시각. queued면 null}
+        finished_at: {type: [string, 'null'], format: date-time}
+        representative_attempt_index:
+          description: |
+            다음 재생에 쓸 대표 경로 attempt의 index. 성공 실행 중 경로 의존 지표가 중앙값에 가장 가까운 것.
+            성공 실행이 없거나 아직 안 끝났으면 null.
+            DB run 테이블에 representative_attempt_id 칸 추가, API는 attempt.index로 변환해서 준다 (7.2, 10장)
+          type: [integer, 'null']
+          minimum: 1
+
+    RunProgress:
+      description: Run + 측정 진행 화면의 "현재 스크린샷, 에이전트의 최근 판단 한 줄" (F02)
+      allOf:
+        - {$ref: '#/components/schemas/Run'}
+        - type: object
+          required: [latest_step]
+          properties:
+            latest_step:
+              description: |
+                가장 최근에 저장된 step. 아직 없으면 null.
+                에이전트 코어 협의: 단계마다 바로 저장 (13.1 DB 쓰기 경계)
+              anyOf:
+                - type: object
+                  required: [attempt_index, idx, screenshot_url, thought]
+                  properties:
+                    attempt_index: {type: integer, minimum: 1}
+                    idx: {type: integer, minimum: 0}
+                    screenshot_url: {type: [string, 'null'], format: uri, description: R2 서명 URL}
+                    thought: {type: string, description: 에이전트의 판단 이유 (step.thought)}
+                - {type: 'null'}
+
+    Attempt:
+      type: object
+      required: [index, kind, replay_status, diverged_at_step, end_reason, end_detail, success, success_estimated, steps_count]
+      properties:
+        index: {type: integer, minimum: 1, description: run 안 실행 순번, 1부터}
+        kind: {type: string, enum: [replay, agent]}
+        replay_status:
+          description: kind=replay일 때만. partial이면 diverged_at_step에서 끊김
+          anyOf: [{type: string, enum: [full, partial]}, {type: 'null'}]
+        diverged_at_step: {type: [integer, 'null'], description: 재생이 끊긴 단계의 idx (7.2)}
+        end_reason:
+          description: |
+            종료 사유 (4.5). success 성공 / gave_up 포기(fail) / loop 반복 루프 / budget_exceeded 30단계 초과 /
+            blocked 차단 / error 오류 / safety_stop 위험 행동 직전 멈춤 (worker/schemas.py DoneAction.reason)
+          type: string
+          enum: [success, gave_up, loop, budget_exceeded, blocked, error, safety_stop]
+        end_detail:
+          description: 포기 이유 문장, 오류 메시지, 차단 원인. DB attempt 테이블에 칸 추가 (4.5, 10장)
+          type: [string, 'null']
+        success: {type: boolean}
+        success_estimated:
+          description: 성공 조건이 없어 LLM이 마지막 화면으로 판정했으면 true, "추정" 표시. DB attempt 테이블에 칸 추가 (4.5, 10장)
+          type: boolean
+        steps_count: {type: integer, minimum: 0}
+
+    Metric:
+      description: run 단위 집계값 (metric.attempt_id = null인 행). 경로 의존 지표는 성공한 실행의 중앙값 (4.6)
+      type: object
+      required: [key, value, unit, spread, spread_quality, model_version_id]
+      properties:
+        key: {type: string, description: '지표 이름. 측정 지표·규칙 협의: 이름 목록 (5장)'}
+        value: {type: number}
+        unit: {type: string, examples: [px, s, count, bit]}
+        spread: {type: [number, 'null'], description: '기준 편차 (최댓값 − 최솟값) / 중앙값 (7.4)'}
+        spread_quality:
+          description: weak = 성공 실행 2회뿐이라 "편차 추정 약함", pooled = 이력을 모아 다시 계산 (7.4)
+          anyOf: [{type: string, enum: [ok, weak, pooled]}, {type: 'null'}]
+        model_version_id:
+          description: 이 값을 낸 승인 모델 버전. 예상 소요 시간에서 null이면 "문헌값 기준 추정" (5.10, 9.4)
+          type: [integer, 'null']
+
+    StepRef:
+      description: 단계 위치. steps API의 (n, idx)와 같다. 서버가 DB step_id를 변환해서 준다
+      type: object
+      required: [attempt_index, idx]
+      properties:
+        attempt_index: {type: integer, minimum: 1}
+        idx: {type: integer, minimum: 0}
+    StepValue:
+      allOf:
+        - {$ref: '#/components/schemas/StepRef'}
+        - type: object
+          required: [value]
+          properties:
+            value: {type: number}
+
+    Issue:
+      type: object
+      required: [id, rule_id, severity, confidence, step, element_key, measured, threshold, explanation, suggestion, score_reason, is_reference]
+      properties:
+        id: {type: integer}
+        rule_id: {type: string, pattern: '^R\d{2}$', examples: [R01], description: 규칙 번호 R01~R11 (6장)}
+        severity: {type: string, enum: [high, medium, low]}
+        confidence: {type: number, minimum: 0, maximum: 1, description: 이슈 점수 (6.2)}
+        step:
+          description: 문제가 나온 단계. 대표 경로 attempt의 단계 [검토 필요]
+          anyOf: [{$ref: '#/components/schemas/StepRef'}, {type: 'null'}]
+        element_key:
+          description: |
+            요소 지문 `tag|role|name|label_text|landmark` (null 칸은 빈 문자열). 특정 요소가 없는 문제(R05 등)는 null.
+            재측정 비교에서 같은 rule_id + 같은 element_key면 같은 문제 (7.3).
+            [검토 필요] 수집·매칭 협의: 지문 칸 확정, 이름에 `|`가 들어갈 때 escape 규칙
+          type: [string, 'null']
+        measured: {type: [number, 'null'], description: '측정값 (예: 대비 2.9). R03·R04·R10은 null'}
+        threshold: {type: [number, 'null'], description: '기준값 (예: 4.5)'}
+        explanation: {type: string, description: LLM이 쓴 두 문장 이내 설명 (6.1)}
+        suggestion:
+          description: 개선 제안 하나. DB issue 테이블에 칸 추가 (6.1, 10장, F06)
+          type: [string, 'null']
+        score_reason:
+          description: '점수에 가장 크게 기여한 항목 한 줄 (예: "과업 경로 위 요소"). DB issue 테이블에 칸 추가 (6.2, 10장)'
+          type: [string, 'null']
+        is_reference: {type: boolean, description: 'true면 "참고" 목록 (점수 임계값 미만 또는 과업 경로 밖, 6.2)'}
+
+    Report:
+      type: object
+      required: [run, attempts, metrics, issues, top_fitts_steps, slowest_steps]
+      properties:
+        run: {$ref: '#/components/schemas/Run'}
+        attempts:
+          type: array
+          items: {$ref: '#/components/schemas/Attempt'}
+        metrics:
+          type: array
+          items: {$ref: '#/components/schemas/Metric'}
+        issues:
+          description: 심각도 → 점수 순으로 서버가 정렬 (6.2)
+          type: array
+          items: {$ref: '#/components/schemas/Issue'}
+        top_fitts_steps:
+          description: Fitts ID가 가장 높은 단계 최대 3개, 대표 경로 attempt 기준 (5.3)
+          type: array
+          maxItems: 3
+          items: {$ref: '#/components/schemas/StepValue'}
+        slowest_steps:
+          description: 예상 소요 시간이 가장 긴 단계 최대 3개, 대표 경로 attempt 기준. 모바일은 빈 배열 (5.10)
+          type: array
+          maxItems: 3
+          items: {$ref: '#/components/schemas/StepValue'}
+
+    Step:
+      description: action은 행동 스키마(판단 이유 thought 포함), element_snapshot은 ElementSnapshot (둘 다 worker/schemas.py)
+      type: object
+      required: [idx, action, url, screenshot_url, changed, effect_type, fitts_id, est_seconds, element_snapshot]
+      properties:
+        idx: {type: integer, minimum: 0}
+        action: {$ref: '#/components/schemas/Action'}
+        url: {type: string, description: 행동할 때의 페이지 주소}
+        screenshot_url:
+          description: R2 서명 URL. 만료되면 다시 받는다
+          type: [string, 'null']
+          format: uri
+        changed: {type: boolean, description: 행동 뒤 화면 반응 여부. effect_type != no_change와 같다 (5.1)}
+        effect_type:
+          type: string
+          enum: [url_change, modal_change, dom_mutation, no_change]
+        fitts_id:
+          description: 이 단계 클릭의 Fitts ID (bit). click·type이 아니면 null. DB step 테이블에 칸 추가 (5.3, 10장)
+          type: [number, 'null']
+          minimum: 0
+        est_seconds:
+          description: 이 단계의 예상 소요 시간 (초, KLM). 모바일이면 null. DB step 테이블에 칸 추가 (5.10, 10장)
+          type: [number, 'null']
+          minimum: 0
+        element_snapshot:
+          description: click·type일 때만 있다
+          anyOf: [{$ref: '#/components/schemas/ElementSnapshot'}, {type: 'null'}]
+
+    RunHistoryItem:
+      type: object
+      required: [run, success_count, metrics]
+      properties:
+        run: {$ref: '#/components/schemas/Run'}
+        success_count: {type: integer, minimum: 0, description: 성공한 반복 실행 수 (분모는 run.repeat_n)}
+        metrics:
+          type: array
+          items: {$ref: '#/components/schemas/Metric'}
+
+    # --- 비교 (회귀 비교·인프라 협의) ---
+    MetricChange:
+      type: object
+      required: [key, base, target, change_rate, threshold, verdict]
+      properties:
+        key: {type: string}
+        base: {type: [number, 'null']}
+        target: {type: [number, 'null']}
+        change_rate: {type: [number, 'null']}
+        threshold: {type: [number, 'null'], description: '악화 판정 임계값. 에이전트 비교는 max(0.2, 기준 편차 × 2) (7.4)'}
+        verdict: {type: string, enum: [worse, better, unchanged, not_comparable]}
+    PathAlignment:
+      description: 두 경로의 단계 정렬 결과 한 줄 (7.5)
+      type: object
+      required: [op, base_idx, target_idx]
+      properties:
+        op: {type: string, enum: [kept, added, removed]}
+        base_idx: {type: [integer, 'null']}
+        target_idx: {type: [integer, 'null']}
+    Comparison:
+      description: 화면 순서는 문제 변화 → 재생 지표 변화 → 에이전트 지표 변화 → 경로 정렬 (7.5)
+      type: object
+      required: [base_run_id, target_run_id, issues_new, issues_resolved, issues_kept, replay, agent, path_alignment]
+      properties:
+        base_run_id: {type: integer}
+        target_run_id: {type: integer}
+        issues_new:
+          type: array
+          items: {$ref: '#/components/schemas/Issue'}
+        issues_resolved:
+          type: array
+          items: {$ref: '#/components/schemas/Issue'}
+        issues_kept:
+          type: array
+          items: {$ref: '#/components/schemas/Issue'}
+        replay:
+          description: 재생 비교. target에 replay attempt가 없으면 null
+          anyOf:
+            - type: object
+              required: [replay_status, diverged_at_step, metric_changes]
+              properties:
+                replay_status: {type: string, enum: [full, partial]}
+                diverged_at_step: {type: [integer, 'null'], description: 경로가 바뀐 지점}
+                metric_changes:
+                  type: array
+                  items: {$ref: '#/components/schemas/MetricChange'}
+            - {type: 'null'}
+        agent:
+          description: 에이전트 비교. 에이전트 실행이 없으면 null
+          anyOf:
+            - type: object
+              required: [spread_weak, metric_changes]
+              properties:
+                spread_weak: {type: boolean, description: 성공 실행 2회뿐이라 "편차 추정 약함"}
+                metric_changes:
+                  type: array
+                  items: {$ref: '#/components/schemas/MetricChange'}
+            - {type: 'null'}
+        path_alignment:
+          type: array
+          items: {$ref: '#/components/schemas/PathAlignment'}
+
+    # --- 라벨·사람 데이터·재생 대응 ---
+    IssueLabelValue:
+      type: string
+      enum: [real, 'false', unsure]
+    IssueLabelSource:
+      description: benchmark = 벤치마크 정답 자동 대조, review = 실사이트 사람 판정 (9.2)
+      type: string
+      enum: [benchmark, review]
+    IssueLabelCreate:
+      type: object
+      additionalProperties: false
+      required: [label, labeler, source]
+      properties:
+        label: {$ref: '#/components/schemas/IssueLabelValue'}
+        labeler: {type: string, minLength: 1, maxLength: 50, description: '판정자. [검토 필요] 채우는 방식 미정'}
+        source: {$ref: '#/components/schemas/IssueLabelSource'}
+    IssueLabel:
+      type: object
+      required: [id, issue_id, label, labeler, source]
+      properties:
+        id: {type: integer}
+        issue_id: {type: integer}
+        label: {$ref: '#/components/schemas/IssueLabelValue'}
+        labeler: {type: string}
+        source: {$ref: '#/components/schemas/IssueLabelSource'}
+
+    HumanEvent:
+      type: object
+      additionalProperties: false
+      required: [t_ms, type, x, y, target_key]
+      properties:
+        t_ms: {type: integer, minimum: 0, description: '세션 시작부터 경과 ms. [검토 필요] 기준 시점'}
+        type:
+          description: stable = 화면 안정 시점 (9.1)
+          type: string
+          enum: [move, down, up, click, scroll, key, stable]
+        x: {type: [number, 'null']}
+        y: {type: [number, 'null']}
+        target_key: {type: [string, 'null'], description: 대상 요소 지문. 입력 내용은 받지 않는다}
+    HumanSessionCreate:
+      description: 이름·연락처·입력 내용은 받지 않는다. 참가자 코드만 (9.1)
+      type: object
+      additionalProperties: false
+      required: [participant_code, page_id, device, viewport, daily_computer_hours, started_at, completed, events]
+      properties:
+        participant_code: {type: string, minLength: 1, maxLength: 20}
+        page_id: {type: string, minLength: 1, description: '벤치마크 페이지 "앱/변이"'}
+        device: {type: string, enum: [mouse, trackpad, touch]}
+        viewport: {$ref: '#/components/schemas/Viewport'}
+        daily_computer_hours:
+          description: 평소 하루 컴퓨터 사용 시간. DB human_session 테이블에 칸 추가 (9.1, 10장)
+          type: number
+          minimum: 0
+          maximum: 24
+        started_at: {type: string, format: date-time}
+        completed: {type: boolean}
+        events:
+          type: array
+          items: {$ref: '#/components/schemas/HumanEvent'}
+    HumanSessionCreated:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: integer}
+
+    ElementFingerprint:
+      description: 요소 매칭 지문 (7.2). 필드 뜻은 ElementSnapshot과 같다. [검토 필요] 수집·매칭 협의
+      type: object
+      additionalProperties: false
+      required: [tag, role, name, label_text, landmark]
+      properties:
+        tag: {type: string}
+        role: {type: [string, 'null']}
+        name: {type: string}
+        label_text: {type: [string, 'null']}
+        landmark: {type: [string, 'null']}
+    ElementAliasCreate:
+      type: object
+      additionalProperties: false
+      required: [from_fingerprint, to_fingerprint, confirmed_by]
+      properties:
+        from_fingerprint: {$ref: '#/components/schemas/ElementFingerprint'}
+        to_fingerprint: {$ref: '#/components/schemas/ElementFingerprint'}
+        confirmed_by: {type: string, minLength: 1, maxLength: 50, description: '확인한 사람. [검토 필요] 채우는 방식 미정'}
+    ElementAlias:
+      type: object
+      required: [id, task_id, from_fingerprint, to_fingerprint, confirmed_by, created_at]
+      properties:
+        id: {type: integer}
+        task_id: {type: integer}
+        from_fingerprint: {$ref: '#/components/schemas/ElementFingerprint'}
+        to_fingerprint: {$ref: '#/components/schemas/ElementFingerprint'}
+        confirmed_by: {type: string}
+        created_at: {type: string, format: date-time}
+
+    # --- worker/schemas.py에서 생성 (직접 고치지 않는다) ---
+    BackAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: back
+          type: string
+      required:
+      - thought
+      - expectation
+      - action
+      type: object
+    ClickAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: click
+          type: string
+        target:
+          exclusiveMinimum: 0
+          type: integer
+      required:
+      - thought
+      - expectation
+      - action
+      - target
+      type: object
+    DoneAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: done
+          type: string
+        reason:
+          enum:
+          - goal_reached
+          - safety_stop
+          type: string
+      required:
+      - thought
+      - expectation
+      - action
+      - reason
+      type: object
+    FailAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: fail
+          type: string
+      required:
+      - thought
+      - expectation
+      - action
+      type: object
+    ScrollAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: scroll
+          type: string
+        direction:
+          enum:
+          - up
+          - down
+          type: string
+      required:
+      - thought
+      - expectation
+      - action
+      - direction
+      type: object
+    SelectAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: select
+          type: string
+        target:
+          exclusiveMinimum: 0
+          type: integer
+        option:
+          exclusiveMinimum: 0
+          type: integer
+      required:
+      - thought
+      - expectation
+      - action
+      - target
+      - option
+      type: object
+    TypeAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: type
+          type: string
+        target:
+          exclusiveMinimum: 0
+          type: integer
+        text:
+          maxLength: 4096
+          type: string
+      required:
+      - thought
+      - expectation
+      - action
+      - target
+      - text
+      type: object
+    WaitAction:
+      additionalProperties: false
+      properties:
+        thought:
+          maxLength: 500
+          minLength: 1
+          type: string
+        expectation:
+          maxLength: 500
+          minLength: 1
+          type: string
+        confusion:
+          anyOf:
+          - maxLength: 500
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+        action:
+          const: wait
+          type: string
+      required:
+      - thought
+      - expectation
+      - action
+      type: object
+    Action:
+      discriminator:
+        mapping:
+          back: '#/components/schemas/BackAction'
+          click: '#/components/schemas/ClickAction'
+          done: '#/components/schemas/DoneAction'
+          fail: '#/components/schemas/FailAction'
+          scroll: '#/components/schemas/ScrollAction'
+          select: '#/components/schemas/SelectAction'
+          type: '#/components/schemas/TypeAction'
+          wait: '#/components/schemas/WaitAction'
+        propertyName: action
+      oneOf:
+      - $ref: '#/components/schemas/ClickAction'
+      - $ref: '#/components/schemas/TypeAction'
+      - $ref: '#/components/schemas/SelectAction'
+      - $ref: '#/components/schemas/ScrollAction'
+      - $ref: '#/components/schemas/BackAction'
+      - $ref: '#/components/schemas/WaitAction'
+      - $ref: '#/components/schemas/DoneAction'
+      - $ref: '#/components/schemas/FailAction'
+    BBox:
+      additionalProperties: false
+      description: getBoundingClientRect() 결과. 최상위 뷰포트 기준 좌표 (CSS px).
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        width:
+          minimum: 0
+          type: number
+        height:
+          minimum: 0
+          type: number
+      required:
+      - x
+      - y
+      - width
+      - height
+      type: object
+    BackgroundLayer:
+      additionalProperties: false
+      description: 배경 계보 한 층. 대상 요소 자신부터 위로 올라가며 기록한다.
+      properties:
+        tag:
+          minLength: 1
+          type: string
+        background_color:
+          type: string
+        background_image:
+          type: string
+        opacity:
+          maximum: 1
+          minimum: 0
+          type: number
+      required:
+      - tag
+      - background_color
+      - background_image
+      - opacity
+      type: object
+    ComputedStyle:
+      additionalProperties: false
+      description: 'getComputedStyle() 값. 색은 브라우저가 돌려준 문자열 그대로 (예: "rgb(0, 0, 0)").'
+      properties:
+        color:
+          type: string
+        background_color:
+          type: string
+        background_image:
+          type: string
+        font_size:
+          minimum: 0
+          type: number
+        font_weight:
+          maximum: 1000
+          minimum: 1
+          type: integer
+        opacity:
+          maximum: 1
+          minimum: 0
+          type: number
+      required:
+      - color
+      - background_color
+      - background_image
+      - font_size
+      - font_weight
+      - opacity
+      type: object
+    NearbyTarget:
+      additionalProperties: false
+      description: 대상 중심에서 48px 안에 들어오는 다른 상호작용 요소 (간격 예외 판정용).
+      properties:
+        role:
+          anyOf:
+          - type: string
+          - type: 'null'
+        name:
+          maxLength: 1000
+          type: string
+        bbox:
+          $ref: '#/components/schemas/BBox'
+      required:
+      - role
+      - name
+      - bbox
+      type: object
+    Occluder:
+      additionalProperties: false
+      description: 대상 중심점을 찍었을 때 대신 잡힌 요소 (쿠키 배너, 채팅 버튼 등).
+      properties:
+        tag:
+          minLength: 1
+          type: string
+        role:
+          anyOf:
+          - type: string
+          - type: 'null'
+        name:
+          maxLength: 1000
+          type: string
+        bbox:
+          $ref: '#/components/schemas/BBox'
+      required:
+      - tag
+      - role
+      - name
+      - bbox
+      type: object
+    ScrollPosition:
+      additionalProperties: false
+      description: window.scrollX, window.scrollY (CSS px).
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+      required:
+      - x
+      - y
+      type: object
+    Viewport:
+      additionalProperties: false
+      description: 뷰포트 크기 (CSS px).
+      properties:
+        width:
+          exclusiveMinimum: 0
+          type: integer
+        height:
+          exclusiveMinimum: 0
+          type: integer
+      required:
+      - width
+      - height
+      type: object
+    ElementSnapshot:
+      additionalProperties: false
+      description: click·type 직전 대상 요소에 대해 측정 훅이 저장하는 값 (개발계획서 5.1).
+      properties:
+        el_id:
+          exclusiveMinimum: 0
+          type: integer
+        tag:
+          minLength: 1
+          type: string
+        role:
+          anyOf:
+          - type: string
+          - type: 'null'
+        name:
+          maxLength: 1000
+          type: string
+        landmark:
+          anyOf:
+          - enum:
+            - banner
+            - navigation
+            - main
+            - complementary
+            - contentinfo
+            - search
+            - form
+            - region
+            type: string
+          - type: 'null'
+        label_text:
+          anyOf:
+          - maxLength: 200
+            type: string
+          - type: 'null'
+        inline_in_text:
+          type: boolean
+        context:
+          enum:
+          - document
+          - open_shadow
+          - same_origin_iframe
+          type: string
+        viewport:
+          $ref: '#/components/schemas/Viewport'
+        scroll:
+          $ref: '#/components/schemas/ScrollPosition'
+        bbox:
+          $ref: '#/components/schemas/BBox'
+        style:
+          $ref: '#/components/schemas/ComputedStyle'
+        bg_chain:
+          items:
+            $ref: '#/components/schemas/BackgroundLayer'
+          minItems: 1
+          type: array
+        occluded:
+          type: boolean
+        occluder:
+          anyOf:
+          - $ref: '#/components/schemas/Occluder'
+          - type: 'null'
+        in_first_view:
+          type: boolean
+        first_view_scroll_px:
+          anyOf:
+          - minimum: 0
+            type: number
+          - type: 'null'
+        nearby_targets:
+          items:
+            $ref: '#/components/schemas/NearbyTarget'
+          type: array
+      required:
+      - el_id
+      - tag
+      - role
+      - name
+      - landmark
+      - label_text
+      - inline_in_text
+      - context
+      - viewport
+      - scroll
+      - bbox
+      - style
+      - bg_chain
+      - occluded
+      - occluder
+      - in_first_view
+      - first_view_scroll_px
+      - nearby_targets
+      type: object
