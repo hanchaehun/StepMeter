@@ -1,15 +1,17 @@
 {
-  "id": 42,
-  "task_id": 12,
+  "id": 44,
+  "task_id": 7,
   "viewport": "desktop",
   "mode": "auto",
-  "base_run_id": null,
+  "base_run_id": 41,
   "repeat_n": 3,
-  "model": "claude-sonnet-5-5",
-  "prompt_version": "v1",
+  "model": "mock-model",
+  "prompt_version": null,
   "status": "canceled",
-  "progress": 35,
-  "cost_usd": 0.41,
-  "started_at": "2026-10-29T06:10:03Z",
-  "finished_at": "2026-10-29T06:12:10Z"
+  "progress": 0,
+  "cost_usd": 0,
+  "created_at": "2026-10-30T04:00:00Z",
+  "started_at": null,
+  "finished_at": "2026-10-30T04:00:20Z",
+  "representative_attempt_index": null
 }

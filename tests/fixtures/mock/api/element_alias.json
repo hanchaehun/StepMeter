@@ -1,20 +1,20 @@
 {
-  "id": 15,
-  "task_id": 12,
+  "id": 9,
+  "task_id": 7,
   "from_fingerprint": {
     "tag": "button",
     "role": "button",
-    "name": "가입 완료",
+    "name": "장바구니 담기",
     "label_text": null,
-    "landmark": "form"
+    "landmark": "main"
   },
   "to_fingerprint": {
     "tag": "button",
     "role": "button",
-    "name": "회원가입 완료하기",
+    "name": "구매",
     "label_text": null,
-    "landmark": "form"
+    "landmark": "main"
   },
-  "confirmed_by": "팀원A",
-  "created_at": "2026-11-18T07:40:00Z"
+  "confirmed_by": "rater-a",
+  "created_at": "2026-10-29T05:10:00Z"
 }

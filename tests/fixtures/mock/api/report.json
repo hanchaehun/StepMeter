@@ -1,39 +1,43 @@
 {
   "run": {
     "id": 42,
-    "task_id": 12,
+    "task_id": 7,
     "viewport": "desktop",
     "mode": "auto",
-    "base_run_id": null,
+    "base_run_id": 41,
     "repeat_n": 3,
-    "model": "claude-sonnet-5-5",
-    "prompt_version": "v1",
+    "model": "mock-model",
+    "prompt_version": "agent-v3",
     "status": "completed",
     "progress": 100,
-    "cost_usd": 1.07,
-    "started_at": "2026-10-29T06:10:03Z",
-    "finished_at": "2026-10-29T06:15:40Z"
+    "cost_usd": 0.084,
+    "created_at": "2026-10-29T05:00:00Z",
+    "started_at": "2026-10-29T05:00:03Z",
+    "finished_at": "2026-10-29T05:06:40Z",
+    "representative_attempt_index": 2
   },
   "attempts": [
     {
       "index": 1,
-      "kind": "agent",
-      "replay_status": null,
-      "diverged_at_step": null,
-      "end_reason": "success",
-      "success": true,
+      "kind": "replay",
+      "replay_status": "partial",
+      "diverged_at_step": 1,
+      "end_reason": "gave_up",
+      "end_detail": "장바구니 담기 버튼을 찾지 못했다",
+      "success": false,
       "success_estimated": false,
-      "steps_count": 5
+      "steps_count": 9
     },
     {
       "index": 2,
       "kind": "agent",
       "replay_status": null,
       "diverged_at_step": null,
-      "end_reason": "loop",
-      "success": false,
+      "end_reason": "success",
+      "end_detail": null,
+      "success": true,
       "success_estimated": false,
-      "steps_count": 11
+      "steps_count": 3
     },
     {
       "index": 3,
@@ -41,99 +45,123 @@
       "replay_status": null,
       "diverged_at_step": null,
       "end_reason": "success",
+      "end_detail": null,
       "success": true,
       "success_estimated": false,
-      "steps_count": 6
+      "steps_count": 4
     }
   ],
   "metrics": [
     {
       "key": "click_count",
-      "value": 5,
-      "unit": "회",
-      "spread": 0.2,
-      "spread_quality": "weak"
+      "value": 2,
+      "unit": "count",
+      "spread": 0.0,
+      "spread_quality": "weak",
+      "model_version_id": null
     },
     {
-      "key": "cursor_distance",
-      "value": 3120,
+      "key": "travel_distance",
+      "value": 812.5,
       "unit": "px",
-      "spread": 0.08,
-      "spread_quality": "weak"
+      "spread": 0.12,
+      "spread_quality": "weak",
+      "model_version_id": null
     },
     {
-      "key": "est_time",
-      "value": 24.6,
-      "unit": "초",
-      "spread": 0.12,
-      "spread_quality": "weak"
+      "key": "fitts_id_sum",
+      "value": 5.4,
+      "unit": "bit",
+      "spread": 0.08,
+      "spread_quality": "weak",
+      "model_version_id": null
+    },
+    {
+      "key": "est_task_time",
+      "value": 7.9,
+      "unit": "s",
+      "spread": 0.1,
+      "spread_quality": "weak",
+      "model_version_id": null
     }
   ],
   "issues": [
     {
-      "id": 501,
+      "id": 102,
       "rule_id": "R04",
       "severity": "high",
-      "confidence": 0.82,
+      "confidence": 0.91,
       "step": {
-        "attempt_index": 1,
+        "attempt_index": 2,
         "idx": 1
       },
-      "element_key": "button|구매|main",
+      "element_key": "button|button|구매||main",
       "measured": null,
       "threshold": null,
-      "explanation": "구매 버튼이 쿠키 배너에 가려져 눌리지 않았어요.",
-      "suggestion": "배너가 버튼을 덮지 않도록 위치를 옮기세요.",
+      "explanation": "구매 버튼 중앙이 하단 배너에 가려져 있습니다. 클릭이 배너로 갈 수 있습니다.",
+      "suggestion": "하단 배너가 버튼을 덮지 않도록 위치를 옮기거나 닫기 버튼을 주세요.",
+      "score_reason": "과업 경로 위 요소",
+      "is_reference": false
+    },
+    {
+      "id": 101,
+      "rule_id": "R02",
+      "severity": "medium",
+      "confidence": 0.82,
+      "step": {
+        "attempt_index": 2,
+        "idx": 0
+      },
+      "element_key": "a|link|러닝화 A||main",
+      "measured": 2.9,
+      "threshold": 4.5,
+      "explanation": "상품 링크 글자와 배경의 대비가 2.9로 기준 4.5에 못 미칩니다. 저시력 사용자는 링크를 알아보기 어렵습니다.",
+      "suggestion": "링크 글자색을 더 어둡게 바꿔 대비를 4.5 이상으로 올리세요.",
       "score_reason": "3회 중 3회 발견",
       "is_reference": false
     },
     {
-      "id": 502,
-      "rule_id": "R05",
-      "severity": "high",
-      "confidence": 0.7,
-      "step": null,
-      "element_key": null,
-      "measured": 3,
-      "threshold": 3,
-      "explanation": "2번째 실행에서 같은 화면에서 같은 행동을 3번 반복했어요.",
-      "suggestion": "버튼을 누른 뒤 눌렸다는 표시를 보여 주세요.",
-      "score_reason": "과업 경로 위",
-      "is_reference": false
-    },
-    {
-      "id": 503,
+      "id": 103,
       "rule_id": "R01",
-      "severity": "medium",
-      "confidence": 0.61,
-      "step": {
-        "attempt_index": 3,
-        "idx": 2
-      },
-      "element_key": "button|수량 증가|main",
-      "measured": 18,
-      "threshold": 24,
-      "explanation": "수량 + 버튼이 18px로 권장 최소 24px보다 작아요.",
-      "suggestion": "버튼을 24px 이상으로 키우세요.",
-      "score_reason": "기준 대비 25% 미달",
-      "is_reference": false
-    },
-    {
-      "id": 504,
-      "rule_id": "R09",
       "severity": "low",
       "confidence": 0.31,
-      "step": {
-        "attempt_index": 1,
-        "idx": 1
-      },
-      "element_key": "button|구매|main",
-      "measured": null,
-      "threshold": null,
-      "explanation": "에이전트는 옵션 창을 기대했지만 화면이 바뀌지 않았어요.",
+      "step": null,
+      "element_key": "a|link|장바구니 보기||main",
+      "measured": 30,
+      "threshold": 44,
+      "explanation": "장바구니 보기 링크 높이가 30px로 기준 44px보다 작습니다.",
       "suggestion": null,
-      "score_reason": "추정 판정",
+      "score_reason": "과업 경로 밖 요소",
       "is_reference": true
+    }
+  ],
+  "top_fitts_steps": [
+    {
+      "attempt_index": 2,
+      "idx": 1,
+      "value": 3.1
+    },
+    {
+      "attempt_index": 2,
+      "idx": 0,
+      "value": 2.3
+    }
+  ],
+  "slowest_steps": [
+    {
+      "attempt_index": 2,
+      "idx": 0,
+      "value": 3.4
+    },
+    {
+      "attempt_index": 2,
+      "idx": 1,
+      "value": 2.9
+    },
+    {
+      "attempt_index": 2,
+      "idx": 2,
+      "value": 1.6
     }
   ]
 }

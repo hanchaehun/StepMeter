@@ -30,6 +30,7 @@ MOCKS = {
     "run_progress.json": ("/runs/{id}", "get", "200"),
     "report.json": ("/runs/{id}/report", "get", "200"),
     "steps.json": ("/runs/{id}/attempts/{n}/steps", "get", "200"),
+    "step.json": ("/runs/{id}/attempts/{n}/steps/{idx}", "get", "200"),
     "comparison.json": ("/compare", "get", "200"),
     "run_canceled.json": ("/runs/{id}/cancel", "post", "202"),
     "issue_label.json": ("/issues/{id}/label", "post", "201"),
@@ -47,6 +48,7 @@ PLANNED = {
     ("get", "/runs/{id}"),
     ("get", "/runs/{id}/report"),
     ("get", "/runs/{id}/attempts/{n}/steps"),
+    ("get", "/runs/{id}/attempts/{n}/steps/{idx}"),  # 11장에 없음, PM 검토 중
     ("get", "/tasks/{id}/runs"),
     ("get", "/compare"),
     ("post", "/runs/{id}/cancel"),
@@ -125,7 +127,9 @@ class OpenApiSchemaTests(unittest.TestCase):
 
     def test_step_mock_passes_worker_models(self):
         # JSON Schema로는 못 거르는 동결 모델 규칙(occluder·첫 화면 일관성 등)까지 확인
-        for step in json.loads((MOCK_API / "steps.json").read_text(encoding="utf-8")):
+        steps = json.loads((MOCK_API / "steps.json").read_text(encoding="utf-8"))
+        steps.append(json.loads((MOCK_API / "step.json").read_text(encoding="utf-8")))
+        for step in steps:
             ACTION_ADAPTER.validate_python(step["action"])
             if step["element_snapshot"] is not None:
                 ElementSnapshot.model_validate(step["element_snapshot"])

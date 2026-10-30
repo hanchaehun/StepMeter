@@ -1,20 +1,12 @@
 {
   "detail": [
     {
-      "type": "string_too_short",
-      "loc": [
-        "body",
-        "name"
-      ],
-      "msg": "String should have at least 1 character"
-    },
-    {
-      "type": "url_parsing",
       "loc": [
         "body",
         "base_url"
       ],
-      "msg": "Input should be a valid URL"
+      "msg": "Field required",
+      "type": "missing"
     }
   ]
 }

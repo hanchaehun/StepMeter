@@ -1,0 +1,100 @@
+{
+  "idx": 1,
+  "action": {
+    "action": "click",
+    "target": 4,
+    "thought": "상품 상세에서 구매 버튼을 누른다",
+    "expectation": "장바구니 담기 안내가 뜬다",
+    "confusion": "버튼 아래쪽이 배너에 가려져 있다"
+  },
+  "url": "https://shop.example/products/a",
+  "screenshot_url": "https://r2.example/runs/42/2/1.jpg?X-Amz-Expires=900&X-Amz-Signature=mock",
+  "changed": true,
+  "effect_type": "modal_change",
+  "fitts_id": 3.1,
+  "est_seconds": 2.9,
+  "element_snapshot": {
+    "el_id": 4,
+    "tag": "button",
+    "role": "button",
+    "name": "구매",
+    "landmark": "main",
+    "label_text": null,
+    "inline_in_text": false,
+    "context": "document",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "scroll": {
+      "x": 0,
+      "y": 0
+    },
+    "bbox": {
+      "x": 100,
+      "y": 700,
+      "width": 120,
+      "height": 40
+    },
+    "style": {
+      "color": "rgb(255, 255, 255)",
+      "background_color": "rgb(37, 99, 235)",
+      "background_image": "none",
+      "font_size": 16,
+      "font_weight": 700,
+      "opacity": 1
+    },
+    "bg_chain": [
+      {
+        "tag": "button",
+        "background_color": "rgb(37, 99, 235)",
+        "background_image": "none",
+        "opacity": 1
+      },
+      {
+        "tag": "main",
+        "background_color": "rgba(0, 0, 0, 0)",
+        "background_image": "none",
+        "opacity": 1
+      },
+      {
+        "tag": "body",
+        "background_color": "rgb(255, 255, 255)",
+        "background_image": "none",
+        "opacity": 1
+      },
+      {
+        "tag": "html",
+        "background_color": "rgba(0, 0, 0, 0)",
+        "background_image": "none",
+        "opacity": 1
+      }
+    ],
+    "occluded": true,
+    "occluder": {
+      "tag": "div",
+      "role": null,
+      "name": "",
+      "bbox": {
+        "x": 0,
+        "y": 680,
+        "width": 1280,
+        "height": 120
+      }
+    },
+    "in_first_view": true,
+    "first_view_scroll_px": 0,
+    "nearby_targets": [
+      {
+        "role": "link",
+        "name": "장바구니 보기",
+        "bbox": {
+          "x": 230,
+          "y": 705,
+          "width": 90,
+          "height": 30
+        }
+      }
+    ]
+  }
+}

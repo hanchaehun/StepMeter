@@ -1,49 +1,77 @@
 {
-  "participant_code": "P03",
-  "page_id": "shop-checkout-normal",
+  "participant_code": "P07",
+  "page_id": "shop/R02",
   "device": "mouse",
   "viewport": {
-    "width": 1440,
-    "height": 900
+    "width": 1280,
+    "height": 800
   },
   "daily_computer_hours": 6,
-  "started_at": "2026-11-04T05:00:00Z",
+  "started_at": "2026-11-03T06:00:00Z",
   "completed": true,
   "events": [
     {
       "t_ms": 0,
-      "type": "move",
-      "x": 720,
-      "y": 450,
+      "type": "stable",
+      "x": null,
+      "y": null,
       "target_key": null
     },
     {
-      "t_ms": 17,
+      "t_ms": 640,
       "type": "move",
-      "x": 724,
-      "y": 446,
+      "x": 610,
+      "y": 400,
       "target_key": null
     },
     {
-      "t_ms": 1200,
-      "type": "click",
-      "x": 410,
+      "t_ms": 656,
+      "type": "move",
+      "x": 520,
+      "y": 330,
+      "target_key": null
+    },
+    {
+      "t_ms": 1210,
+      "type": "down",
+      "x": 420,
       "y": 272,
-      "target_key": "a|러닝화 A"
+      "target_key": "a|link|러닝화 A||main"
     },
     {
-      "t_ms": 5200,
+      "t_ms": 1290,
+      "type": "up",
+      "x": 420,
+      "y": 272,
+      "target_key": "a|link|러닝화 A||main"
+    },
+    {
+      "t_ms": 1291,
+      "type": "click",
+      "x": 420,
+      "y": 272,
+      "target_key": "a|link|러닝화 A||main"
+    },
+    {
+      "t_ms": 1950,
+      "type": "stable",
+      "x": null,
+      "y": null,
+      "target_key": null
+    },
+    {
+      "t_ms": 2400,
+      "type": "scroll",
+      "x": 640,
+      "y": 400,
+      "target_key": null
+    },
+    {
+      "t_ms": 3100,
       "type": "key",
       "x": null,
       "y": null,
-      "target_key": "input|이메일"
-    },
-    {
-      "t_ms": 5350,
-      "type": "key",
-      "x": null,
-      "y": null,
-      "target_key": "input|이메일"
+      "target_key": "input|searchbox|검색||search"
     }
   ]
 }

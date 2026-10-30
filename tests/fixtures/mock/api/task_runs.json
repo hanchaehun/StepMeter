@@ -2,82 +2,108 @@
   {
     "run": {
       "id": 42,
-      "task_id": 12,
+      "task_id": 7,
       "viewport": "desktop",
       "mode": "auto",
-      "base_run_id": null,
+      "base_run_id": 41,
       "repeat_n": 3,
-      "model": "claude-sonnet-5-5",
-      "prompt_version": "v1",
+      "model": "mock-model",
+      "prompt_version": "agent-v3",
       "status": "completed",
       "progress": 100,
-      "cost_usd": 1.07,
-      "started_at": "2026-10-29T06:10:03Z",
-      "finished_at": "2026-10-29T06:15:40Z"
+      "cost_usd": 0.084,
+      "created_at": "2026-10-29T05:00:00Z",
+      "started_at": "2026-10-29T05:00:03Z",
+      "finished_at": "2026-10-29T05:06:40Z",
+      "representative_attempt_index": 2
     },
     "success_count": 2,
     "metrics": [
       {
         "key": "click_count",
-        "value": 5,
-        "unit": "회",
-        "spread": 0.2,
-        "spread_quality": "weak"
+        "value": 2,
+        "unit": "count",
+        "spread": 0.0,
+        "spread_quality": "weak",
+        "model_version_id": null
       },
       {
-        "key": "cursor_distance",
-        "value": 3120,
+        "key": "travel_distance",
+        "value": 812.5,
         "unit": "px",
-        "spread": 0.08,
-        "spread_quality": "weak"
+        "spread": 0.12,
+        "spread_quality": "weak",
+        "model_version_id": null
       },
       {
-        "key": "est_time",
-        "value": 24.6,
-        "unit": "초",
-        "spread": 0.12,
-        "spread_quality": "weak"
+        "key": "fitts_id_sum",
+        "value": 5.4,
+        "unit": "bit",
+        "spread": 0.08,
+        "spread_quality": "weak",
+        "model_version_id": null
+      },
+      {
+        "key": "est_task_time",
+        "value": 7.9,
+        "unit": "s",
+        "spread": 0.1,
+        "spread_quality": "weak",
+        "model_version_id": null
       }
     ]
   },
   {
     "run": {
       "id": 41,
-      "task_id": 12,
+      "task_id": 7,
       "viewport": "desktop",
-      "mode": "auto",
+      "mode": "agent",
       "base_run_id": null,
       "repeat_n": 3,
-      "model": "claude-sonnet-5-5",
-      "prompt_version": "v1",
+      "model": "mock-model",
+      "prompt_version": "agent-v3",
       "status": "completed",
       "progress": 100,
-      "cost_usd": 1.12,
-      "started_at": "2026-10-28T05:20:11Z",
-      "finished_at": "2026-10-28T05:26:02Z"
+      "cost_usd": 0.231,
+      "created_at": "2026-10-28T05:00:00Z",
+      "started_at": "2026-10-28T05:00:02Z",
+      "finished_at": "2026-10-28T05:09:15Z",
+      "representative_attempt_index": 1
     },
     "success_count": 3,
     "metrics": [
       {
         "key": "click_count",
-        "value": 7,
-        "unit": "회",
-        "spread": 0.14,
-        "spread_quality": "ok"
+        "value": 3,
+        "unit": "count",
+        "spread": 0.0,
+        "spread_quality": "ok",
+        "model_version_id": null
       },
       {
-        "key": "cursor_distance",
-        "value": 4010,
+        "key": "travel_distance",
+        "value": 1104.0,
         "unit": "px",
-        "spread": 0.06,
-        "spread_quality": "ok"
+        "spread": 0.12,
+        "spread_quality": "ok",
+        "model_version_id": null
       },
       {
-        "key": "est_time",
-        "value": 31.2,
-        "unit": "초",
-        "spread": 0.09,
-        "spread_quality": "ok"
+        "key": "fitts_id_sum",
+        "value": 7.2,
+        "unit": "bit",
+        "spread": 0.08,
+        "spread_quality": "ok",
+        "model_version_id": null
+      },
+      {
+        "key": "est_task_time",
+        "value": 10.3,
+        "unit": "s",
+        "spread": 0.1,
+        "spread_quality": "ok",
+        "model_version_id": null
       }
     ]
   }
