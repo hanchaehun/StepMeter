@@ -6,6 +6,7 @@ info:
     플랫폼 백엔드 ↔ 리포트·대시보드 UI 합의본 (11장, 13.1).
     괄호 속 숫자는 개발계획서 장·절 번호, F00은 서비스기획서 기능 번호다.
     모든 요청은 `X-Access-Code` 헤더가 필요하다. 없거나 틀리면 401 (F17).
+    project는 초대 코드별로 분리된다. 요청한 X-Access-Code로 만든 project와 그 아래 task·run·issue만 보이고, 다른 코드의 대상은 404 (F17).
     ID는 정수, 시각은 ISO 8601(UTC)이다.
     `components.schemas` 끝의 Action·ElementSnapshot 계열은 `worker/schemas.py`에서 생성한 것이다.
     직접 고치지 말고 `python -m tests.test_openapi_schema`로 다시 만든다.
@@ -20,7 +21,7 @@ paths:
       description: |
         daily_run_limit은 서버가 기본값 10으로 정한다 (10장, F17).
         owner_id는 요청의 X-Access-Code에 해당하는 access_code.id로 서버가 기록하고 응답에 넣지 않는다.
-        [검토 필요] PM 협의: 초대 코드별 프로젝트 분리 여부 (10장)
+        다른 초대 코드로는 이 project가 보이지 않는다.
       operationId: createProject
       requestBody:
         required: true
@@ -37,7 +38,7 @@ paths:
         '422': {$ref: '#/components/responses/ValidationFailed'}
     get:
       summary: 프로젝트 목록 (F11)
-      description: 프로젝트 카드와 최근 측정 결과 요약 (서비스기획서 화면 "프로젝트 목록")
+      description: 요청한 초대 코드의 project만. 프로젝트 카드와 최근 측정 결과 요약 (서비스기획서 화면 "프로젝트 목록")
       operationId: listProjects
       responses:
         '200':
