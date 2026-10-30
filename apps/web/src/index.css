@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 색 토큰. 기준: docs/wireframes/f06-report.md "색 토큰" 표 (F01 명세 값을 그대로 채택). 라이트 테마만. */
+:root {
+  --bg: #ffffff;
+  --fg: #0a0a0a;             /* 본문: 흰 배경 대비 19.80:1 */
+  --muted-fg: #525252;       /* 보조 설명: 7.81:1 */
+  --faint-fg: #737373;       /* 라벨·꼬리말: 4.74:1 */
+  --control-border: #737373; /* 조작 요소 경계: 3:1 이상 필수 */
+  --border: #d4d4d4;         /* 장식 구분선 전용. 조작 요소에 쓰지 않는다 */
+  --hair: #e5e5e5;           /* 행 구분 hairline. 장식 전용 */
+  --primary: #171717;
+  --primary-fg: #fafafa;
+  --surface: #f5f5f5;
+  --danger: #b91c1c;         /* 6.47:1 */
+  --ok: #166534;             /* 7.06:1 */
+  --mark: #dc2626;           /* 스크린샷 위 표시선 전용. 글자에 쓰지 않는다 */
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-fg font-sans text-[15px] leading-relaxed antialiased;
+  }
+}

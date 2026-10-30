@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F06 리포트 — 와이어프레임</title>
+<style>
+  /* f01-measure-create.html과 같은 토큰. 라이트 테마만 쓴다(대비 검토 기준을 하나로 고정). */
+  :root {
+    --bg: #ffffff;
+    --fg: #0a0a0a;             /* 본문: 흰 배경 대비 19.80:1 */
+    --muted-fg: #525252;       /* 보조 설명: 7.81:1 */
+    --faint-fg: #737373;       /* 꼬리말·라벨: 4.74:1 (본문용 최소치 4.5:1 이상) */
+    --control-border: #737373; /* 조작 요소 경계: 흰 배경 4.74:1 / surface 4.35:1 */
+    --border: #d4d4d4;         /* 장식 구분선 전용(1.48:1). 조작 요소에 쓰지 않는다 */
+    --hair: #e5e5e5;           /* 행 구분 hairline. 장식 전용 */
+    --primary: #171717;
+    --primary-fg: #fafafa;
+    --surface: #f5f5f5;
+    --danger: #b91c1c;         /* 6.47:1 */
+    --ok: #166534;             /* 7.06:1 */
+    --warn: #b45309;           /* 중간 심각도 기호 색. 글자에는 쓰지 않는다 */
+    --mark: #dc2626;           /* 스크린샷 위 표시선 전용 */
+    --page: #f3f4f6;        /* 문서 배경. F01(#e7e5e4)과 구분 */
+    --ink: #1e3a8a;          /* 문서 꾸밈 전용(프레임 번호·주석 번호). 앱 화면에는 쓰지 않는다 */
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--fg);
+    font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.6;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 40px 24px 96px; }
+  .page-head { margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid var(--fg); }
+  .page-head h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .page-head h1::before { content: "F06"; display: inline-block; font-size: 12px; letter-spacing: .14em; color: var(--ink); border: 1px solid var(--ink); border-radius: 4px; padding: 2px 8px; margin-right: 12px; vertical-align: middle; }
+  .page-head .meta { color: var(--muted-fg); margin: 0 0 16px; }
+  .notice {
+    background: transparent; border: 1px dashed var(--control-border);
+    border-radius: 0; padding: 16px 20px;
+  }
+  .notice ul { margin: 8px 0 0; padding-left: 20px; }
+  .notice li { margin-bottom: 4px; }
+  .notice strong { font-weight: 600; }
+  code { background: var(--surface); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+
+  /* ---- 화면 프레임 ---- */
+  .frame { margin-bottom: 64px; }
+  .frame-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; padding-left: 14px; border-left: 3px solid var(--ink); }
+  .frame-head h2 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  .frame-head .state { font-size: 12px; font-weight: 600; color: var(--ink); border: 1px solid var(--ink); padding: 1px 8px; border-radius: 3px; }
+  .frame-head .size { font-size: 12px; color: var(--muted-fg); margin-left: auto; }
+  .viewport { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(15, 23, 42, .08); }
+  .viewport.desktop { max-width: 1280px; }
+  .chrome { background: #1f2937; padding: 6px 12px; display: flex; align-items: center; gap: 10px; }
+  .chrome .dots i { display: none; }
+  .chrome .dots::before { content: "StepMeter"; font-size: 11px; color: #e5e7eb; background: #374151; padding: 3px 10px; border-radius: 6px 6px 0 0; }
+  .chrome .addr { flex: 1; background: #111827; border: 0; border-radius: 999px; padding: 3px 12px; font-size: 12px; color: #d1d5db; font-family: ui-monospace, Consolas, monospace; }
+
+  /* 앱 헤더 (F01과 동일) */
+  .app-head { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; border-bottom: 1px solid var(--border); }
+  .brand { font-weight: 700; letter-spacing: -0.02em; }
+  .app-head nav { display: flex; gap: 4px; }
+  .app-head nav a { color: var(--muted-fg); text-decoration: none; padding: 10px 12px; border-radius: 6px; min-height: 44px; display: inline-flex; align-items: center; }
+  .app-head nav a[aria-current] { color: var(--fg); font-weight: 600; background: var(--surface); }
+  .quota { font-size: 13px; color: var(--muted-fg); }
+  .quota b { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  /* 리포트 본문 */
+  .report { padding: 24px 32px 32px; position: relative; }
+  .label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint-fg); font-weight: 600; margin: 0 0 6px; }
+  h3.title { font-size: 20px; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .meta-line { color: var(--muted-fg); margin: 0; font-size: 13px; }
+  .meta-line a { color: var(--fg); font-weight: 600; margin-left: 10px; }
+  /* 화면 전환 줄: 두 화면 이름을 22px로 나란히, 현재 화면은 굵게 + 밑줄 */
+  .tabs { display: flex; gap: 28px; align-items: flex-end; margin: 20px 0 0; border-bottom: 1px solid var(--border); }
+  .tab { min-height: 44px; padding: 0 0 8px; border-bottom: 3px solid transparent; font-size: 22px; font-weight: 600; color: var(--faint-fg); display: inline-flex; align-items: center; margin-bottom: -1px; letter-spacing: -0.01em; }
+  .tab[aria-selected] { color: var(--fg); font-weight: 700; border-bottom-color: var(--primary); }
+  .tabs .sub { font-size: 13px; color: var(--faint-fg); padding-bottom: 12px; }
+  .tab b { font-weight: 600; color: var(--faint-fg); margin-left: 6px; }
+  .panel { padding-top: 22px; }
+
+  .head-row { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: end; margin-bottom: 12px; }
+  .verdict .big { font-size: 34px; font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; margin: 0; }
+  .verdict .sub { font-size: 15px; color: var(--muted-fg); margin: 8px 0 0; }
+  .verdict .sub b { color: var(--fg); font-weight: 600; }
+  .metrics { display: flex; gap: 32px; }
+  .metric .v { font-size: 24px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .metric .v small { font-size: 12px; font-weight: 400; color: var(--muted-fg); margin-left: 3px; }
+  .metric .k { color: var(--muted-fg); font-size: 13px; margin-top: 4px; }
+  .metric .n { color: var(--faint-fg); font-size: 12px; }
+  .two { display: grid; grid-template-columns: 1.15fr 1fr; gap: 36px; border-top: 1px solid var(--border); padding-top: 18px; }
+  .comp-h { display: flex; align-items: center; gap: 12px; margin: 0 0 4px; }
+  .comp-h h4 { font-size: 16px; margin: 0; font-weight: 700; }
+  .comp-h span { color: var(--faint-fg); font-size: 12px; flex: 1; }
+  .comp-h a { color: var(--fg); font-weight: 600; font-size: 13px; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+  .row { display: grid; grid-template-columns: 72px 76px 1fr 56px; align-items: center; gap: 14px; padding: 11px 0; border-top: 1px solid var(--hair); }
+  .row.ref { color: var(--muted-fg); }
+  .thumb { width: 72px; height: 48px; border-radius: 3px; overflow: hidden; position: relative; background: var(--bg); outline: 1px solid var(--border); }
+  .thumb .shot { position: absolute; transform: scale(.35); }
+  .row.ref .thumb { opacity: .7; }
+  .sev { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; font-size: 13px; }
+  .sev::before { content: ""; width: 10px; height: 10px; display: inline-block; }
+  .sev.high::before { background: var(--danger); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+  .sev.medium::before { background: var(--warn); border-radius: 2px; }
+  .sev.low::before { background: var(--faint-fg); border-radius: 50%; }
+  .what { font-weight: 600; line-height: 1.3; }
+  .what small { display: block; font-weight: 400; color: var(--faint-fg); font-size: 12px; margin-top: 2px; }
+  .row.ref .what { font-weight: 500; }
+  .step { color: var(--faint-fg); font-size: 12px; white-space: nowrap; text-align: right; }
+  .attempt { display: flex; align-items: center; gap: 14px; padding: 8px 0; border-top: 1px solid var(--hair); }
+  .attempt:first-of-type { border-top: 0; }
+  .attempt .name { width: 96px; color: var(--muted-fg); font-size: 13px; }
+  .attempt .name b { color: var(--fg); font-weight: 600; }
+  .track { display: flex; align-items: center; }
+  .dot { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+  .dot i { width: 11px; height: 11px; border-radius: 50%; background: var(--bg); border: 2px solid var(--control-border); display: block; }
+  .dot.issue i { border-color: var(--mark); background: #fee2e2; }
+  .dot.cut i { border-radius: 0; transform: rotate(45deg); background: var(--danger); border-color: var(--danger); }
+  .seg { width: 14px; height: 1px; background: var(--control-border); }
+  .attempt .end { color: var(--faint-fg); font-size: 12px; flex: 1; }
+  .legend { color: var(--faint-fg); font-size: 12px; margin: 10px 0 0; }
+  .hardest { margin: 12px 0 0; color: var(--muted-fg); font-size: 13px; line-height: 1.7; }
+  .hardest b { color: var(--fg); font-weight: 600; }
+  .scroll-hint { margin: 18px 0 0; color: var(--faint-fg); font-size: 12px; text-align: center; }
+
+  /* 스크롤 아래 */
+  .passed-sec { border-top: 1px solid var(--border); padding-top: 22px; margin-top: 8px; }
+  .passed { margin: 0; padding: 6px 0 0; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 24px; font-size: 14px; font-weight: 600; }
+  .passed li::before { content: "\2713"; color: var(--ok); font-weight: 700; margin-right: 8px; }
+  .passed li small { display: block; color: var(--faint-fg); font-size: 12px; font-weight: 400; margin-left: 19px; }
+  .more-metrics { margin-top: 36px; border-top: 1px solid var(--border); padding-top: 18px; }
+  .detail-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 48px; padding-top: 4px; }
+  .dm { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 9px 0; border-top: 1px solid var(--hair); font-size: 13px; }
+  .dm .k { color: var(--muted-fg); }
+  .dm .k small { display: block; color: var(--faint-fg); font-size: 11.5px; }
+  .dm .v { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+  .dm .v small { display: block; color: var(--faint-fg); font-weight: 400; font-size: 11.5px; }
+  .fine { color: var(--faint-fg); font-size: 12px; margin: 12px 0 0; }
+
+  /* 문제 목록 (큰 썸네일) */
+  .full .row { grid-template-columns: 128px 84px 1fr 72px 100px; gap: 24px; padding: 18px 0; }
+  .full .thumb { width: 128px; height: 84px; }
+  .full .thumb .shot { transform: scale(.5); }
+  .full .what { font-size: 16px; }
+  .full .what small { font-size: 13px; margin-top: 4px; }
+  .sub-h { margin: 28px 0 4px; font-size: 13px; color: var(--faint-fg); display: flex; gap: 10px; }
+  .sub-h b { color: var(--muted-fg); font-weight: 600; }
+  .full .passed { display: flex; flex-wrap: wrap; gap: 6px 24px; color: var(--muted-fg); font-size: 13px; font-weight: 400; padding-top: 10px; }
+  .btn { min-height: 44px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--bg); color: var(--fg); font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+  .btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+
+  /* 단계 상세 — 단계 목록 */
+  .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding-top: 8px; }
+  .big-thumb { width: 100%; height: 240px; position: relative; overflow: hidden; border-radius: 4px; outline: 1px solid var(--border); background: #f3f4f6; }
+  .big-thumb .shot { position: absolute; left: 0; top: 0; transform: scale(.3); }
+  .stepcard h5 { font-size: 14px; margin: 10px 0 2px; font-weight: 600; }
+  .stepcard h5 .warnmark { color: var(--danger); margin-left: 6px; }
+  .stepcard p { margin: 0; color: var(--muted-fg); font-size: 13px; }
+  .chips { color: var(--faint-fg); font-size: 12px; margin-top: 6px; }
+  .chips span + span::before { content: "\00B7"; margin: 0 7px; }
+
+  /* 스크린샷 모형 (1280×800 원본, transform으로 축소) */
+  .shot { position: absolute; width: 1280px; height: 800px; background: #fff; transform-origin: 0 0; overflow: hidden; font-size: 16px; color: #0a0a0a; }
+  .shot.mobile { width: 390px; height: 844px; }
+  .shot .hdr { position: absolute; left: 0; top: 0; right: 0; height: 64px; background: #111827; color: #fff; display: flex; align-items: center; padding: 0 40px; font-weight: 700; }
+  .shot .ph { position: absolute; background: #e5e7eb; border-radius: 4px; }
+  .shot .t { position: absolute; }
+  .shot .lnk { position: absolute; color: #969696; font-weight: 700; text-decoration: underline; line-height: 24px; }
+  .shot .buy { position: absolute; left: 100px; top: 700px; width: 120px; height: 40px; background: rgb(37,99,235); color: #fff; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .shot .cart { position: absolute; left: 230px; top: 705px; width: 90px; height: 30px; color: #1d4ed8; text-decoration: underline; display: flex; align-items: center; font-size: 14px; }
+  .shot .banner { position: absolute; left: 0; top: 680px; width: 1280px; height: 120px; background: rgba(17,24,39,.9); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .ov { position: absolute; }
+  .ov.bbox { border: 3px solid var(--mark); box-shadow: 0 0 0 3px #fff; }
+  .ov.bbox::after { content: attr(data-label); position: absolute; left: -3px; bottom: 100%; background: var(--mark); color: #fff; font-size: 14px; font-weight: 600; padding: 2px 8px; border-radius: 3px 3px 0 0; white-space: nowrap; }
+  .ov.occ { background: repeating-linear-gradient(45deg, rgba(220,38,38,.35) 0 8px, rgba(220,38,38,.05) 8px 16px); border: 2px dashed var(--mark); }
+  .ov.occ::after { content: attr(data-label); position: absolute; right: 8px; top: 8px; background: var(--mark); color: #fff; font-size: 14px; font-weight: 600; padding: 2px 8px; border-radius: 3px; }
+  .ov.near { border: 2px dashed #737373; }
+  .ov.near::after { content: attr(data-label); position: absolute; left: 0; top: 100%; color: #525252; font-size: 12px; white-space: nowrap; background: #fff; padding: 1px 4px; }
+  .ov.click { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--mark); transform: translate(-50%, -50%); }
+
+  /* 단계 상세 — 문제 선택 */
+  .scrim { padding: 24px 32px; }
+  .dlg { background: var(--bg); width: 100%; display: grid; grid-template-rows: auto 1fr; }
+  .dlg-head { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  .dlg-head h4 { font-size: 16px; margin: 0; flex: 1; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+  .dlg-head h4 small { color: var(--faint-fg); font-weight: 400; }
+  .pager { display: flex; align-items: center; gap: 6px; color: var(--faint-fg); font-size: 13px; }
+  .icon-btn { width: 44px; height: 44px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--bg); color: var(--fg); display: inline-flex; align-items: center; justify-content: center; font-size: 18px; }
+  .dlg-body { display: grid; grid-template-columns: 1fr 340px; }
+  .dlg-left { padding: 16px 0 20px 20px; display: grid; grid-template-rows: auto 1fr; gap: 12px; }
+  .strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .strip .label { margin: 0 6px 0 0; }
+  .stepbtn { min-height: 44px; padding: 0 14px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--bg); display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+  .stepbtn[aria-current] { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+  .stepbtn .warnmark { color: var(--danger); font-weight: 700; }
+  .stepbtn[aria-current] .warnmark { color: #fecaca; }
+  .shotwrap { position: relative; width: 780px; height: 488px; border-radius: 8px; overflow: hidden; background: #f3f4f6; }
+  .shotwrap .shot { left: 0; top: 0; transform: scale(.609); }
+  .dlg-right { padding: 22px 24px; display: flex; flex-direction: column; gap: 20px; }
+  .dlg-right p { margin: 0 0 6px; }
+  .dlg-right .lead { font-size: 15px; font-weight: 600; }
+  .dlg-right .measure { font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600; }
+  .dlg-right .why { color: var(--faint-fg); font-size: 12.5px; }
+
+  /* 빈 상태 */
+  .empty { padding: 56px 24px; display: flex; justify-content: center; }
+  .empty-card { width: 100%; max-width: 560px; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+  .empty-card h4 { margin: 0 0 8px; font-size: 18px; }
+  .empty-card p.lead { color: var(--muted-fg); margin: 0 0 16px; }
+  .empty-card .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; border: 1px solid var(--control-border); border-radius: 999px; padding: 2px 10px; margin-bottom: 12px; }
+  .empty-card ul { margin: 0 0 20px; padding-left: 18px; color: var(--muted-fg); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* 주석 */
+  .marker { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 3px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; vertical-align: middle; margin-left: 6px; flex: 0 0 18px; font-family: ui-monospace, Consolas, monospace; }
+  .notes { margin-top: 14px; padding: 0 0 0 14px; border-left: 3px solid var(--border); }
+  .notes h5 { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+  .notes ol { margin: 0; padding-left: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 32px; }
+  .notes li { display: flex; gap: 10px; margin: 0; font-size: 13px; }
+  .notes .n { flex: 0 0 18px; width: 18px; height: 18px; border-radius: 3px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-top: 2px; font-family: ui-monospace, Consolas, monospace; }
+
+  /* ---- 리뷰어에게 묻는 것 ---- */
+  .asks { background: var(--bg); border: 1px solid var(--border); border-top: 4px solid var(--ink); border-radius: 0 0 var(--radius) var(--radius); padding: 0; margin-bottom: 48px; }
+  .asks-head { padding: 14px 24px 6px; }
+  .asks-head h2 { font-size: 13px; margin: 0; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }
+  .asks-body { padding: 0 24px 8px; }
+  .ask { display: grid; grid-template-columns: 24px 1fr; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--hair); }
+  .ask:last-child { border-bottom: 0; }
+  .ask > .num { width: 24px; height: 24px; border-radius: 3px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-top: 2px; font-family: ui-monospace, Consolas, monospace; }
+  .ask .who { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--ink); margin-bottom: 4px; }
+  .ask .q { font-weight: 600; font-size: 15px; }
+  .ask .why { color: var(--muted-fg); font-size: 13px; margin: 4px 0 0; }
+  .ask.urgent { background: transparent; margin: 0; padding: 16px 0; }
+  .ask .flag { font-size: 12px; font-weight: 700; color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page-head">
+  <h1>F06 리포트 화면 — 와이어프레임</h1>
+  <p class="meta">StepMeter 리포트 UI · 개발계획서 W1 산출물 · 레이아웃 명세는 <code>f06-report.md</code> · 참고 리포트 분석은 <code>report-reference.md</code></p>
+  <div class="notice">
+    <strong>이 파일을 읽는 방법</strong>
+    <ul>
+      <li>동작하지 않는 <strong>정적 목업</strong>입니다. 행·점·버튼·링크는 그림이고, 상태별로 프레임을 따로 뒀습니다. 실제 화면은 리포트 요약과 단계 상세 둘입니다.</li>
+      <li>값은 전부 동결된 목 JSON(<code>tests/fixtures/mock/api/report.json</code>, <code>steps.json</code>)에서 가져왔습니다. 스크린샷만 진짜 캡처가 없어 CSS로 그린 가짜 쇼핑 페이지입니다.</li>
+      <li>서비스 기획서 6.1 그대로 <strong>"리포트 요약"과 "단계 상세" 두 화면</strong>입니다. 두 이름이 22px 제목 줄에 나란히 보이고, 문제 행·시도 점을 누르면 단계 상세로, "리포트 요약" 또는 뒤로가기로 돌아옵니다.</li>
+      <li>라이트 테마만 그렸습니다. 색·간격·타겟 크기는 F01 명세의 토큰을 그대로 채택했습니다(F01 질문 5번에 대한 답).</li>
+    </ul>
+  </div>
+</header>
+
+<!-- ============ 리뷰어에게 묻는 것 ============ -->
+<section class="asks">
+  <div class="asks-head"><h2>리뷰어에게 묻는 것</h2></div>
+  <div class="asks-body">
+
+    <div class="ask urgent">
+      <span class="num">1</span>
+      <div>
+        <span class="who">측정 지표·규칙 · 플랫폼 백엔드</span> <span class="flag">· 가장 급함</span>
+        <div class="q">모바일 뷰포트의 "엄지 도달 구역"(기획서 F08)은 어떤 데이터로 오나요?</div>
+        <p class="why">동결된 <code>openapi.yaml</code>의 Report·Step 어디에도 도달 구역 필드가 없습니다. ElementSnapshot의 bbox로 화면에서 계산하면 되는지, 규칙(R11처럼) 결과로 오는지에 따라 프레임 8의 모바일 리포트가 달라집니다. 답이 없으면 모바일 리포트는 예상 소요 시간만 숨기고 데스크톱과 같게 둡니다.</p>
+      </div>
+    </div>
+
+
+  </div>
+</section>
+
+<!-- ============ 1. Overview 기본 ============ -->
+<section class="frame">
+  <div class="frame-head">
+    <h2>1. 리포트 요약 — 첫 화면</h2>
+    <span class="state">완료 · 3회 중 2회 성공</span>
+    <span class="size">데스크톱 1280&times;800 · 창 높이에 맞춰 늘어남</span>
+  </div>
+  <div class="viewport desktop">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="addr">stepmeter.app/runs/42</div></div>
+    <div class="app-head">
+      <span class="brand">StepMeter</span>
+      <nav><a href="#">New run</a><a href="#">History</a><a href="#" aria-current="page">Report</a><a href="#">Compare</a></nav>
+      <span class="quota">Today <b>7 / 10</b> runs left</span>
+    </div>
+    <div class="report">
+      <p class="label">Report · Run #42</p>
+      <h3 class="title">장바구니에 상품을 담고 결제까지 간다<span class="marker">1</span></h3>
+      <p class="meta-line">shop.example · Desktop 1280×800 · 2026-10-29 14:06 · 3 attempts · 6m 37s <a href="#">Compare with #41</a><span class="marker">2</span></p>
+      <div class="tabs"><span class="tab" aria-selected="true">리포트 요약</span><span class="tab">단계 상세</span><span class="marker">3</span></div>
+      <div class="panel">
+        <div class="head-row">
+          <div class="verdict">
+            <p class="label">Verdict</p>
+            <p class="big">3회 중 2회 성공<span class="marker">4</span></p>
+            <p class="sub">예상 소요 시간 <b>7.9초</b> (문헌값 기준) · 문제 <b>2건</b> · 참고 1건 · 통과 8</p>
+          </div>
+          <div>
+            <p class="label">Path metrics<span class="marker">5</span></p>
+            <div class="metrics">
+              <div class="metric"><div class="v">7.9<small>s</small></div><div class="k">예상 소요 시간</div><div class="n">보정 전</div></div>
+              <div class="metric"><div class="v">2<small>clicks</small></div><div class="k">클릭</div><div class="n">성공 2회 중앙값</div></div>
+              <div class="metric"><div class="v">813<small>px</small></div><div class="k">커서 이동</div><div class="n">편차 ±12%</div></div>
+              <div class="metric"><div class="v">5.4<small>bit</small></div><div class="k">이동 난이도</div><div class="n">편차 ±8%</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="two">
+          <div>
+            <div class="comp-h"><h4>Issues</h4><span>심각도 → 점수 순 · 행을 누르면 단계 상세 · 참고 포함 전부</span></div>
+            <div class="row">
+              <div class="thumb"><div class="shot" style="left:-20px;top:-228px"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner"></div><div class="ov bbox" style="left:97px;top:697px;width:126px;height:46px"></div></div></div>
+              <span class="sev high">High</span>
+              <div class="what">구매 버튼이 하단 배너에 가려짐<small>R04 가려진 요소 · 과업 경로 위</small></div>
+              <span class="step">Step 1</span>
+            </div>
+            <div class="row">
+              <div class="thumb"><div class="shot" style="left:-111px;top:-71px"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:220px;width:260px;height:180px"></div><a class="lnk" style="left:320px;top:260px">러닝화 A</a><div class="ov bbox" style="left:317px;top:257px;width:206px;height:30px"></div></div></div>
+              <span class="sev medium">Medium</span>
+              <div class="what">러닝화 A 링크 글자 대비 2.9 : 1<small>R02 대비 부족 · 기준 4.5 : 1 · 3회 중 3회</small></div>
+              <span class="step">Step 0</span>
+            </div>
+            <div class="row ref">
+              <div class="thumb"><div class="shot" style="left:-60px;top:-228px"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner"></div><div class="ov bbox" style="left:227px;top:702px;width:96px;height:36px"></div></div></div>
+              <span class="sev low">Low</span>
+              <div class="what">장바구니 보기 링크 높이 30px<small>R01 작은 타겟 · 권장 44px · 경로 밖 → 참고<span class="marker">6</span></small></div>
+              <span class="step">—</span>
+            </div>
+          </div>
+          <div>
+            <div class="comp-h"><h4>Attempts</h4><span>점을 누르면 그 단계의 화면</span><a href="#">단계 보기 →</a></div>
+            <div class="attempt">
+              <span class="name"><b>Attempt 2</b> 대표<span class="marker">7</span></span>
+              <div class="track"><span class="dot issue"><i></i></span><span class="seg"></span><span class="dot issue"><i></i></span><span class="seg"></span><span class="dot"><i></i></span></div>
+              <span class="end">3 steps · 성공 · 7.9초</span>
+            </div>
+            <div class="attempt">
+              <span class="name"><b>Attempt 1</b> 재생</span>
+              <div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot cut"><i></i></span></div>
+              <span class="end">Step 1에서 끊김 · 포기 "장바구니 담기 버튼을 찾지 못했다"<span class="marker">8</span></span>
+            </div>
+            <div class="attempt">
+              <span class="name"><b>Attempt 3</b></span>
+              <div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span></div>
+              <span class="end">4 steps · 성공</span>
+            </div>
+            <p class="legend">● 문제 있는 단계 (빨간 테두리) · ◆ 재생 끊김</p>
+            <p class="hardest">가장 어려운 단계 <b>Step 1 구매 버튼</b> 3.1bit · 가장 오래 걸린 단계 <b>Step 0 러닝화 A</b> 3.4초</p>
+          </div>
+        </div>
+        <p class="scroll-hint"><span class="stepbtn" style="border-radius:999px">↓ 더 보기 · 통과한 규칙 8개 · 나머지 측정값</span><span class="marker">9</span></p>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h5>주석</h5>
+    <ol>
+      <li><span class="n">1</span><div>과업 문장이 제목. <code>task</code>는 Report에 없고 Run의 <code>task_id</code>로 따로 받는다(명세 "데이터 출처" 표).</div></li>
+      <li><span class="n">2</span><div><code>run.base_run_id</code>가 있으면 "Compare with #41" 링크. 첫 측정이면 링크 없음. <code>run.mode</code>가 <code>replay_only</code>면 "재생 전용"을 이 줄에 덧붙인다.</div></li>
+      <li><span class="n">3</span><div>22px 제목 줄에 두 화면 이름을 나란히. 현재 화면은 굵게 + 밑줄, 다른 쪽은 링크("단계 상세"는 0단계부터). 단계 상세는 주소 해시 <code>#step-N</code> / <code>#issue-N</code>과 동기화한다. 대표 경로가 없으면 링크 없음.</div></li>
+      <li><span class="n">4</span><div>결론 한 줄이 맨 위(PSI의 Core Web Vitals Assessment 자리). <code>attempt.success_estimated</code>가 하나라도 true면 "(추정)"을 붙인다. 모바일이면 예상 소요 시간을 빼고 "데스크톱에서만 계산"을 쓴다.</div></li>
+      <li><span class="n">5</span><div>경로 의존 지표만. 화면 고정 항목(크기·대비·가림 등)은 숫자가 아니라 규칙 결과라 Issues에만 있다. 기획서 6.2 "두 성격을 구분해 표시"를 영역으로 해결. <code>model_version_id</code>가 null이면 "보정 전", 있으면 "사람 실험 보정".</div></li>
+      <li><span class="n">6</span><div><code>is_reference=true</code>는 옅은 글자로 기본 목록 맨 아래. 접지 않고 전부 보여준다(기획서 6.1 "문제 목록"). 단계가 없으면 썸네일 자리에 "경로 밖"(요소 있음) 또는 "구간"(요소 없음).</div></li>
+      <li><span class="n">7</span><div><code>run.representative_attempt_index</code>가 대표. 점은 그 attempt의 단계이고 누르면 단계 상세(프레임 5). 문제가 붙은 단계는 빨간 테두리 점 + 글자 범례.</div></li>
+      <li><span class="n">8</span><div><code>attempt.kind=replay</code>이고 <code>replay_status=partial</code>이면 ◆에서 끊고 <code>diverged_at_step</code>과 <code>end_reason</code>·<code>end_detail</code>을 쓴다. 다른 attempt의 점은 누를 수 없다(스냅샷이 대표 경로만 온다).</div></li>
+      <li><span class="n">9</span><div>첫 화면 영역은 창 높이에 맞춰 늘어나고 아래 섹션 제목이 살짝 걸친다. "더 보기" 버튼을 누르면 Passed rules로 스크롤(프레임 2).</div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 2. Overview 스크롤 아래 ============ -->
+<section class="frame">
+  <div class="frame-head">
+    <h2>2. 리포트 요약 — 스크롤 아래</h2>
+    <span class="state">같은 화면</span>
+    <span class="size">데스크톱 1280 · 첫 화면 아래로 이어짐</span>
+  </div>
+  <div class="viewport desktop">
+    <div class="report">
+      <section class="passed-sec">
+        <div class="comp-h"><h4>Passed rules</h4><span>8 · 이번 경로에서 걸리지 않은 규칙<span class="marker">1</span></span></div>
+        <ul class="passed">
+          <li>무반응 클릭<small>R03 · 반응 없는 클릭 0건</small></li>
+          <li>반복 루프<small>R05 · 같은 행동 반복 없음</small></li>
+          <li>첫 화면 밖 핵심 요소<small>R06 · 첫 행동 대상이 화면 안</small></li>
+          <li>먼 이동 + 작은 타겟<small>R07 · 32px 미만 타겟 없음</small></li>
+          <li>되돌아감<small>R08 · 뒤로 가기 0회</small></li>
+          <li>기대 불일치<small>R09 · 기대와 결과 일치</small></li>
+          <li>이름 없는 요소<small>R10 · 경로 위 요소 모두 이름 있음</small></li>
+          <li>키보드 가림<small>R11 · 모바일만 해당</small></li>
+        </ul>
+      </section>
+      <section class="more-metrics">
+        <div class="comp-h"><h4>More metrics</h4><span>첫 화면에 없는 나머지 측정값<span class="marker">2</span></span></div>
+        <div class="detail-metrics">
+          <div>
+            <div class="dm"><span class="k">예상 소요 시간<small>est_task_time · KLM 문헌값 · 보정 전</small></span><span class="v">7.9 s<small>편차 ±10% · 추정 약함</small></span></div>
+            <div class="dm"><span class="k">클릭 수<small>click_count</small></span><span class="v">2<small>편차 0%</small></span></div>
+            <div class="dm"><span class="k">커서 이동 거리<small>travel_distance</small></span><span class="v">812.5 px<small>편차 ±12% · 추정 약함</small></span></div>
+            <div class="dm"><span class="k">이동 난이도 합<small>fitts_id_sum</small></span><span class="v">5.4 bit<small>편차 ±8% · 추정 약함</small></span></div>
+          </div>
+          <div>
+            <div class="dm"><span class="k">성공<small>3회 중 · Attempt 1 재생 끊김 후 포기</small></span><span class="v">2 / 3</span></div>
+            <div class="dm"><span class="k">단계 수<small>Attempt 1 · 2 · 3</small></span><span class="v">9 · 3 · 4</span></div>
+            <div class="dm"><span class="k">LLM 비용<small>mock-model · prompt agent-v3</small></span><span class="v">$0.084</span></div>
+            <div class="dm"><span class="k">소요 시간<small>14:06:03 → 14:12:40</small></span><span class="v">6m 37s</span></div>
+            <div class="dm"><span class="k">가장 어려운 단계<small>top_fitts_steps · 최대 3개</small></span><span class="v">Step 1 · 3.1bit<small>Step 0 · 2.3bit</small></span></div>
+            <div class="dm"><span class="k">가장 오래 걸린 단계<small>slowest_steps · 최대 3개</small></span><span class="v">Step 0 · 3.4s<small>Step 1 · 2.9s · Step 2 · 1.6s</small></span></div>
+          </div>
+        </div>
+        <p class="fine">편차 = (최댓값 − 최솟값) / 중앙값 (7.4). 성공 실행이 2회뿐이면 "추정 약함"(<code>spread_quality=weak</code>), 이력을 모아 계산했으면 "이력 기준"(<code>pooled</code>). 예상 소요 시간은 사람 실험 보정 전이라 문헌값으로만 계산.</p>
+      </section>
+    </div>
+  </div>
+  <div class="notes">
+    <h5>주석</h5>
+    <ol>
+      <li><span class="n">1</span><div>통과한 규칙은 R01~R11 중 이번 측정에 이슈가 없는 것. 규칙마다 "왜 통과인지" 근거 한 줄을 붙인다(Lighthouse Passed audits는 제목만 보여주지만 우리는 근거까지). 모바일이 아니면 R11은 "모바일만 해당"으로 표시한다.</div></li>
+      <li><span class="n">2</span><div><code>metrics[]</code> 원값·단위·편차·편차 품질, attempts 요약, run의 비용·모델·프롬프트·시각, <code>top_fitts_steps</code>·<code>slowest_steps</code>. 첫 화면의 숫자와 같은 값이지만 여기서는 소수점과 편차 품질까지 쓴다.</div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 3. 단계 상세 — 단계 목록 ============ -->
+<section class="frame">
+  <div class="frame-head">
+    <h2>3. 단계 상세 — 단계 목록</h2>
+    <span class="state">"단계 상세 보기 →"로 들어온 직후</span>
+    <span class="size">데스크톱 1280</span>
+  </div>
+  <div class="viewport desktop">
+    <div class="report">
+      <div class="tabs"><span class="tab">리포트 요약</span><span class="tab" aria-selected="true">단계 상세</span><span class="sub">타임라인 · 스크린샷 오버레이 · 판단 이유</span></div>
+      <div class="panel">
+        <div class="comp-h"><h4>Timeline</h4><span>Attempt 2 (대표) · 카드를 누르면 그 단계가 아래 프레임 4처럼 커짐<span class="marker">1</span></span></div>
+        <div class="steps-grid">
+          <div class="stepcard">
+            <div class="big-thumb"><div class="shot"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:1200px;height:48px"></div><div class="t" style="left:40px;top:176px;color:#525252">검색 결과 "running" 3건</div><div class="ph" style="left:40px;top:220px;width:260px;height:180px"></div><a class="lnk" style="left:320px;top:260px">러닝화 A</a><div class="ph" style="left:40px;top:430px;width:260px;height:180px"></div><div class="ph" style="left:40px;top:640px;width:260px;height:140px"></div><div class="ov bbox" data-label="러닝화 A 링크" style="left:317px;top:257px;width:206px;height:30px"></div><div class="ov click" style="left:420px;top:272px"></div></div></div>
+            <h5>Step 0 · 러닝화 A 링크 클릭<span class="warnmark">⚠ 문제 1</span></h5>
+            <p>검색 결과에서 러닝화 A를 연다</p>
+            <p class="chips"><span>주소 바뀜</span><span>난이도 2.3bit</span><span>예상 3.4초</span></p>
+          </div>
+          <div class="stepcard">
+            <div class="big-thumb"><div class="shot"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="t" style="left:600px;top:110px;font-size:28px;font-weight:700">러닝화 A</div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner">첫 구매 10% 할인 쿠폰</div><div class="ov occ" data-label="가린 요소: 이름 없는 div" style="left:0;top:680px;width:1280px;height:120px"></div><div class="ov bbox" data-label="구매 버튼" style="left:97px;top:697px;width:126px;height:46px"></div><div class="ov click" style="left:160px;top:720px"></div></div></div>
+            <h5>Step 1 · 구매 버튼 클릭<span class="warnmark">⚠ 문제 1</span></h5>
+            <p>상품 상세에서 구매 버튼을 누른다</p>
+            <p class="chips"><span>모달 열림</span><span>난이도 3.1bit</span><span>예상 2.9초</span></p>
+          </div>
+          <div class="stepcard">
+            <div class="big-thumb"><div class="shot"><div class="hdr">shop.example</div><div class="t" style="left:40px;top:100px;font-size:24px;font-weight:700">장바구니</div><div class="ph" style="left:40px;top:160px;width:1200px;height:100px"></div><div class="t" style="left:440px;top:300px;width:400px;height:120px;border:2px solid #166534;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#166534">장바구니에 담았습니다</div></div></div>
+            <h5>Step 2 · 완료<span class="marker">2</span></h5>
+            <p>장바구니에 담았다는 안내가 보인다</p>
+            <p class="chips"><span>변화 없음</span><span>예상 1.6초</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h5>주석</h5>
+    <ol>
+      <li><span class="n">1</span><div>기획서 6.1 "단계 상세"의 타임라인. <code>/runs/{id}/attempts/{n}/steps</code>를 대표 attempt에 대해 한 번 부른다. 구현에서는 카드 대신 단계 버튼 띠(프레임 4)로 줄였고, 카드형은 W2에서 검토한다.</div></li>
+      <li><span class="n">2</span><div><code>action.action</code>별 제목: click "클릭", type "입력", select "선택", scroll "스크롤 ↓", back "뒤로", wait "대기", done "완료", fail "포기". <code>element_snapshot</code>이 없는 행동(scroll·back·wait·done)은 오버레이 없이 스크린샷만.</div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 4. 단계 상세 — 문제 선택 ============ -->
+<section class="frame">
+  <div class="frame-head">
+    <h2>4. 단계 상세 — 문제를 선택한 상태</h2>
+    <span class="state">Issues 행 · Attempts 점을 누르면</span>
+    <span class="size">데스크톱 1280 · 별도 화면</span>
+  </div>
+  <div class="viewport desktop">
+    <div class="report" style="min-height:720px;padding:0">
+      <div class="tabs" style="margin:0 32px"><span class="tab">리포트 요약</span><span class="tab" aria-selected="true">단계 상세</span><span class="sub">타임라인 · 스크린샷 오버레이 · 판단 이유</span></div>
+      <div class="scrim">
+        <div class="dlg" >
+          <div class="dlg-head">
+            <h4 id="dlg-t"><span class="sev high">High</span>구매 버튼이 하단 배너에 가려짐<small>R04 가려진 요소</small><span class="marker">1</span></h4>
+            <span class="pager">문제 1 / 3<span class="marker">2</span></span>
+            
+          </div>
+          <div class="dlg-body">
+            <div class="dlg-left">
+              <div class="strip"><span class="label">Attempt 2 · timeline</span><span class="stepbtn">0 · 러닝화 A 링크 <span class="warnmark">⚠</span></span><span class="stepbtn" aria-current="step">1 · 구매 버튼 <span class="warnmark">⚠</span></span><span class="stepbtn">2 · 완료</span><span class="icon-btn" aria-label="이전 단계" style="margin-left:auto">◀</span><span class="icon-btn" aria-label="다음 단계">▶</span><span class="marker">3</span></div>
+              <div class="shotwrap"><div class="shot"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="t" style="left:600px;top:110px;font-size:28px;font-weight:700">러닝화 A</div><div class="t" style="left:600px;top:160px;font-size:22px">89,000원</div><div class="ph" style="left:600px;top:220px;width:600px;height:16px"></div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner">🎉 첫 구매 10% 할인 쿠폰을 받으세요</div><div class="ov occ" data-label="가린 요소: 이름 없는 div" style="left:0;top:680px;width:1280px;height:120px"></div><div class="ov near" data-label="근처: 장바구니 보기" style="left:230px;top:705px;width:90px;height:30px"></div><div class="ov bbox" data-label="구매 버튼" style="left:97px;top:697px;width:126px;height:46px"></div><div class="ov click" style="left:160px;top:720px"></div></div><span class="marker" style="position:absolute;right:8px;top:8px">4</span></div>
+            </div>
+            <div class="dlg-right">
+              <div><p class="label">What</p><p>구매 버튼 중앙이 하단 배너에 가려져 있습니다. 클릭이 배너로 갈 수 있습니다.</p><p class="why">점수 이유 · 과업 경로 위 요소<span class="marker">5</span></p></div>
+              <div><p class="label">How to fix</p><p>하단 배너가 버튼을 덮지 않도록 위치를 옮기거나 닫기 버튼을 주세요.</p></div>
+              <div><p class="label">Agent</p><p class="lead">구매 버튼 클릭</p><p class="why">shop.example/products/a</p><p>상품 상세에서 구매 버튼을 누른다</p><p class="why">기대 · 장바구니 담기 안내가 뜬다</p><p class="why">헷갈림 · 버튼 아래쪽이 배너에 가려져 있다</p><p class="chips"><span>모달 열림</span><span>난이도 3.1bit</span><span>예상 2.9초</span></p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h5>주석</h5>
+    <ol>
+      <li><span class="n">1</span><div>제목 = 심각도 기호+글자 · 문제 제목 · 규칙. 참고 항목이면 "· Reference". 단계만 골라 열었으면 "Step N · 행동". 화면이 바뀌면 "단계 상세" 제목에 포커스.</div></li>
+      <li><span class="n">2</span><div>"문제 n / N"은 글자만. 화살표는 타임라인의 이전/다음 단계 한 쌍뿐이다. 주소 해시 <code>#issue-102</code>로 새로고침·공유가 되고, 뒤로가기는 요약으로 돌아온다.</div></li>
+      <li><span class="n">3</span><div>타임라인은 대표 attempt의 단계. 단계를 누르면 그 단계의 스크린샷과 Agent 절로 바뀌고, 그 단계에 문제가 있으면 What·How to fix가 그 문제로 바뀐다. 오른쪽 끝 ◀ ▶는 이전/다음 단계. 전체가 창 높이 안에 들어가고 오른쪽 글만 길면 스크롤.</div></li>
+      <li><span class="n">4</span><div>스크린샷은 1280×800을 너비에 맞춤(기획서 6.1 "단계별 스크린샷 + 클릭 위치·이동 경로 오버레이"). 오버레이 3종: 누른 요소 bbox(빨간 실선 + 이름), 가린 요소 <code>occluder.bbox</code>(빨간 빗금), 근처 요소 <code>nearby_targets</code>(회색 점선). 클릭 지점은 bbox 중심의 원.</div></li>
+      <li><span class="n">5</span><div><code>confidence</code> 숫자는 보여주지 않고 <code>score_reason</code> 한 줄만. <code>measured</code>·<code>threshold</code>가 있으면 What 맨 위에 "2.9 : 1 · 기준 4.5 : 1"처럼 숫자+기준. <code>suggestion</code>이 null이면 "참고 항목이라 제안은 생략합니다".</div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 5. 전부 실패 ============ -->
+<section class="frame">
+  <div class="frame-head">
+    <h2>5. 전부 실패 — 대표 경로 없음</h2>
+    <span class="state">완료 · 3회 중 0회 성공</span>
+    <span class="size">데스크톱 1280</span>
+  </div>
+  <div class="viewport desktop">
+    <div class="report">
+      <p class="label">Report · Run #43</p>
+      <h3 class="title">무료 계정을 만든다</h3>
+      <p class="meta-line">app.example · Desktop 1280×800 · 2026-10-29 15:10 · 3 attempts · 9m 02s</p>
+      <div class="tabs"><span class="tab" aria-selected="true">리포트 요약</span></div>
+      <div class="panel">
+        <div class="head-row">
+          <div class="verdict">
+            <p class="label">Verdict</p>
+            <p class="big">3회 중 0회 성공<span class="marker">1</span></p>
+            <p class="sub">지표 없음 · 문제 <b>1건</b> · 참고 0건</p>
+          </div>
+          <div>
+            <p class="label">Path metrics</p>
+            <p class="meta-line" style="max-width:360px">성공한 실행이 없어 경로 지표를 계산하지 않았습니다. 흐름 자체를 점검하세요(기획서 7장: 3회 중 2회 미만).<span class="marker">2</span></p>
+          </div>
+        </div>
+        <div class="two">
+          <div>
+            <div class="comp-h"><h4>Issues</h4><span>심각도 → 점수 순</span></div>
+            <div class="row">
+              <div class="thumb" style="display:flex;align-items:center;justify-content:center;color:var(--faint-fg);font-size:11px">구간</div>
+              <span class="sev high">High</span>
+              <div class="what">같은 화면에서 같은 행동을 반복함<small>R05 반복 루프 · Attempt 1~3 모두 · 요소 없음<span class="marker">3</span></small></div>
+              <span class="step">—</span>
+            </div>
+          </div>
+          <div>
+            <div class="comp-h"><h4>Attempts</h4><span>대표 경로가 없어 단계 화면을 열 수 없음</span></div>
+            <div class="attempt"><span class="name"><b>Attempt 1</b></span><div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span><span class="seg"></span><span class="dot cut"><i></i></span></div><span class="end">반복 루프 · 12 steps · "이메일 입력 후 같은 오류가 계속 뜬다"</span></div>
+            <div class="attempt"><span class="name"><b>Attempt 2</b></span><div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot cut"><i></i></span></div><span class="end">30단계 초과 · 포기</span></div>
+            <div class="attempt"><span class="name"><b>Attempt 3</b></span><div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span><span class="seg"></span><span class="dot cut"><i></i></span></div><span class="end">반복 루프 · 11 steps</span></div>
+            <p class="legend">◆ 종료 지점 · 종료 사유는 <code>end_reason</code>: success / gave_up / loop / budget_exceeded / blocked / error / safety_stop</p>
+            <div class="actions" style="margin-top:16px"><span class="btn primary">과업 문장 고쳐서 다시 측정</span><span class="btn">성공 조건 추가</span><span class="marker">4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h5>주석</h5>
+    <ol>
+      <li><span class="n">1</span><div><code>representative_attempt_index=null</code>이면 이 상태. Verdict는 그대로 쓰고 숫자 자리를 비우지 않고 이유를 쓴다(F01 명세의 "숫자가 말없이 사라지면 고장으로 본다"와 같은 원칙).</div></li>
+      <li><span class="n">2</span><div><code>metrics[]</code>가 비어 있다. "단계 상세 보기" 링크가 없다(대표 경로가 없어 steps API를 부를 attempt가 없다). 백엔드가 실패 attempt의 steps도 주면 "Attempt 1 단계 보기"로 바꿀 수 있다(에이전트 코어와 협의).</div></li>
+      <li><span class="n">3</span><div><code>element_key=null</code>, <code>step=null</code>인 문제. 썸네일 대신 "구간" 자리표시, 단계 상세는 스크린샷 대신 Attempts 띠를 크게 보여준다.</div></li>
+      <li><span class="n">4</span><div>막다른 길로 끝내지 않는다. 기획서 11장 리스크 "에이전트가 과업을 끝까지 못 함 → 실패 원인 분류 후 리포트에 표시"에 대응. 버튼은 F01 화면으로 값이 채워진 채 이동.</div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 6. 문제 0건 ============ -->
+<section class="frame">
+  <div class="frame-head">
+    <h2>6. 문제 0건</h2>
+    <span class="state">완료 · 3회 중 3회 성공</span>
+    <span class="size">데스크톱 1280</span>
+  </div>
+  <div class="viewport desktop">
+    <div class="report">
+      <div class="panel" style="padding-top:0">
+        <div class="head-row">
+          <div class="verdict">
+            <p class="label">Verdict</p>
+            <p class="big">3회 중 3회 성공</p>
+            <p class="sub">예상 소요 시간 <b>5.2초</b> (문헌값 기준) · 문제 <b>0건</b> · 참고 2건 · 통과 9</p>
+          </div>
+          <div>
+            <p class="label">Path metrics</p>
+            <div class="metrics">
+              <div class="metric"><div class="v">5.2<small>s</small></div><div class="k">예상 소요 시간</div><div class="n">보정 전</div></div>
+              <div class="metric"><div class="v">2<small>clicks</small></div><div class="k">클릭</div><div class="n">성공 3회 중앙값</div></div>
+              <div class="metric"><div class="v">640<small>px</small></div><div class="k">커서 이동</div><div class="n">편차 ±5%</div></div>
+              <div class="metric"><div class="v">3.9<small>bit</small></div><div class="k">이동 난이도</div><div class="n">편차 ±4%</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="two">
+          <div>
+            <div class="comp-h"><h4>Issues</h4><span>0</span></div>
+            <div class="row" style="grid-template-columns:1fr;color:var(--muted-fg)">과업 경로에서 규칙 R01~R11에 걸린 문제가 없습니다. 참고 2건은 과업 경로 밖 요소입니다.<span class="marker">1</span></div>
+            <div class="row ref"><div class="thumb"></div><span class="sev low">Low</span><div class="what">푸터 링크 글자 대비 3.8 : 1<small>R02 대비 부족 · 경로 밖 → 참고</small></div><span class="step">—</span></div>
+            <div class="row ref"><div class="thumb"></div><span class="sev low">Low</span><div class="what">아이콘 버튼에 이름 없음<small>R10 이름 없는 요소 · 경로 밖 → 참고</small></div><span class="step">—</span></div>
+          </div>
+          <div>
+            <div class="comp-h"><h4>Attempts</h4><span>점을 누르면 그 단계의 화면</span><a href="#">단계 보기 →</a></div>
+            <div class="attempt"><span class="name"><b>Attempt 1</b> 대표</span><div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span></div><span class="end">3 steps · 성공 · 5.2초</span></div>
+            <div class="attempt"><span class="name"><b>Attempt 2</b></span><div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span></div><span class="end">3 steps · 성공</span></div>
+            <div class="attempt"><span class="name"><b>Attempt 3</b></span><div class="track"><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span><span class="seg"></span><span class="dot"><i></i></span></div><span class="end">3 steps · 성공</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h5>주석</h5>
+    <ol>
+      <li><span class="n">1</span><div>"문제 없음"을 빈 칸으로 두지 않고 문장으로 쓴다. 참고가 있으면 그 아래 옅게. 통과 규칙 수가 11에 가까울수록 Passed rules 섹션이 길어지므로 그대로 둔다(접지 않는다).</div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 7. 모바일 측정 ============ -->
+<section class="frame">
+  <div class="frame-head">
+    <h2>7. 모바일 뷰포트 측정의 단계 상세</h2>
+    <span class="state">viewport = mobile</span>
+    <span class="size">데스크톱 1280에서 보는 화면 · 스크린샷은 390&times;844 세로</span>
+  </div>
+  <div class="viewport desktop">
+    <div class="report" style="min-height:720px;padding:0">
+      <div class="tabs" style="margin:0 32px"><span class="tab">리포트 요약</span><span class="tab" aria-selected="true">단계 상세</span><span class="sub">타임라인 · 스크린샷 오버레이 · 판단 이유</span></div>
+      <div class="scrim">
+        <div class="dlg">
+          <div class="dlg-head">
+            <h4><span class="sev high">High</span>예약 확정 버튼이 20×20px<small>R01 작은 타겟 · 모바일</small></h4>
+            <span class="pager">문제 1 / 2</span>
+            
+          </div>
+          <div class="dlg-body">
+            <div class="dlg-left">
+              <div class="strip"><span class="label">Attempt 1 · timeline</span><span class="stepbtn">0</span><span class="stepbtn">1</span><span class="stepbtn" aria-current="step">2 · 예약 확정 <span class="warnmark">⚠</span></span></div>
+              <div class="shotwrap" style="display:flex;justify-content:center;background:#f3f4f6"><div class="shot mobile" style="position:relative;transform:scale(.56);transform-origin:50% 0;left:auto"><div class="hdr" style="padding:0 20px;height:56px">book.example</div><div class="ph" style="left:16px;top:80px;width:358px;height:200px"></div><div class="t" style="left:16px;top:300px;font-size:20px;font-weight:700">모임 예약</div><div class="ph" style="left:16px;top:350px;width:358px;height:48px"></div><div class="ph" style="left:16px;top:414px;width:358px;height:48px"></div><div class="t" style="left:300px;top:720px;width:20px;height:20px;background:#2563eb;border-radius:3px"></div><div class="ov bbox" data-label="예약 확정 20×20" style="left:297px;top:717px;width:26px;height:26px"></div><div class="ov click" style="left:310px;top:730px"></div></div><span class="marker" style="position:absolute;right:8px;top:8px">1</span></div>
+            </div>
+            <div class="dlg-right">
+              <div><p class="label">What</p><p class="measure">20 × 20 px · 최소 24 × 24 (WCAG 2.2 AA) · 권장 44 × 44</p><p>예약 확정 버튼이 터치 기준 최소 크기보다 작습니다. 엄지로 정확히 누르기 어렵습니다.</p><p class="why">점수 이유 · 과업 경로 위 요소</p></div>
+              <div><p class="label">How to fix</p><p>버튼을 44×44px 이상으로 키우거나 터치 영역을 넓히세요.</p></div>
+              <div><p class="label">Agent</p><p class="lead">예약 확정 클릭</p><p>날짜를 고른 뒤 확정 버튼을 누른다</p><p class="chips"><span>주소 바뀜</span><span>난이도 4.0bit</span><span class="marker">2</span></p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h5>주석</h5>
+    <ol>
+      <li><span class="n">1</span><div>세로 스크린샷은 영역 가운데에 높이 기준으로 맞춘다. 양옆 여백은 <code>#f3f4f6</code>. 엄지 도달 구역 표시(기획서 F08)는 데이터 출처가 정해지면 이 스크린샷 위에 반투명 띠로 그린다(묻는 것 1번).</div></li>
+      <li><span class="n">2</span><div>모바일은 <code>est_seconds</code>·<code>est_task_time</code>이 null이라 예상 시간 칩을 빼고, Overview의 Verdict와 Path metrics에서도 예상 소요 시간 자리를 "데스크톱에서만 계산"으로 바꾼다. <code>slowest_steps</code>는 빈 배열.</div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 자체 UX 기준 ============ -->
+<section class="frame">
+  <div class="frame-head"><h2>이 목업에 적용한 자체 UX 기준</h2></div>
+  <div class="notice">
+    <ul>
+      <li><strong>텍스트 대비</strong> — 본문 <code>#0a0a0a</code> 19.80:1, 보조 <code>#525252</code> 7.81:1, 꼬리말·라벨 <code>#737373</code> 4.74:1, 오류 <code>#b91c1c</code> 6.47:1, 통과 표시 <code>#166534</code> 7.06:1. 모두 4.5:1 이상.</li>
+      <li><strong>조작 요소 경계</strong> — 화면 전환 링크 밑줄, 단계 버튼, 아이콘 버튼은 <code>#737373</code> 또는 <code>#171717</code>. 3:1 이상. 행 구분 hairline <code>#e5e5e5</code>와 <code>#d4d4d4</code>는 장식 전용이고 조작 요소에 쓰지 않는다.</li>
+      <li><strong>타겟 크기</strong> — 화면 전환 링크, 행(높이 70px 이상), Attempts 점(36px 버튼, 간격 14px → 유효 50px), 단계 버튼, 아이콘 버튼 모두 44px 이상. 점만 36px인데 WCAG 2.5.8의 간격 예외(인접 타겟과 24px 원이 겹치지 않음)를 만족한다. 권장 44px에 맞추려면 점 버튼을 44px로 키워도 레이아웃이 깨지지 않는다.</li>
+      <li><strong>색만으로 의미를 전달하지 않는다</strong> — 심각도는 ▲(High) ■(Medium) ●(Low) 기호 + 영어 글자. 문제 있는 단계는 빨간 테두리 점 + "⚠ 문제 1" 글자 + 범례. 재생 끊김은 ◆ + "Step 1에서 끊김".</li>
+      <li><strong>숫자 옆에 기준</strong> — "2.9 : 1 · 기준 4.5 : 1 (WCAG AA)", "30px · 권장 44px (최소 24px)", "7.9초 (문헌값 기준)", "편차 ±12% · 추정 약함".</li>
+      <li><strong>이름 없는 요소 0건</strong> — 아이콘 버튼(◀ ▶ ✕)과 Attempts 점에 <code>aria-label</code>. 스크린샷 오버레이는 장식이라 <code>aria-hidden</code>, 같은 정보를 오른쪽 글로 제공.</li>
+      <li><strong>화면 전환</strong> — 단계 상세로 가면 "단계 상세" 제목(<code>tabindex=-1</code>)에 포커스를 옮겨 스크린 리더·키보드 사용자에게 전환을 알린다. 뒤로가기는 요약으로 돌아온다(pushState 1회).</li>
+      <li><strong>자기 측정</strong> — W4부터 "측정 생성 → 리포트 확인" 과업을 StepMeter로 재서 대비 부족·작은 타겟·이름 없는 요소 0건을 확인한다.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
