@@ -12,8 +12,6 @@
     "gen:api": "openapi-typescript ../api/openapi.yaml -o src/api/types.ts"
   },
   "dependencies": {
-    "@radix-ui/react-dialog": "^1.1.4",
-    "@radix-ui/react-tabs": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "18.3.1",

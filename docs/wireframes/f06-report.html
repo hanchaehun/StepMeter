@@ -73,9 +73,11 @@
   h3.title { font-size: 20px; margin: 0 0 2px; letter-spacing: -0.01em; }
   .meta-line { color: var(--muted-fg); margin: 0; font-size: 13px; }
   .meta-line a { color: var(--fg); font-weight: 600; margin-left: 10px; }
-  .tabs { display: flex; gap: 4px; margin: 16px 0 0; border-bottom: 1px solid var(--border); }
-  .tab { min-height: 44px; padding: 0 14px; border-bottom: 2px solid transparent; font-weight: 600; color: var(--muted-fg); display: inline-flex; align-items: center; margin-bottom: -1px; }
-  .tab[aria-selected] { color: var(--fg); border-bottom-color: var(--primary); }
+  /* 화면 전환 줄: 두 화면 이름을 22px로 나란히, 현재 화면은 굵게 + 밑줄 */
+  .tabs { display: flex; gap: 28px; align-items: flex-end; margin: 20px 0 0; border-bottom: 1px solid var(--border); }
+  .tab { min-height: 44px; padding: 0 0 8px; border-bottom: 3px solid transparent; font-size: 22px; font-weight: 600; color: var(--faint-fg); display: inline-flex; align-items: center; margin-bottom: -1px; letter-spacing: -0.01em; }
+  .tab[aria-selected] { color: var(--fg); font-weight: 700; border-bottom-color: var(--primary); }
+  .tabs .sub { font-size: 13px; color: var(--faint-fg); padding-bottom: 12px; }
   .tab b { font-weight: 600; color: var(--faint-fg); margin-left: 6px; }
   .panel { padding-top: 22px; }
 
@@ -137,7 +139,7 @@
   .dm .v small { display: block; color: var(--faint-fg); font-weight: 400; font-size: 11.5px; }
   .fine { color: var(--faint-fg); font-size: 12px; margin: 12px 0 0; }
 
-  /* Issues 탭 */
+  /* 문제 목록 (큰 썸네일) */
   .full .row { grid-template-columns: 128px 84px 1fr 72px 100px; gap: 24px; padding: 18px 0; }
   .full .thumb { width: 128px; height: 84px; }
   .full .thumb .shot { transform: scale(.5); }
@@ -149,7 +151,7 @@
   .btn { min-height: 44px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--bg); color: var(--fg); font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
   .btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
 
-  /* Steps 탭 */
+  /* 단계 상세 — 단계 목록 */
   .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding-top: 8px; }
   .big-thumb { width: 100%; height: 240px; position: relative; overflow: hidden; border-radius: 4px; outline: 1px solid var(--border); background: #f3f4f6; }
   .big-thumb .shot { position: absolute; left: 0; top: 0; transform: scale(.3); }
@@ -178,9 +180,9 @@
   .ov.near::after { content: attr(data-label); position: absolute; left: 0; top: 100%; color: #525252; font-size: 12px; white-space: nowrap; background: #fff; padding: 1px 4px; }
   .ov.click { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--mark); transform: translate(-50%, -50%); }
 
-  /* 팝업(다이얼로그) 열린 상태 */
-  .scrim { position: absolute; inset: 0; background: rgba(10,10,10,.62); display: flex; align-items: center; justify-content: center; padding: 24px; }
-  .dlg { background: var(--bg); border-radius: 12px; width: 100%; max-width: 1180px; display: grid; grid-template-rows: auto 1fr; box-shadow: 0 24px 80px rgba(0,0,0,.4); }
+  /* 단계 상세 — 문제 선택 */
+  .scrim { padding: 24px 32px; }
+  .dlg { background: var(--bg); width: 100%; display: grid; grid-template-rows: auto 1fr; }
   .dlg-head { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
   .dlg-head h4 { font-size: 16px; margin: 0; flex: 1; font-weight: 600; display: flex; align-items: center; gap: 12px; }
   .dlg-head h4 small { color: var(--faint-fg); font-weight: 400; }
@@ -243,9 +245,9 @@
   <div class="notice">
     <strong>이 파일을 읽는 방법</strong>
     <ul>
-      <li>동작하지 않는 <strong>정적 목업</strong>입니다. 탭·행·점·버튼은 그림이고, 상태별로 프레임을 따로 뒀습니다. 실제 화면은 하나입니다.</li>
+      <li>동작하지 않는 <strong>정적 목업</strong>입니다. 행·점·버튼·링크는 그림이고, 상태별로 프레임을 따로 뒀습니다. 실제 화면은 리포트 요약과 단계 상세 둘입니다.</li>
       <li>값은 전부 동결된 목 JSON(<code>tests/fixtures/mock/api/report.json</code>, <code>steps.json</code>)에서 가져왔습니다. 스크린샷만 진짜 캡처가 없어 CSS로 그린 가짜 쇼핑 페이지입니다.</li>
-      <li>서비스 기획서 6.1의 "리포트 요약"과 "단계 상세" 두 화면을 <strong>탭 3개 + 팝업 하나</strong>로 합쳤습니다. 이유는 명세의 "기획서에 없고 이 문서에서 정한 것" 절에 있습니다.</li>
+      <li>서비스 기획서 6.1 그대로 <strong>"리포트 요약"과 "단계 상세" 두 화면</strong>입니다. 두 이름이 22px 제목 줄에 나란히 보이고, 문제 행·시도 점을 누르면 단계 상세로, "리포트 요약" 또는 뒤로가기로 돌아옵니다.</li>
       <li>라이트 테마만 그렸습니다. 색·간격·타겟 크기는 F01 명세의 토큰을 그대로 채택했습니다(F01 질문 5번에 대한 답).</li>
     </ul>
   </div>
@@ -265,14 +267,6 @@
       </div>
     </div>
 
-    <div class="ask">
-      <span class="num">2</span>
-      <div>
-        <span class="who">PM</span>
-        <div class="q">기획서 6.1의 "단계 상세" 별도 화면을 Steps 탭 + 팝업으로 합쳐도 될까요?</div>
-        <p class="why">문제 11종 중 R05 하나를 빼면 전부 특정 단계의 특정 요소에 붙어 있어, "문제 상세"와 "단계 상세"는 같은 스크린샷을 다른 이유로 보는 것입니다. 한 팝업에서 문제 이전/다음과 단계 띠를 함께 넘기게 하면 화면 이동이 없습니다. 반대라면 프레임 5의 팝업을 별도 화면으로 떼어냅니다.</p>
-      </div>
-    </div>
 
   </div>
 </section>
@@ -280,7 +274,7 @@
 <!-- ============ 1. Overview 기본 ============ -->
 <section class="frame">
   <div class="frame-head">
-    <h2>1. Overview — 첫 화면</h2>
+    <h2>1. 리포트 요약 — 첫 화면</h2>
     <span class="state">완료 · 3회 중 2회 성공</span>
     <span class="size">데스크톱 1280&times;800 · 창 높이에 맞춰 늘어남</span>
   </div>
@@ -295,7 +289,7 @@
       <p class="label">Report · Run #42</p>
       <h3 class="title">장바구니에 상품을 담고 결제까지 간다<span class="marker">1</span></h3>
       <p class="meta-line">shop.example · Desktop 1280×800 · 2026-10-29 14:06 · 3 attempts · 6m 37s <a href="#">Compare with #41</a><span class="marker">2</span></p>
-      <div class="tabs"><span class="tab" aria-selected="true">Overview</span><span class="tab">Issues<b>3</b></span><span class="tab">Steps<b>3</b></span><span class="marker">3</span></div>
+      <div class="tabs"><span class="tab" aria-selected="true">리포트 요약</span><span class="tab">단계 상세</span><span class="marker">3</span></div>
       <div class="panel">
         <div class="head-row">
           <div class="verdict">
@@ -315,7 +309,7 @@
         </div>
         <div class="two">
           <div>
-            <div class="comp-h"><h4>Issues</h4><span>심각도 → 점수 순 · 행을 누르면 화면</span><a href="#">전체 보기 →</a></div>
+            <div class="comp-h"><h4>Issues</h4><span>심각도 → 점수 순 · 행을 누르면 단계 상세 · 참고 포함 전부</span></div>
             <div class="row">
               <div class="thumb"><div class="shot" style="left:-20px;top:-228px"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner"></div><div class="ov bbox" style="left:97px;top:697px;width:126px;height:46px"></div></div></div>
               <span class="sev high">High</span>
@@ -356,7 +350,7 @@
             <p class="hardest">가장 어려운 단계 <b>Step 1 구매 버튼</b> 3.1bit · 가장 오래 걸린 단계 <b>Step 0 러닝화 A</b> 3.4초</p>
           </div>
         </div>
-        <p class="scroll-hint">↓ 통과한 규칙과 나머지 측정값<span class="marker">9</span></p>
+        <p class="scroll-hint"><span class="stepbtn" style="border-radius:999px">↓ 더 보기 · 통과한 규칙 8개 · 나머지 측정값</span><span class="marker">9</span></p>
       </div>
     </div>
   </div>
@@ -365,13 +359,13 @@
     <ol>
       <li><span class="n">1</span><div>과업 문장이 제목. <code>task</code>는 Report에 없고 Run의 <code>task_id</code>로 따로 받는다(명세 "데이터 출처" 표).</div></li>
       <li><span class="n">2</span><div><code>run.base_run_id</code>가 있으면 "Compare with #41" 링크. 첫 측정이면 링크 없음. <code>run.mode</code>가 <code>replay_only</code>면 "재생 전용"을 이 줄에 덧붙인다.</div></li>
-      <li><span class="n">3</span><div>탭 3개. 숫자는 Issues = 문제 + 참고 건수, Steps = 대표 attempt의 단계 수. 탭은 주소 해시(<code>#issues</code>, <code>#steps</code>)와 동기화한다.</div></li>
+      <li><span class="n">3</span><div>22px 제목 줄에 두 화면 이름을 나란히. 현재 화면은 굵게 + 밑줄, 다른 쪽은 링크("단계 상세"는 0단계부터). 단계 상세는 주소 해시 <code>#step-N</code> / <code>#issue-N</code>과 동기화한다. 대표 경로가 없으면 링크 없음.</div></li>
       <li><span class="n">4</span><div>결론 한 줄이 맨 위(PSI의 Core Web Vitals Assessment 자리). <code>attempt.success_estimated</code>가 하나라도 true면 "(추정)"을 붙인다. 모바일이면 예상 소요 시간을 빼고 "데스크톱에서만 계산"을 쓴다.</div></li>
       <li><span class="n">5</span><div>경로 의존 지표만. 화면 고정 항목(크기·대비·가림 등)은 숫자가 아니라 규칙 결과라 Issues에만 있다. 기획서 6.2 "두 성격을 구분해 표시"를 영역으로 해결. <code>model_version_id</code>가 null이면 "보정 전", 있으면 "사람 실험 보정".</div></li>
-      <li><span class="n">6</span><div><code>is_reference=true</code>는 옅은 글자로 기본 목록 맨 아래. 접지 않는다. 참고가 4건 이상이면 3건까지만 두고 "참고 N건 → Issues 탭"으로 보낸다.</div></li>
-      <li><span class="n">7</span><div><code>run.representative_attempt_index</code>가 대표. 점은 그 attempt의 단계이고 누르면 팝업(프레임 5). 문제가 붙은 단계는 빨간 테두리 점 + 글자 범례.</div></li>
+      <li><span class="n">6</span><div><code>is_reference=true</code>는 옅은 글자로 기본 목록 맨 아래. 접지 않고 전부 보여준다(기획서 6.1 "문제 목록"). 단계가 없으면 썸네일 자리에 "경로 밖"(요소 있음) 또는 "구간"(요소 없음).</div></li>
+      <li><span class="n">7</span><div><code>run.representative_attempt_index</code>가 대표. 점은 그 attempt의 단계이고 누르면 단계 상세(프레임 5). 문제가 붙은 단계는 빨간 테두리 점 + 글자 범례.</div></li>
       <li><span class="n">8</span><div><code>attempt.kind=replay</code>이고 <code>replay_status=partial</code>이면 ◆에서 끊고 <code>diverged_at_step</code>과 <code>end_reason</code>·<code>end_detail</code>을 쓴다. 다른 attempt의 점은 누를 수 없다(스냅샷이 대표 경로만 온다).</div></li>
-      <li><span class="n">9</span><div>첫 화면 영역은 창 높이에 맞춰 늘어난다(min-height = 뷰포트 − 상단). Passed rules와 More metrics는 스크롤해야 보인다(프레임 2).</div></li>
+      <li><span class="n">9</span><div>첫 화면 영역은 창 높이에 맞춰 늘어나고 아래 섹션 제목이 살짝 걸친다. "더 보기" 버튼을 누르면 Passed rules로 스크롤(프레임 2).</div></li>
     </ol>
   </div>
 </section>
@@ -379,7 +373,7 @@
 <!-- ============ 2. Overview 스크롤 아래 ============ -->
 <section class="frame">
   <div class="frame-head">
-    <h2>2. Overview — 스크롤 아래</h2>
+    <h2>2. 리포트 요약 — 스크롤 아래</h2>
     <span class="state">같은 화면</span>
     <span class="size">데스크톱 1280 · 첫 화면 아래로 이어짐</span>
   </div>
@@ -429,69 +423,18 @@
   </div>
 </section>
 
-<!-- ============ 3. Issues 탭 ============ -->
+<!-- ============ 3. 단계 상세 — 단계 목록 ============ -->
 <section class="frame">
   <div class="frame-head">
-    <h2>3. Issues 탭</h2>
-    <span class="state">전체 목록</span>
-    <span class="size">데스크톱 1280</span>
-  </div>
-  <div class="viewport desktop">
-    <div class="report full">
-      <div class="tabs"><span class="tab">Overview</span><span class="tab" aria-selected="true">Issues<b>3</b></span><span class="tab">Steps<b>3</b></span></div>
-      <div class="panel">
-        <div class="comp-h"><h4>Issues</h4><span>2 · 심각도 → 점수 순 (서버 정렬)<span class="marker">1</span></span></div>
-        <div class="row">
-          <div class="thumb"><div class="shot" style="left:-16px;top:-318px"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner"></div><div class="ov bbox" style="left:97px;top:697px;width:126px;height:46px"></div></div></div>
-          <span class="sev high">High</span>
-          <div class="what">구매 버튼이 하단 배너에 가려짐<small>R04 가려진 요소 · 점수 이유: 과업 경로 위 요소 · 구매 버튼 중앙이 하단 배너에 가려져 있습니다. 클릭이 배너로 갈 수 있습니다.<span class="marker">2</span></small></div>
-          <span class="step">Step 1</span>
-          <span class="btn">Details</span>
-        </div>
-        <div class="row">
-          <div class="thumb"><div class="shot" style="left:-146px;top:-94px"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:220px;width:260px;height:180px"></div><a class="lnk" style="left:320px;top:260px">러닝화 A</a><div class="ov bbox" style="left:317px;top:257px;width:206px;height:30px"></div></div></div>
-          <span class="sev medium">Medium</span>
-          <div class="what">러닝화 A 링크 글자 대비 2.9 : 1<small>R02 대비 부족 · 기준 4.5 : 1 (WCAG AA) · 점수 이유: 3회 중 3회 발견</small></div>
-          <span class="step">Step 0</span>
-          <span class="btn">Details</span>
-        </div>
-        <div class="sub-h"><b>Reference</b><span>1 · 점수 미달이거나 과업 경로 밖이라 기본 목록에서 뺀 것</span></div>
-        <div class="row ref">
-          <div class="thumb"><div class="shot" style="left:-74px;top:-318px"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner"></div><div class="ov bbox" style="left:227px;top:702px;width:96px;height:36px"></div></div></div>
-          <span class="sev low">Low</span>
-          <div class="what">장바구니 보기 링크 높이 30px<small>R01 작은 타겟 · 권장 44px (최소 24px) · 과업 경로 밖 요소</small></div>
-          <span class="step">—</span>
-          <span class="btn">Details</span>
-        </div>
-        <div class="sub-h"><b>Passed rules</b><span>8</span></div>
-        <ul class="passed">
-          <li>R03 무반응 클릭</li><li>R05 반복 루프</li><li>R06 첫 화면 밖 핵심 요소</li><li>R07 먼 이동 + 작은 타겟</li>
-          <li>R08 되돌아감</li><li>R09 기대 불일치</li><li>R10 이름 없는 요소</li><li>R11 키보드 가림 (모바일만)</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  <div class="notes">
-    <h5>주석</h5>
-    <ol>
-      <li><span class="n">1</span><div>정렬은 서버가 한 순서(<code>issues[]</code>)를 그대로 쓴다. 화면에서 다시 정렬하지 않는다. 같은 규칙이 여러 건이면 axe처럼 규칙 단위로 묶고 건수를 붙인다(목 데이터에는 같은 규칙이 2건 이상인 경우가 없어 그리지 않았다).</div></li>
-      <li><span class="n">2</span><div>썸네일은 Lighthouse 요소 셀 방식: 단계 스크린샷에서 <code>element_snapshot.bbox</code> 주변을 잘라 요소에 빨간 테두리. 한 줄 설명은 <code>explanation</code> 첫 문장. 전체는 Details 팝업.</div></li>
-    </ol>
-  </div>
-</section>
-
-<!-- ============ 4. Steps 탭 ============ -->
-<section class="frame">
-  <div class="frame-head">
-    <h2>4. Steps 탭</h2>
-    <span class="state">대표 attempt의 단계</span>
+    <h2>3. 단계 상세 — 단계 목록</h2>
+    <span class="state">"단계 상세 보기 →"로 들어온 직후</span>
     <span class="size">데스크톱 1280</span>
   </div>
   <div class="viewport desktop">
     <div class="report">
-      <div class="tabs"><span class="tab">Overview</span><span class="tab">Issues<b>3</b></span><span class="tab" aria-selected="true">Steps<b>3</b></span></div>
+      <div class="tabs"><span class="tab">리포트 요약</span><span class="tab" aria-selected="true">단계 상세</span><span class="sub">타임라인 · 스크린샷 오버레이 · 판단 이유</span></div>
       <div class="panel">
-        <div class="comp-h"><h4>Steps</h4><span>Attempt 2 (대표) · 카드를 누르면 큰 화면<span class="marker">1</span></span></div>
+        <div class="comp-h"><h4>Timeline</h4><span>Attempt 2 (대표) · 카드를 누르면 그 단계가 아래 프레임 4처럼 커짐<span class="marker">1</span></span></div>
         <div class="steps-grid">
           <div class="stepcard">
             <div class="big-thumb"><div class="shot"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:1200px;height:48px"></div><div class="t" style="left:40px;top:176px;color:#525252">검색 결과 "running" 3건</div><div class="ph" style="left:40px;top:220px;width:260px;height:180px"></div><a class="lnk" style="left:320px;top:260px">러닝화 A</a><div class="ph" style="left:40px;top:430px;width:260px;height:180px"></div><div class="ph" style="left:40px;top:640px;width:260px;height:140px"></div><div class="ov bbox" data-label="러닝화 A 링크" style="left:317px;top:257px;width:206px;height:30px"></div><div class="ov click" style="left:420px;top:272px"></div></div></div>
@@ -518,31 +461,32 @@
   <div class="notes">
     <h5>주석</h5>
     <ol>
-      <li><span class="n">1</span><div><code>/runs/{id}/attempts/{n}/steps</code>를 대표 attempt에 대해 한 번 부른다. 카드 3열, 20단계면 7행. 카드 썸네일에는 bbox·가림·클릭 위치를 그대로 그린다. 30단계는 스크롤.</div></li>
+      <li><span class="n">1</span><div>기획서 6.1 "단계 상세"의 타임라인. <code>/runs/{id}/attempts/{n}/steps</code>를 대표 attempt에 대해 한 번 부른다. 구현에서는 카드 대신 단계 버튼 띠(프레임 4)로 줄였고, 카드형은 W2에서 검토한다.</div></li>
       <li><span class="n">2</span><div><code>action.action</code>별 제목: click "클릭", type "입력", select "선택", scroll "스크롤 ↓", back "뒤로", wait "대기", done "완료", fail "포기". <code>element_snapshot</code>이 없는 행동(scroll·back·wait·done)은 오버레이 없이 스크린샷만.</div></li>
     </ol>
   </div>
 </section>
 
-<!-- ============ 5. 팝업 ============ -->
+<!-- ============ 4. 단계 상세 — 문제 선택 ============ -->
 <section class="frame">
   <div class="frame-head">
-    <h2>5. 문제 상세 팝업</h2>
-    <span class="state">Issues 행 · Attempts 점 · Steps 카드를 누르면</span>
-    <span class="size">데스크톱 1280 · 스크롤 없이 한 화면</span>
+    <h2>4. 단계 상세 — 문제를 선택한 상태</h2>
+    <span class="state">Issues 행 · Attempts 점을 누르면</span>
+    <span class="size">데스크톱 1280 · 별도 화면</span>
   </div>
   <div class="viewport desktop">
     <div class="report" style="min-height:720px;padding:0">
+      <div class="tabs" style="margin:0 32px"><span class="tab">리포트 요약</span><span class="tab" aria-selected="true">단계 상세</span><span class="sub">타임라인 · 스크린샷 오버레이 · 판단 이유</span></div>
       <div class="scrim">
-        <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-t">
+        <div class="dlg" >
           <div class="dlg-head">
             <h4 id="dlg-t"><span class="sev high">High</span>구매 버튼이 하단 배너에 가려짐<small>R04 가려진 요소</small><span class="marker">1</span></h4>
-            <div class="pager"><span class="icon-btn" aria-label="이전 문제">◀</span><span>1 / 3</span><span class="icon-btn" aria-label="다음 문제">▶</span><span class="marker">2</span></div>
-            <span class="icon-btn" aria-label="닫기">✕</span>
+            <span class="pager">문제 1 / 3<span class="marker">2</span></span>
+            
           </div>
           <div class="dlg-body">
             <div class="dlg-left">
-              <div class="strip"><span class="label">Attempt 2 · steps</span><span class="stepbtn">0 · 러닝화 A 링크 <span class="warnmark">⚠</span></span><span class="stepbtn" aria-current="step">1 · 구매 버튼 <span class="warnmark">⚠</span></span><span class="stepbtn">2 · 완료</span><span class="marker">3</span></div>
+              <div class="strip"><span class="label">Attempt 2 · timeline</span><span class="stepbtn">0 · 러닝화 A 링크 <span class="warnmark">⚠</span></span><span class="stepbtn" aria-current="step">1 · 구매 버튼 <span class="warnmark">⚠</span></span><span class="stepbtn">2 · 완료</span><span class="icon-btn" aria-label="이전 단계" style="margin-left:auto">◀</span><span class="icon-btn" aria-label="다음 단계">▶</span><span class="marker">3</span></div>
               <div class="shotwrap"><div class="shot"><div class="hdr">shop.example</div><div class="ph" style="left:40px;top:100px;width:520px;height:520px"></div><div class="t" style="left:600px;top:110px;font-size:28px;font-weight:700">러닝화 A</div><div class="t" style="left:600px;top:160px;font-size:22px">89,000원</div><div class="ph" style="left:600px;top:220px;width:600px;height:16px"></div><div class="buy">구매</div><div class="cart">장바구니 보기</div><div class="banner">🎉 첫 구매 10% 할인 쿠폰을 받으세요</div><div class="ov occ" data-label="가린 요소: 이름 없는 div" style="left:0;top:680px;width:1280px;height:120px"></div><div class="ov near" data-label="근처: 장바구니 보기" style="left:230px;top:705px;width:90px;height:30px"></div><div class="ov bbox" data-label="구매 버튼" style="left:97px;top:697px;width:126px;height:46px"></div><div class="ov click" style="left:160px;top:720px"></div></div><span class="marker" style="position:absolute;right:8px;top:8px">4</span></div>
             </div>
             <div class="dlg-right">
@@ -558,19 +502,19 @@
   <div class="notes">
     <h5>주석</h5>
     <ol>
-      <li><span class="n">1</span><div>제목 = 심각도 기호+글자 · 문제 제목 · 규칙. 참고 항목이면 "· Reference". 단계만 골라 열었으면 "Step N · 판단 이유".</div></li>
-      <li><span class="n">2</span><div>이전/다음은 <code>issues[]</code> 순서(참고 포함)로 넘긴다. 닫지 않고 모든 문제를 볼 수 있다. 열린 상태는 주소 해시 <code>#issue-102</code>로 남겨 새로고침·공유·뒤로가기가 동작한다.</div></li>
-      <li><span class="n">3</span><div>단계 띠는 대표 attempt의 단계. 단계를 누르면 그 단계의 스크린샷과 Agent 절로 바뀌고, 그 단계에 문제가 있으면 What·How to fix가 그 문제로 바뀐다. 20단계가 넘으면 띠가 가로 스크롤.</div></li>
-      <li><span class="n">4</span><div>스크린샷은 1280×800을 비율 유지로 영역에 맞춤. 오버레이 3종: 누른 요소 bbox(빨간 실선 + 이름), 가린 요소 <code>occluder.bbox</code>(빨간 빗금), 근처 요소 <code>nearby_targets</code>(회색 점선). 클릭 지점은 bbox 중심의 원.</div></li>
+      <li><span class="n">1</span><div>제목 = 심각도 기호+글자 · 문제 제목 · 규칙. 참고 항목이면 "· Reference". 단계만 골라 열었으면 "Step N · 행동". 화면이 바뀌면 "단계 상세" 제목에 포커스.</div></li>
+      <li><span class="n">2</span><div>"문제 n / N"은 글자만. 화살표는 타임라인의 이전/다음 단계 한 쌍뿐이다. 주소 해시 <code>#issue-102</code>로 새로고침·공유가 되고, 뒤로가기는 요약으로 돌아온다.</div></li>
+      <li><span class="n">3</span><div>타임라인은 대표 attempt의 단계. 단계를 누르면 그 단계의 스크린샷과 Agent 절로 바뀌고, 그 단계에 문제가 있으면 What·How to fix가 그 문제로 바뀐다. 오른쪽 끝 ◀ ▶는 이전/다음 단계. 전체가 창 높이 안에 들어가고 오른쪽 글만 길면 스크롤.</div></li>
+      <li><span class="n">4</span><div>스크린샷은 1280×800을 너비에 맞춤(기획서 6.1 "단계별 스크린샷 + 클릭 위치·이동 경로 오버레이"). 오버레이 3종: 누른 요소 bbox(빨간 실선 + 이름), 가린 요소 <code>occluder.bbox</code>(빨간 빗금), 근처 요소 <code>nearby_targets</code>(회색 점선). 클릭 지점은 bbox 중심의 원.</div></li>
       <li><span class="n">5</span><div><code>confidence</code> 숫자는 보여주지 않고 <code>score_reason</code> 한 줄만. <code>measured</code>·<code>threshold</code>가 있으면 What 맨 위에 "2.9 : 1 · 기준 4.5 : 1"처럼 숫자+기준. <code>suggestion</code>이 null이면 "참고 항목이라 제안은 생략합니다".</div></li>
     </ol>
   </div>
 </section>
 
-<!-- ============ 6. 전부 실패 ============ -->
+<!-- ============ 5. 전부 실패 ============ -->
 <section class="frame">
   <div class="frame-head">
-    <h2>6. 전부 실패 — 대표 경로 없음</h2>
+    <h2>5. 전부 실패 — 대표 경로 없음</h2>
     <span class="state">완료 · 3회 중 0회 성공</span>
     <span class="size">데스크톱 1280</span>
   </div>
@@ -579,7 +523,7 @@
       <p class="label">Report · Run #43</p>
       <h3 class="title">무료 계정을 만든다</h3>
       <p class="meta-line">app.example · Desktop 1280×800 · 2026-10-29 15:10 · 3 attempts · 9m 02s</p>
-      <div class="tabs"><span class="tab" aria-selected="true">Overview</span><span class="tab">Issues<b>1</b></span><span class="tab">Steps<b>—</b></span></div>
+      <div class="tabs"><span class="tab" aria-selected="true">리포트 요약</span></div>
       <div class="panel">
         <div class="head-row">
           <div class="verdict">
@@ -618,17 +562,17 @@
     <h5>주석</h5>
     <ol>
       <li><span class="n">1</span><div><code>representative_attempt_index=null</code>이면 이 상태. Verdict는 그대로 쓰고 숫자 자리를 비우지 않고 이유를 쓴다(F01 명세의 "숫자가 말없이 사라지면 고장으로 본다"와 같은 원칙).</div></li>
-      <li><span class="n">2</span><div><code>metrics[]</code>가 비어 있다. Steps 탭은 비활성(대표 경로가 없어 steps API를 부를 attempt가 없다). 백엔드가 실패 attempt의 steps도 주면 "Attempt 1 단계 보기"로 바꿀 수 있다(에이전트 코어와 협의).</div></li>
-      <li><span class="n">3</span><div><code>element_key=null</code>, <code>step=null</code>인 문제. 썸네일 대신 "구간" 자리표시, 팝업은 스크린샷 대신 Attempts 띠를 크게 보여준다.</div></li>
+      <li><span class="n">2</span><div><code>metrics[]</code>가 비어 있다. "단계 상세 보기" 링크가 없다(대표 경로가 없어 steps API를 부를 attempt가 없다). 백엔드가 실패 attempt의 steps도 주면 "Attempt 1 단계 보기"로 바꿀 수 있다(에이전트 코어와 협의).</div></li>
+      <li><span class="n">3</span><div><code>element_key=null</code>, <code>step=null</code>인 문제. 썸네일 대신 "구간" 자리표시, 단계 상세는 스크린샷 대신 Attempts 띠를 크게 보여준다.</div></li>
       <li><span class="n">4</span><div>막다른 길로 끝내지 않는다. 기획서 11장 리스크 "에이전트가 과업을 끝까지 못 함 → 실패 원인 분류 후 리포트에 표시"에 대응. 버튼은 F01 화면으로 값이 채워진 채 이동.</div></li>
     </ol>
   </div>
 </section>
 
-<!-- ============ 7. 문제 0건 ============ -->
+<!-- ============ 6. 문제 0건 ============ -->
 <section class="frame">
   <div class="frame-head">
-    <h2>7. 문제 0건</h2>
+    <h2>6. 문제 0건</h2>
     <span class="state">완료 · 3회 중 3회 성공</span>
     <span class="size">데스크톱 1280</span>
   </div>
@@ -676,25 +620,26 @@
   </div>
 </section>
 
-<!-- ============ 8. 모바일 측정 ============ -->
+<!-- ============ 7. 모바일 측정 ============ -->
 <section class="frame">
   <div class="frame-head">
-    <h2>8. 모바일 뷰포트 측정의 리포트</h2>
+    <h2>7. 모바일 뷰포트 측정의 단계 상세</h2>
     <span class="state">viewport = mobile</span>
     <span class="size">데스크톱 1280에서 보는 화면 · 스크린샷은 390&times;844 세로</span>
   </div>
   <div class="viewport desktop">
     <div class="report" style="min-height:720px;padding:0">
+      <div class="tabs" style="margin:0 32px"><span class="tab">리포트 요약</span><span class="tab" aria-selected="true">단계 상세</span><span class="sub">타임라인 · 스크린샷 오버레이 · 판단 이유</span></div>
       <div class="scrim">
         <div class="dlg">
           <div class="dlg-head">
             <h4><span class="sev high">High</span>예약 확정 버튼이 20×20px<small>R01 작은 타겟 · 모바일</small></h4>
-            <div class="pager"><span class="icon-btn">◀</span><span>1 / 2</span><span class="icon-btn">▶</span></div>
-            <span class="icon-btn" aria-label="닫기">✕</span>
+            <span class="pager">문제 1 / 2</span>
+            
           </div>
           <div class="dlg-body">
             <div class="dlg-left">
-              <div class="strip"><span class="label">Attempt 1 · steps</span><span class="stepbtn">0</span><span class="stepbtn">1</span><span class="stepbtn" aria-current="step">2 · 예약 확정 <span class="warnmark">⚠</span></span></div>
+              <div class="strip"><span class="label">Attempt 1 · timeline</span><span class="stepbtn">0</span><span class="stepbtn">1</span><span class="stepbtn" aria-current="step">2 · 예약 확정 <span class="warnmark">⚠</span></span></div>
               <div class="shotwrap" style="display:flex;justify-content:center;background:#f3f4f6"><div class="shot mobile" style="position:relative;transform:scale(.56);transform-origin:50% 0;left:auto"><div class="hdr" style="padding:0 20px;height:56px">book.example</div><div class="ph" style="left:16px;top:80px;width:358px;height:200px"></div><div class="t" style="left:16px;top:300px;font-size:20px;font-weight:700">모임 예약</div><div class="ph" style="left:16px;top:350px;width:358px;height:48px"></div><div class="ph" style="left:16px;top:414px;width:358px;height:48px"></div><div class="t" style="left:300px;top:720px;width:20px;height:20px;background:#2563eb;border-radius:3px"></div><div class="ov bbox" data-label="예약 확정 20×20" style="left:297px;top:717px;width:26px;height:26px"></div><div class="ov click" style="left:310px;top:730px"></div></div><span class="marker" style="position:absolute;right:8px;top:8px">1</span></div>
             </div>
             <div class="dlg-right">
@@ -721,13 +666,13 @@
   <div class="frame-head"><h2>이 목업에 적용한 자체 UX 기준</h2></div>
   <div class="notice">
     <ul>
-      <li><strong>텍스트 대비</strong> — 본문 <code>#0a0a0a</code> 19.80:1, 보조 <code>#525252</code> 7.81:1, 꼬리말·라벨 <code>#737373</code> 4.74:1, 오류 <code>#b91c1c</code> 6.47:1, 통과 표시 <code>#166534</code> 7.06:1. 모두 4.5:1 이상. 팝업 뒤 스크림(62% 검정) 위에는 글자를 두지 않는다.</li>
-      <li><strong>조작 요소 경계</strong> — 탭 밑줄, 단계 버튼, 팝업 아이콘 버튼, Details 버튼은 <code>#737373</code> 또는 <code>#171717</code>. 3:1 이상. 행 구분 hairline <code>#e5e5e5</code>와 <code>#d4d4d4</code>는 장식 전용이고 조작 요소에 쓰지 않는다.</li>
-      <li><strong>타겟 크기</strong> — 탭, 행(높이 70px 이상), Attempts 점(36px 버튼, 간격 14px → 유효 50px), 단계 버튼, 팝업 버튼 모두 44px 이상. 점만 36px인데 WCAG 2.5.8의 간격 예외(인접 타겟과 24px 원이 겹치지 않음)를 만족한다. 권장 44px에 맞추려면 점 버튼을 44px로 키워도 레이아웃이 깨지지 않는다.</li>
+      <li><strong>텍스트 대비</strong> — 본문 <code>#0a0a0a</code> 19.80:1, 보조 <code>#525252</code> 7.81:1, 꼬리말·라벨 <code>#737373</code> 4.74:1, 오류 <code>#b91c1c</code> 6.47:1, 통과 표시 <code>#166534</code> 7.06:1. 모두 4.5:1 이상.</li>
+      <li><strong>조작 요소 경계</strong> — 화면 전환 링크 밑줄, 단계 버튼, 아이콘 버튼은 <code>#737373</code> 또는 <code>#171717</code>. 3:1 이상. 행 구분 hairline <code>#e5e5e5</code>와 <code>#d4d4d4</code>는 장식 전용이고 조작 요소에 쓰지 않는다.</li>
+      <li><strong>타겟 크기</strong> — 화면 전환 링크, 행(높이 70px 이상), Attempts 점(36px 버튼, 간격 14px → 유효 50px), 단계 버튼, 아이콘 버튼 모두 44px 이상. 점만 36px인데 WCAG 2.5.8의 간격 예외(인접 타겟과 24px 원이 겹치지 않음)를 만족한다. 권장 44px에 맞추려면 점 버튼을 44px로 키워도 레이아웃이 깨지지 않는다.</li>
       <li><strong>색만으로 의미를 전달하지 않는다</strong> — 심각도는 ▲(High) ■(Medium) ●(Low) 기호 + 영어 글자. 문제 있는 단계는 빨간 테두리 점 + "⚠ 문제 1" 글자 + 범례. 재생 끊김은 ◆ + "Step 1에서 끊김".</li>
       <li><strong>숫자 옆에 기준</strong> — "2.9 : 1 · 기준 4.5 : 1 (WCAG AA)", "30px · 권장 44px (최소 24px)", "7.9초 (문헌값 기준)", "편차 ±12% · 추정 약함".</li>
       <li><strong>이름 없는 요소 0건</strong> — 아이콘 버튼(◀ ▶ ✕)과 Attempts 점에 <code>aria-label</code>. 스크린샷 오버레이는 장식이라 <code>aria-hidden</code>, 같은 정보를 오른쪽 글로 제공.</li>
-      <li><strong>팝업</strong> — <code>&lt;dialog&gt;</code> + <code>aria-modal</code>, 열리면 닫기 버튼에 포커스, Esc·바깥 클릭·뒤로가기로 닫힘, 뒤 화면 스크롤 잠금. 팝업이 뒤 요소를 덮는 것은 R04 대상이 아니다(가림 판정은 클릭하려는 요소에만 적용).</li>
+      <li><strong>화면 전환</strong> — 단계 상세로 가면 "단계 상세" 제목(<code>tabindex=-1</code>)에 포커스를 옮겨 스크린 리더·키보드 사용자에게 전환을 알린다. 뒤로가기는 요약으로 돌아온다(pushState 1회).</li>
       <li><strong>자기 측정</strong> — W4부터 "측정 생성 → 리포트 확인" 과업을 StepMeter로 재서 대비 부족·작은 타겟·이름 없는 요소 0건을 확인한다.</li>
     </ul>
   </div>

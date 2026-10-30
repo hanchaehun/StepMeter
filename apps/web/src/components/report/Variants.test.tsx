@@ -7,19 +7,19 @@ beforeEach(() => {
   window.history.replaceState(null, '', ' ');
 });
 
-test('전부 실패: EmptyReport, Steps 탭 비활성, 다시 측정 버튼', () => {
+test('전부 실패: EmptyReport, 단계 상세 링크 없음, 다시 측정 버튼', () => {
   render(<ReportPage data={allFailed()} />);
   expect(screen.getByText('3회 중 0회 성공')).toBeInTheDocument();                       // success 0 / repeat_n 3
   expect(screen.getByText(/성공한 실행이 없어 경로 지표를 계산하지 않았습니다/)).toBeInTheDocument();
-  expect(screen.getByRole('tab', { name: /Steps/ })).toBeDisabled();
+  expect(screen.queryByRole('link', { name: '단계 상세' })).toBeNull();   // 대표 경로가 없으면 단계 상세 없음
   expect(screen.getByRole('link', { name: '과업 문장 고쳐서 다시 측정' })).toBeInTheDocument();
   expect(screen.getByText(/30단계 초과/)).toBeInTheDocument();                           // attempts[1] budget_exceeded
 });
 
-test('전부 실패: 요소 없는 문제를 누르면 팝업에 Attempts 띠', async () => {
+test('전부 실패: 요소 없는 문제를 누르면 단계 상세에 Attempts 띠', async () => {
   render(<ReportPage data={allFailed()} />);
   await userEvent.click(screen.getByText('같은 화면에서 같은 행동을 반복함'));
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: '단계 상세' })).toBeInTheDocument();
   expect(screen.queryByTestId('overlays')).toBeNull();
 });
 
