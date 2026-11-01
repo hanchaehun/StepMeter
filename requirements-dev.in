@@ -1,0 +1,8 @@
+# W1 tests and browser runtime. Freeze to requirements-dev.txt after updating.
+-r apps/api/requirements.txt
+pydantic>=2.9,<3
+playwright>=1.56,<1.57
+PyYAML>=6,<7
+jsonschema>=4.23,<5
+ruff>=0.14,<0.15
+mypy>=1.18,<1.19

@@ -7,6 +7,9 @@ AI 에이전트가 웹사이트를 한 단계씩 써보며 UX를 숫자로 측�
 
 역할 배정과 협업 규칙은 팀 노션에서 관리한다. 폴더 구성은 개발계획서 12장을 따르고, 각 폴더의 `README.md`에 담당 역할과 참고할 문서 절이 적혀 있다.
 
+개발 환경·Docker·CI는 [infra/README.md](infra/README.md), 스테이징 연결은
+[infra/staging.md](infra/staging.md), W1 벤치마크 선정은 [benchmark/selection.md](benchmark/selection.md)를 참고한다.
+
 ## 공용 인터페이스
 
 여러 역할이 함께 쓰는 데이터 형식은 개발계획서 13.1을 따르며 10월 27일에 동결한다.

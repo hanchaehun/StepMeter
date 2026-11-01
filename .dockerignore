@@ -1,0 +1,13 @@
+.git
+.venv
+**/node_modules
+**/dist
+**/__pycache__
+.env
+.env.*
+!.env.example
+**/*.log
+screenshots
+data
+docs
+benchmark/apps

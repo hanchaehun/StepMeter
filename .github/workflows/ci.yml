@@ -1,0 +1,79 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: stepmeter
+          POSTGRES_PASSWORD: stepmeter
+          POSTGRES_DB: stepmeter_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U stepmeter -d stepmeter_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://stepmeter:stepmeter@localhost:5432/stepmeter_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: pip install -r requirements-dev.txt
+      - run: npm ci
+      - run: npm run build:collect
+      - run: python -m playwright install --with-deps chromium
+      - run: ruff check worker tests apps/api infra/scripts benchmark/*.py
+      - run: mypy --explicit-package-bases --follow-imports=silent worker/metrics/cursor_distance.py
+      - run: python -m unittest discover -s tests -v
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm test -- --run
+      - run: npm run typecheck
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: static-report
+          path: apps/web/dist
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+      - run: docker compose --profile test build web tests
+      - run: docker compose --profile test run --rm tests
+      - run: docker compose up -d --wait web
+      - run: curl --fail http://localhost:8080/healthz && curl --fail http://localhost:8080/
+      - if: always()
+        run: docker compose --profile test down

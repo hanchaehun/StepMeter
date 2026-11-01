@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "apps": [
+    {
+      "id": "shadcn-admin",
+      "repository": "https://github.com/satnaing/shadcn-admin",
+      "revision": "e16c87f213a5ba5e45964e9b67c792105ec74d26",
+      "license": "MIT",
+      "license_file": "LICENSE",
+      "split": "development",
+      "stack": "React / Tailwind / shadcn / TanStack Router",
+      "tasks": [
+        "Tasks 필터 후 작업 상세 열기",
+        "Users에서 사용자 초대 대화상자 열고 취소"
+      ],
+      "startup": "pnpm install --frozen-lockfile; pnpm dev",
+      "upstream_lockfile": "pnpm-lock.yaml",
+      "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
+    },
+    {
+      "id": "material-kit-react",
+      "repository": "https://github.com/minimal-ui-kit/material-kit-react",
+      "revision": "69e780a40c455d664b2e13c525faf1d492a072a7",
+      "license": "MIT",
+      "license_file": "LICENSE.md",
+      "split": "development",
+      "stack": "React / MUI / React Router",
+      "tasks": [
+        "제품 목록에서 정렬·필터 변경",
+        "로그인 폼 입력 후 비밀번호 표시 전환"
+      ],
+      "startup": "npm ci; npm run dev",
+      "upstream_lockfile": "package-lock.json",
+      "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
+    },
+    {
+      "id": "sb-admin-2",
+      "repository": "https://github.com/StartBootstrap/startbootstrap-sb-admin-2",
+      "revision": "f0309881ef82794a1bd6257cd321801bc38a0f3d",
+      "license": "MIT",
+      "license_file": "LICENSE",
+      "split": "development",
+      "stack": "Bootstrap 4 / jQuery / static HTML",
+      "tasks": [
+        "로그인 폼 입력 후 Remember Me 선택",
+        "회원가입 폼 입력 후 로그인 화면으로 이동"
+      ],
+      "startup": "python -m http.server 8766 --bind 127.0.0.1",
+      "upstream_lockfile": "package-lock.json",
+      "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
+    },
+    {
+      "id": "react-shopping-cart",
+      "repository": "https://github.com/sivadass/react-shopping-cart",
+      "revision": "0e867f1caf6abd7114aab6ae704a2824064e84e0",
+      "license": "MIT",
+      "license_file": "LICENSE",
+      "split": "development",
+      "stack": "React 17 / SCSS / mobile commerce",
+      "tasks": [
+        "상품 검색 후 수량 2개를 장바구니에 추가",
+        "장바구니를 열고 상품 삭제"
+      ],
+      "startup": "원본 CRA4/node-sass5 의존성 현대화 및 상품 JSON 로컬화 후 npm start",
+      "upstream_lockfile": "yarn.lock",
+      "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
+    },
+    {
+      "id": "ant-design-pro",
+      "repository": "https://github.com/ant-design/ant-design-pro",
+      "revision": "42f2cb1d303380909ea04c73b5e60679d09c321a",
+      "license": "MIT",
+      "license_file": "LICENSE",
+      "split": "holdout",
+      "stack": "React / Ant Design / Umi",
+      "tasks": [
+        "검색 테이블에서 필터 적용",
+        "생성 대화상자 열고 취소"
+      ],
+      "startup": "npm install; npm start (npm run dev는 mock을 끄므로 사용 금지)",
+      "upstream_lockfile": null,
+      "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
+    },
+    {
+      "id": "coreui-vue",
+      "repository": "https://github.com/coreui/coreui-free-vue-admin-template",
+      "revision": "81cc2aef4f2c6a195558fcc414820f2f4fef359f",
+      "license": "MIT",
+      "license_file": "LICENSE",
+      "split": "holdout",
+      "stack": "Vue 3 / CoreUI / Vue Router",
+      "tasks": [
+        "대시보드에서 표 페이지로 이동",
+        "모달 예제 열고 닫기"
+      ],
+      "startup": "npm ci; npm run dev",
+      "upstream_lockfile": "package-lock.json",
+      "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
+    }
+  ]
+}

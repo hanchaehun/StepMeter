@@ -5,6 +5,7 @@
     "build:collect": "esbuild worker/collect/src/collect.js --bundle --format=iife --outfile=worker/collect/dist/collect.js"
   },
   "devDependencies": {
+    "axe-core": "4.10.3",
     "dom-accessibility-api": "^0.7.1",
     "esbuild": "^0.28.2"
   }

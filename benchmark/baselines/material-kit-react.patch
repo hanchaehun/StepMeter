@@ -1,0 +1,152 @@
+diff --git a/src/app.tsx b/src/app.tsx
+index 6062fe5..df1367c 100644
+--- a/src/app.tsx
++++ b/src/app.tsx
+@@ -41,7 +41,7 @@ export default function App({ children }: AppProps) {
+   return (
+     <ThemeProvider>
+       {children}
+-      {githubButton()}
++      <footer aria-label="Project source">{githubButton()}</footer>
+     </ThemeProvider>
+   );
+ }
+diff --git a/src/layouts/components/searchbar.tsx b/src/layouts/components/searchbar.tsx
+index 31ac203..05f48c3 100644
+--- a/src/layouts/components/searchbar.tsx
++++ b/src/layouts/components/searchbar.tsx
+@@ -33,7 +33,7 @@ export function Searchbar({ sx, ...other }: BoxProps) {
+     <ClickAwayListener onClickAway={handleClose}>
+       <div>
+         {!open && (
+-          <IconButton onClick={handleOpen}>
++          <IconButton aria-label="Search" onClick={handleOpen}>
+             <Iconify icon="eva:search-fill" />
+           </IconButton>
+         )}
+diff --git a/src/layouts/dashboard/nav.tsx b/src/layouts/dashboard/nav.tsx
+index f46007d..b14567f 100644
+--- a/src/layouts/dashboard/nav.tsx
++++ b/src/layouts/dashboard/nav.tsx
+@@ -44,6 +44,8 @@ export function NavDesktop({
+ 
+   return (
+     <Box
++      component="aside"
++      aria-label="Sidebar"
+       sx={{
+         pt: 2.5,
+         px: 2.5,
+diff --git a/src/sections/auth/sign-in-view.tsx b/src/sections/auth/sign-in-view.tsx
+index 09d3dd9..11fb4dd 100644
+--- a/src/sections/auth/sign-in-view.tsx
++++ b/src/sections/auth/sign-in-view.tsx
+@@ -58,7 +58,7 @@ export function SignInView() {
+           input: {
+             endAdornment: (
+               <InputAdornment position="end">
+-                <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
++                <IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)} edge="end">
+                   <Iconify icon={showPassword ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
+                 </IconButton>
+               </InputAdornment>
+@@ -92,7 +92,7 @@ export function SignInView() {
+           mb: 5,
+         }}
+       >
+-        <Typography variant="h5">Sign in</Typography>
++        <Typography component="h1" variant="h5">Sign in</Typography>
+         <Typography
+           variant="body2"
+           sx={{
+@@ -121,13 +121,13 @@ export function SignInView() {
+           justifyContent: 'center',
+         }}
+       >
+-        <IconButton color="inherit">
++        <IconButton color="inherit" aria-label="Sign in with Google">
+           <Iconify width={22} icon="socials:google" />
+         </IconButton>
+-        <IconButton color="inherit">
++        <IconButton color="inherit" aria-label="Sign in with GitHub">
+           <Iconify width={22} icon="socials:github" />
+         </IconButton>
+-        <IconButton color="inherit">
++        <IconButton color="inherit" aria-label="Sign in with Twitter">
+           <Iconify width={22} icon="socials:twitter" />
+         </IconButton>
+       </Box>
+diff --git a/src/sections/product/product-item.tsx b/src/sections/product/product-item.tsx
+index 722d340..0a8f6d6 100644
+--- a/src/sections/product/product-item.tsx
++++ b/src/sections/product/product-item.tsx
+@@ -54,12 +54,12 @@ export function ProductItem({ product }: { product: ProductItemProps }) {
+   );
+ 
+   const renderPrice = (
+-    <Typography variant="subtitle1">
++    <Typography component="p" variant="subtitle1">
+       <Typography
+         component="span"
+         variant="body1"
+         sx={{
+-          color: 'text.disabled',
++          color: 'text.secondary',
+           textDecoration: 'line-through',
+         }}
+       >
+diff --git a/src/sections/product/view/products-view.tsx b/src/sections/product/view/products-view.tsx
+index 8b42910..bbc9da4 100644
+--- a/src/sections/product/view/products-view.tsx
++++ b/src/sections/product/view/products-view.tsx
+@@ -88,7 +88,7 @@ export function ProductsView() {
+     <DashboardContent>
+       <CartIcon totalItems={8} />
+ 
+-      <Typography variant="h4" sx={{ mb: 5 }}>
++      <Typography component="h1" variant="h4" sx={{ mb: 5 }}>
+         Products
+       </Typography>
+       <Box
+diff --git a/src/theme/core/palette.ts b/src/theme/core/palette.ts
+index c5424f0..6e344f7 100644
+--- a/src/theme/core/palette.ts
++++ b/src/theme/core/palette.ts
+@@ -91,7 +91,7 @@ export const grey = createPaletteChannel(themeConfig.palette.grey);
+ export const text = {
+   light: createPaletteChannel({
+     primary: grey[800],
+-    secondary: grey[600],
++    secondary: grey[700],
+     disabled: grey[500],
+   }),
+ };
+diff --git a/src/theme/theme-config.ts b/src/theme/theme-config.ts
+index 8805602..5ba797f 100644
+--- a/src/theme/theme-config.ts
++++ b/src/theme/theme-config.ts
+@@ -40,7 +40,7 @@ export const themeConfig: ThemeConfig = {
+     primary: {
+       lighter: '#D0ECFE',
+       light: '#73BAFB',
+-      main: '#1877F2',
++      main: '#0C44AE',
+       dark: '#0C44AE',
+       darker: '#042174',
+       contrastText: '#FFFFFF',
+diff --git a/yarn.lock b/yarn.lock
+index 7c1494c..cf6e54d 100644
+--- a/yarn.lock
++++ b/yarn.lock
+@@ -2963,11 +2963,6 @@ yaml@^1.10.0:
+   resolved "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz"
+   integrity sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==
+ 
+-yaml@^2.4.2:
+-  version "2.7.1"
+-  resolved "https://registry.npmjs.org/yaml/-/yaml-2.7.1.tgz"
+-  integrity sha512-10ULxpnOCQXxJvBgxsn9ptjq6uviG/htZKk9veJGhlqn3w/DxQ631zFF+nlQXLwmImeS5amR2dl2U8sg6U9jsQ==
+-
+ yocto-queue@^0.1.0:
+   version "0.1.0"
+   resolved "https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz"
