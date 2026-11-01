@@ -1,6 +1,6 @@
 """DB 스키마 v1: 개발계획서 10장 테이블 16개 + 추가 칸 10개.
 
-칸 설명과 근거는 apps/api/db-columns.md, enum 값은 apps/api/openapi.yaml과 같게 둔다.
+칸 설명과 근거는 apps/api/db/db-columns.md, enum 값은 apps/api/openapi.yaml과 같게 둔다.
 enum은 Postgres 고유 enum 대신 VARCHAR + CHECK로 둔다 (값 추가가 마이그레이션 한 줄로 끝난다).
 """
 
