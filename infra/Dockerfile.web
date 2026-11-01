@@ -1,0 +1,16 @@
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY apps/web/package.json apps/web/package-lock.json apps/web/
+RUN npm --prefix apps/web ci
+COPY apps/web apps/web
+# Vite imports mock data outside apps/web.
+COPY tests/fixtures/mock/api tests/fixtures/mock/api
+RUN npm --prefix apps/web run build
+
+FROM nginxinc/nginx-unprivileged:stable-alpine
+ENV PORT=8080
+COPY infra/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+EXPOSE 8080
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:${PORT}/healthz || exit 1
