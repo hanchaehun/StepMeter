@@ -1,4 +1,4 @@
-# StepMeter Action Schema (검토안)
+# StepMeter Action Schema (10/27 동결)
 
 기획서의 7개 행동(`click`, `type`, `scroll`, `back`, `wait`, `done`, `fail`)에 **`select`를 추가했다.** 기획서는 드롭다운 요소를 수집하지만 선택 행동은 정의하지 않았다. [Playwright의 `locator.select_option()`](https://playwright.dev/python/docs/input#select-options)은 HTML `<select>`의 옵션을 선택할 수 있다. 이번 스키마는 **단일 선택**만 다루고, 모델은 화면에 보여준 옵션 번호를 반환한다.
 

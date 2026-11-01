@@ -1,4 +1,4 @@
-# StepMeter ElementSnapshot 형식 (검토안)
+# StepMeter ElementSnapshot 형식 (10/27 동결)
 
 `click`·`type` 직전에 대상 요소 하나에 대해 측정 훅이 저장하는 값이다. 개발계획서 5.1(측정 훅), 5.7(가시성), 5.4(타겟 크기 예외), 7.2(매칭 지문), 11장(`element_snapshot` 테이블)을 합쳐 정했다. 측정 지표·규칙, DB 저장, 요소 매칭이 이 형식을 입력으로 쓴다. 데이터 모델은 [`worker/schemas.py`](../worker/schemas.py)에 있다.
 
@@ -43,6 +43,6 @@
 
 ## 이번 범위에서 정하지 않은 것
 
-- 값을 실제로 수집하는 주입 JS와 Driver 연결: W1 요소 수집 JS 작업에서 이 형식에 맞춰 구현한다.
+- 값을 실제로 수집하는 주입 JS와 Driver 연결: 주입 JS는 `worker/collect/`에 구현했다(PR #15). Driver 연결은 아직 없다.
 - 관찰 시점의 요소 목록(번호·LLM 목록) 형식: 에이전트 코어와 따로 정한다.
 - `Step` 데이터 형식: 에이전트 코어가 정한다.

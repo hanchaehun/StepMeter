@@ -9,8 +9,8 @@
 | minimal-ui-kit/material-kit-react | 개발 | MUI, React Router lazy, 필터 Drawer. 실행·빌드, 로그인/제품 화면 클리닝 검증 |
 | StartBootstrap/startbootstrap-sb-admin-2 | 개발 | Bootstrap/jQuery 정적 UI. 로그인/회원가입 화면 실행·클리닝 검증 |
 | sivadass/react-shopping-cart | 개발 | 모바일 대응 커머스·SCSS·검색/장바구니. 원본 검토; CRA4/node-sass5 교체와 외부 상품 JSON·이미지 로컬화 필요 |
-| ant-design/ant-design-pro | 홀드아웃 | Ant Design/Umi, mock 서버, 라우팅·모달·동적 import. 원본 검토, 런타임 미검증 |
-| coreui/coreui-free-vue-admin-template | 홀드아웃 | Vue/CoreUI, lazy Router·모달 예제. 원본 검토, 런타임 미검증 |
+
+홀드아웃 2개는 이 public 저장소에 적지 않는다. 목록·설정·정답은 회귀 비교·인프라 담당이 `benchmark/holdout/`(git 제외)과 접근을 제한한 장소에서 관리한다.
 
 원본 링크·커밋·라이선스 위치·각 앱 과업 2개·시작 명령은 [apps.json](apps.json)에 있다.
 최소 3개 SPA의 구조를 소스에서 확인했으나 실제 SPA 스트레스 테스트는 W2 작업이다.
@@ -30,7 +30,7 @@ npm --prefix benchmark/apps/material-kit-react run dev -- --host 127.0.0.1 --por
 
 checkout은 고정 커밋을 받고 `baselines/*.patch`가 있으면 적용한다.
 이미 존재하는 디렉터리는 덮어쓰지 않는다. 원본 소스는 git 제외하고 패치와 출처를 관리한다.
-기본 호출은 개발 4개만 받는다. 홀드아웃은 평가 담당자가 `--include-holdout`을 명시해야 한다.
+기본 호출은 개발 4개만 받는다. 홀드아웃은 평가 담당자가 `benchmark/holdout/apps.json`을 두고 `--include-holdout`을 명시해야 한다.
 홀드아웃 변이·정답은 이 public 저장소에 올리지 않고 접근을 제한한 별도 장소에서 관리한다.
 이번에는 홀드아웃 변이·정답을 만들거나 평가하지 않았다.
 

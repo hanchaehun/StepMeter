@@ -18,7 +18,13 @@ def main() -> None:
     parser.add_argument("apps", nargs="*", help="Default: development apps only")
     parser.add_argument("--include-holdout", action="store_true")
     args = parser.parse_args()
-    apps = json.loads((ROOT / "apps.json").read_text())["apps"]
+    apps = json.loads((ROOT / "apps.json").read_text(encoding="utf-8"))["apps"]
+    holdout = ROOT / "holdout" / "apps.json"
+    if holdout.exists():
+        apps += [
+            app for app in json.loads(holdout.read_text(encoding="utf-8"))["apps"]
+            if app["split"] == "holdout"
+        ]
     known = {app["id"] for app in apps}
     if set(args.apps) - known:
         parser.error("Unknown app id")

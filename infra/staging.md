@@ -39,7 +39,7 @@ SQLAlchemy/Alembic용 URL은 `postgresql+psycopg://` 형식이어야 한다.
 API/워커 담당자에게 다음을 확정받은 뒤 해당 진입점으로 배포한다:
 
 - API 실행 모듈·포트·상태 확인 경로
-- 큐 워커 실행 명령·큐 이름·페이로드·DB 쓰기 경계
+- 큐 워커 실행 명령 (큐 이름·페이로드·DB 쓰기 경계는 [docs/worker_api_spec.md](../docs/worker_api_spec.md)에서 정했다)
 - 필수 환경 변수와 마이그레이션 실행 시점
 
 Railway에서 같은 정적 화면을 Docker로 시험하려면 Config File Path를

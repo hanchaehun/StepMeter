@@ -29,6 +29,10 @@ npm --prefix apps/web run typecheck
 npm --prefix apps/web run build
 ```
 
+Windows PowerShell에서는 `py -3.12 -m venv .venv`, `.venv\Scripts\Activate.ps1`,
+`$env:PLAYWRIGHT_BROWSERS_PATH="$PWD\.venv\ms-playwright"`로 바꿔 실행한다.
+한국어 Windows는 기본 인코딩이 cp949이므로 Python에서 파일을 읽고 쓸 때 `encoding="utf-8"`을 명시한다.
+
 로컬 unittest는 `TEST_DATABASE_URL`이 없으면 DB 테스트 1개를 건너뛴다.
 DB까지 포함하는 검증은 아래 Docker 테스트를 사용한다. LLM 테스트는 가짜 client를 쓰므로 키가 필요 없다.
 `requirements-dev.in`은 직접 의존성, `requirements-dev.txt`는 검증한 전이 의존성까지 고정한 파일이다.

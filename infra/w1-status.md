@@ -13,7 +13,7 @@
 - Chromium 테스트 이미지와 비특권 nginx 정적 리포트 이미지
 - Compose: 개발 PostgreSQL/Redis/웹, 개발 DB 마이그레이션, 별도 테스트 DB/테스트 프로필
 - Vercel 정적 리포트 설정, Railway Docker 웹 대안 설정·실제 연결 절차
-- 벤치마크 6개 출처/라이선스/커밋/과업 기록, 개발 4·홀드아웃 2 분리
+- 벤치마크 6개 출처/라이선스/커밋/과업 기록, 개발 4·홀드아웃 2 분리 (홀드아웃 기록은 이후 git 제외 `benchmark/holdout/`으로 옮김, ADR 0003)
 - 두 개발 앱의 지정 페이지 클리닝 패치와 고정 커밋 체크아웃 도구
 - 브라우저/axe 증거 생성 도구, 실행 문서
 
@@ -65,9 +65,9 @@ MUI의 남은 incomplete는 배경/의사 요소 등에 따른 color-contrast �
 ## W1에서 남은 것
 
 1. 정적 리포트 외부 배포와 인증된 브라우저 확인은 완료. 팀원 접근 확인과 GitHub 자동 배포 연동은 남았다.
-2. API/큐 워커 진입점과 환경 변수 계약 확인. main에는 실행 서버/큐 루프가 아직 없다.
+2. API/큐 워커 진입점과 환경 변수 계약 확인. main에는 실행 서버/큐 루프가 아직 없다. 큐 이름·페이로드·DB 쓰기 경계는 `docs/worker_api_spec.md`(PR #19)에서 정했다.
 3. 앱별 담당자 확정·정상 기준선 교차 검토. 커머스 후보는 외부 데이터 로컬화와 구형 빌드 도구 교체가 필요하다.
-4. PR #20 리뷰어 승인 대기 (`REVIEW_REQUIRED`). 작성자의 커밋·푸시와 GitHub Actions 원격 통과 확인은 완료했다.
+4. PR #20은 2026-11-01 main에 머지됐다 (`4a5e2f1`). 작성자의 커밋·푸시와 GitHub Actions 원격 통과 확인은 완료했다.
 
 Vercel 계정 연결·계정 공간 접근 승인 후 별도 테스트 프로젝트에 배포했다.
 URL: https://stepmeter-staging-qgqm7euhh-jcwoo1204.vercel.app
@@ -95,7 +95,7 @@ Vercel은 첫 배포를 production으로 분류했으며, 테스트 전용 프�
 
 받는 사람: PM·리포트 UI·대시보드 UI·LLM/프롬프트·플랫폼 백엔드 담당
 
-내용: benchmark/apps.json의 개발 4/홀드아웃 2와 과업을 검토하고 앱별 담당자를 정해 주세요.
+내용: benchmark/apps.json의 개발 4개와 과업을 검토하고 앱별 담당자를 정해 주세요. 홀드아웃 2개는 apps.json에 없습니다.
 SB Admin 2와 Material Kit의 지정 페이지 패치·axe 결과를 준비했습니다. MUI의 대비 incomplete와
 동적 상태를 수동 확인하고 기준선 승인 여부를 정해 주세요. 홀드아웃 설정·정답은 제한된 장소에서 관리해야 합니다.
 

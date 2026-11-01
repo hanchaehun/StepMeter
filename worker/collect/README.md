@@ -7,8 +7,8 @@
 ## 사용법
 
 ```bash
-npm install && npm run build:collect   # src/collect.js + dom-accessibility-api → dist/collect.js (git 제외)
-pip install pydantic playwright && playwright install chromium
+npm ci && npm run build:collect   # src/collect.js + dom-accessibility-api → dist/collect.js (git 제외)
+pip install -r requirements-dev.txt && python -m playwright install chromium
 python -m unittest tests.test_collect
 ```
 

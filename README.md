@@ -16,6 +16,6 @@ AI 에이전트가 웹사이트를 한 단계씩 써보며 UX를 숫자로 측�
 
 | 위치 | 내용 |
 |---|---|
-| `worker/schemas.py` | ElementSnapshot, Step 등 워커 데이터 형식 (Pydantic 모델) |
+| `worker/schemas.py` | ActionRequest, ElementSnapshot 등 워커 데이터 형식 (Pydantic 모델). Step 형식은 아직 없다 |
 | `apps/api/openapi.yaml` | API 스키마 합의본. 프론트 타입은 openapi-typescript로 생성 |
 | `tests/fixtures/mock/` | 위 두 스키마에 맞춘 목 JSON. 10월 28일부터 각 파트가 병렬 개발에 쓴다 |

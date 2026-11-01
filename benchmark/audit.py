@@ -28,7 +28,7 @@ async def audit(app: str, origin: str, phase: str) -> None:
                 await page.add_script_tag(path=str(ROOT / "node_modules/axe-core/axe.min.js"))
                 result = await page.evaluate("async () => await axe.run()")
                 (output / (path + ".json")).write_text(
-                    json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+                    json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
                 )
                 await page.screenshot(path=str(output / (path + ".png")), full_page=True)
                 print(f"{app}/{path}: {len(result['violations'])} violation rules; "

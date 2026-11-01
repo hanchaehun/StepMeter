@@ -45,11 +45,11 @@ rule_ids = {violation["id"] for violation in violations}
 axe-core는 재현을 위해 `4.10.3`으로 고정한다.
 
 ```sh
-python -m pip install "pydantic>=2,<3" pytest playwright
+python -m pip install -r requirements-dev.txt
 python -m playwright install chromium
-npm install --no-save --package-lock=false --ignore-scripts axe-core@4.10.3
-python -m pytest tests/test_cursor_distance.py tests/test_a11y_axe.py -q
-python -m pytest -q
+npm ci   # 루트 package.json이 axe-core 4.10.3을 고정한다
+python -m unittest tests.test_cursor_distance tests.test_a11y_axe
+python -m unittest discover -s tests
 ```
 
 별도로 준비한 파일은 `AXE_CORE_PATH` 환경 변수에 절대 경로를 지정한다.

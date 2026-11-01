@@ -8,10 +8,14 @@
 - 기획서(docs/*.docx)는 출발점일 뿐이다. 실제로 합의된 내용은 main 브랜치에 있다.
   우선순위: main의 코드·스키마 > docs/*.md 명세 > 기획서.
 - 작업 시작 전에 최신 main을 받고(git pull origin main), 아래를 먼저 읽는다.
-  - worker/schemas.py (행동·스냅샷·단계 데이터 형식)
+  - worker/schemas.py (행동·스냅샷 데이터 형식)
   - apps/api/openapi.yaml (API 형식)
   - docs/*_spec.md (동결된 인터페이스 명세)
+  - docs/adr/ (이미 정한 결정. 기획서와 다르면 ADR을 따른다)
   - 작업할 폴더의 README.md
+- 의존성은 infra/README.md "W1 실행 환경"대로 설치한다. Python 3.12 가상환경에서
+  `pip install -r requirements-dev.txt`, 루트에서 `npm ci`와 `npm run build:collect`,
+  웹은 `npm --prefix apps/web ci`, 브라우저 테스트는 `python -m playwright install chromium`.
 - 기획서와 main이 다르면 main을 따르고, 다르다는 사실을 사용자에게 알린다.
 
 ## 하지 말 것
