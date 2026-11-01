@@ -78,7 +78,7 @@ python infra/scripts/check_web.py http://127.0.0.1:8080
 기존 코드를 일괄 재작성하지 않도록 ruff는 실행 오류 중심으로 시작한다.
 mypy는 현재 통과하는 이동거리 모듈에 적용하며, 스키마는 기존 `ACTION_ADAPTER` 타입 표기 미비로
 검사 대상에 직접 넣지 않는다. 공용 스키마는 변경하지 않았다. 전체 Python strict 검사나 프론트 ESLint 완료를 뜻하지 않는다.
-GitHub 원격 실행은 작성자가 변경을 커밋·푸시한 뒤 확인한다.
+커밋 `0986e91`의 GitHub 원격 실행에서 세 job 모두 통과했다 ([실행 기록](https://github.com/hanchaehun/StepMeter/actions/runs/41288400692)).
 매주 개발 앱을 평가하는 작업은 `eval.py`가 생기는 후속 단계에서 연결한다.
 
 스테이징 절차는 [staging.md](staging.md), 이번 검증 결과는 [w1-status.md](w1-status.md)를 참고한다.

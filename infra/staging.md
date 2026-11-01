@@ -1,7 +1,8 @@
 # W1 스테이징 연결
 
 스테이징은 팀원이 인터넷에서 열어보는 테스트 환경이다. 로컬 Docker 실행과 별개다.
-이번 산출물은 배포 설정과 로컬 검증까지이며, 외부 URL 발급은 아직 하지 않았다.
+2026-11-01 정적 목 리포트를 Vercel의 별도 `stepmeter-staging` 프로젝트에 배포했다.
+주소: https://stepmeter-staging-qgqm7euhh-jcwoo1204.vercel.app
 API/큐 워커 진입점이 현재 main에 없어 전체 측정 서비스는 배포하지 않는다.
 
 ## Vercel: 정적 리포트
@@ -49,15 +50,30 @@ Docker 웹은 Railway의 `PORT`를 받아 수신하며 `/healthz`로 준비 상�
 
 ## 완료 기록
 
-외부 배포 후 아래 빈 항목을 채워야 스테이징 완료다.
+배포 및 외부 브라우저 확인 결과다. API/워커를 포함한 전체 서비스 배포와 구분한다.
 
 | 항목 | 현재 |
 |---|---|
-| 프론트 URL / 배포 ID | 미발급 |
-| 배포 소스 커밋 | 미커밋 |
+| 프론트 URL / 배포 ID | 위 URL / dpl_G7ZTk9qRLxSJyuMmtL6z7mW4xAJf, READY |
+| Vercel 프로젝트 / 계정 공간 | stepmeter-staging / jcwoo1204 |
+| 배포 소스 커밋 | 0986e9106bb6e0c601427044f7dd0bb194bb2de2 (PR #20, CI 통과) |
+| 배포 방식 | 고정 커밋의 화면 소스 62개 파일 직접 업로드, 원격 빌드 |
+| Vercel target | production: 새로 만든 테스트 전용 프로젝트의 첫 배포. 기존 프로젝트 변경 없음 |
 | Railway staging / DB / Redis | 미연결 |
 | API/워커 진입점 | 담당자 확인 필요 |
-| 외부 브라우저 확인·롤백 확인 | 배포 후 수행 |
+| 외부 브라우저 확인 | 데스크톱·모바일 200, 요약/상세 이동·상세 새로고침 성공, pageerror 없음 |
+| 모바일 화면 제한 | 390px 뷰포트에서 문서 너비 505px; 기존 UI 가로 넘침은 UI 담당자 후속 확인 |
+| 롤백 확인 | 첫 배포로 이전 정상 배포 없음. 롤백 실행은 하지 않음 |
+
+GitHub 저장소 연결은 Vercel GitHub integration 권한 부족으로 거절되어,
+커밋 객체에서 읽은 프론트 소스와 목 JSON만 직접 업로드했다. `.env`·키·벤치마크 원본/증거는 업로드하지 않았다.
+따라서 이후 GitHub push가 자동 배포되지는 않는다. 자동 배포는 저장소 소유자의 Vercel GitHub 연동 후 연결한다.
+로컬 문서의 미커밋 변경은 배포 소스에 포함하지 않았다.
+
+프로젝트의 기존 배포 보호를 유지했다. 일반 주소는 Vercel 로그인/권한 확인이 필요할 수 있다.
+검증은 인증된 연결에서 만든 임시 공유 링크로 수행했고, 그 링크의 접근 값은 문서에 저장하지 않았다.
+팀원에게 실제로 공유할 때는 접근 권한 또는 만료되는 공유 링크를 확인한다.
+스크린샷과 검증 JSON은 `screenshots/vercel-staging/`에 있으며 git 제외다.
 
 공식 설정 참고: [Vercel project configuration](https://vercel.com/docs/project-configuration),
 [Railway Dockerfiles](https://docs.railway.com/builds/dockerfiles),
