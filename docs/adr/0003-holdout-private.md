@@ -12,6 +12,7 @@
 
 홀드아웃 앱의 이름·설정·정답은 public 저장소 어디에도 적지 않는다.
 `benchmark/holdout/`(git 제외)과 접근을 제한한 장소에 두고 회귀 비교·인프라 담당만 관리한다.
+홀드아웃 앱의 결함 주입·정답·최종 평가도 회귀 비교·인프라 담당 혼자 맡는다(2026-11-02 추가, [ADR 0007](0007-w2-start-decisions.md)).
 `benchmark/checkout.py`는 `benchmark/holdout/apps.json`이 있으면 그 안의 홀드아웃 항목을 읽고, `--include-holdout`을 줘야 받는다.
 
 ## 대안

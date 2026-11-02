@@ -241,7 +241,7 @@ export interface paths {
         put?: never;
         /**
          * 사람 데이터 세션 업로드 (9.1)
-         * @description 수집 스크립트 전용, 화면 없음. IRB 확인 시에만 외부 참가자 데이터를 받는다
+         * @description 수집 스크립트 전용, 화면 없음. 동의서를 받은 참가자 데이터만 받는다 (ADR 0001)
          */
         post: operations["uploadHumanSession"];
         delete?: never;
@@ -363,6 +363,12 @@ export interface components {
          * @enum {string}
          */
         RunStatus: "queued" | "running" | "completed" | "failed" | "canceled";
+        /**
+         * @description 쓸 수 있는 LLM 모델 (ADR 0002). claude-haiku-5-5 = 개발·반복 실행(기본), claude-sonnet-5-5 = 결과를 내는 측정
+         *
+         * @enum {string}
+         */
+        LlmModel: "claude-haiku-5-5" | "claude-sonnet-5-5";
         RunCreate: {
             /** @default desktop */
             viewport: components["schemas"]["ViewportPreset"];
@@ -373,10 +379,10 @@ export interface components {
              */
             repeat_n: 3 | 5;
             /**
-             * @description 생략하면 서버 기본 모델 (3장)
-             * @default null
+             * @description 생략하면 claude-haiku-5-5 (ADR 0002)
+             * @default claude-haiku-5-5
              */
-            model: string | null;
+            model: components["schemas"]["LlmModel"];
             /** @default auto */
             mode: components["schemas"]["RunMode"];
             /**
@@ -393,7 +399,7 @@ export interface components {
             /** @description 첫 측정이면 null */
             base_run_id: number | null;
             repeat_n: number;
-            model: string;
+            model: components["schemas"]["LlmModel"];
             /** @description 워커가 시작하기 전이거나 replay_only면 null */
             prompt_version: string | null;
             status: components["schemas"]["RunStatus"];

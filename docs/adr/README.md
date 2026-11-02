@@ -13,3 +13,4 @@
 | [0004](0004-test-account-after-m3.md) | 테스트 계정 입력은 M3 이후로 미룬다 |
 | [0005](0005-access-code-projects.md) | 초대 코드별로 프로젝트를 분리한다 |
 | [0006](0006-github-issues.md) | 팀원 간 질문·전달은 GitHub 이슈로 한다 |
+| [0007](0007-w2-start-decisions.md) | W2 시작 전 정리한 결정 (요소 30개, 모델 2개, 홀드아웃 담당, 동결 날짜 등) |

@@ -6,7 +6,7 @@
 
 ## 실행 (리포트 UI · W1 정적 리포트 화면)
 
-레이아웃 명세는 [`docs/wireframes/f06-report.md`](../../docs/wireframes/f06-report.md). 이 슬라이스는 API 없이 `tests/fixtures/mock/api/*.json`(10/27 동결)을 읽어 그린다.
+레이아웃 명세는 [`docs/wireframes/f06-report.md`](../../docs/wireframes/f06-report.md). 이 슬라이스는 API 없이 `tests/fixtures/mock/api/*.json`을 읽어 그린다. 목 JSON은 10/30 동결(계획 10/27).
 
 ```
 cd apps/web

@@ -20,5 +20,5 @@ items = await observe(page)         # [{el_id, role, name, landmark, bbox, occlu
 snap = await snapshot(page, el_id)  # ElementSnapshot (click·type 직전)
 ```
 
-- `observe()`는 뷰포트 안의 보이는 요소를 **가려진 요소까지** 돌려준다. LLM에 보낼 목록(가림 제외, 60개 제한)과 반환 형식은 에이전트 코어와 정한다.
+- `observe()`는 뷰포트 안의 보이는 요소를 **가려진 요소까지** 돌려준다. LLM에 보낼 목록(가림 제외, 최대 30개, 개발계획서 4.2)은 에이전트 코어가 이 결과를 잘라 만들고, 반환 형식은 에이전트 코어와 정한다.
 - 아직 안 하는 것: 다른 출처 iframe, 닫힌 shadow root (W2 SPA 스트레스 테스트 뒤 보완).

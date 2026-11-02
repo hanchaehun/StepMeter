@@ -29,7 +29,7 @@ async def record_first_view(page: Page) -> None:
 async def observe(page: Page) -> list[dict[str, Any]]:
     """뷰포트 안의 보이는 상호작용 요소 (가려진 요소 포함, `occluded`로 표시).
 
-    반환 형식은 임시다. LLM용 목록(가림 제외, 60개 제한)은 에이전트 코어와 정한다.
+    반환 형식은 임시다. LLM용 목록(가림 제외, 최대 30개, 개발계획서 4.2)은 에이전트 코어가 이 결과를 잘라 만든다.
     """
     await _inject(page)
     return await page.evaluate("() => __stepmeter.observe()")

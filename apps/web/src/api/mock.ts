@@ -1,4 +1,4 @@
-// 동결된 목 JSON(tests/fixtures/mock/api, 10/27)을 읽는다. API 연결(W2) 전까지의 데이터 출처.
+// 목 JSON(tests/fixtures/mock/api)을 읽는다. 10/30 동결(계획 10/27). API 연결(W2) 전까지의 데이터 출처.
 import reportJson from '@mock/report.json';
 import stepsJson from '@mock/steps.json';
 import taskJson from '@mock/task.json';
