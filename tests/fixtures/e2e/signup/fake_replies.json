@@ -1,0 +1,21 @@
+[
+  {
+    "action": "type",
+    "target": 1,
+    "text": "테스트 참가자",
+    "thought": "신청하려면 이름 입력칸을 먼저 채워야 한다",
+    "expectation": "입력칸에 이름이 들어간다"
+  },
+  {
+    "action": "click",
+    "target": 2,
+    "thought": "이름을 넣었으니 신청 버튼을 누른다",
+    "expectation": "신청 완료 화면으로 넘어간다"
+  },
+  {
+    "action": "done",
+    "reason": "goal_reached",
+    "thought": "참가 신청이 완료되었다는 문구가 보인다",
+    "expectation": "더 할 일이 없다"
+  }
+]
