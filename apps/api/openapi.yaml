@@ -494,7 +494,7 @@ components:
         model: {$ref: '#/components/schemas/LlmModel'}
         prompt_version: {type: [string, 'null'], description: 워커가 시작하기 전이거나 replay_only면 null}
         status: {$ref: '#/components/schemas/RunStatus'}
-        progress: {type: integer, minimum: 0, maximum: 100, description: '퍼센트. 계산식 미정'}
+        progress: {type: integer, minimum: 0, maximum: 100, description: '퍼센트. 워커가 step을 저장할 때마다 갱신한다. 계산식은 docs/worker_api_spec.md 2번 묶음'}
         cost_usd: {type: number, minimum: 0, description: 이 run의 llm_call 비용 합계}
         created_at:
           description: 측정 요청을 받은 시각. 일일 상한 계산과 이력 정렬 기준. DB run 테이블에 칸 추가 (11장, F17)
@@ -520,7 +520,7 @@ components:
             latest_step:
               description: |
                 가장 최근에 저장된 step. 아직 없으면 null.
-                에이전트 코어 협의: 단계마다 바로 저장 (13.1 DB 쓰기 경계)
+                워커가 행동마다 바로 저장한다 (docs/worker_api_spec.md 3번 묶음)
               anyOf:
                 - type: object
                   required: [attempt_index, idx, screenshot_url, thought]
