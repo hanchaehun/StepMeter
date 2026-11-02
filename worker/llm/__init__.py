@@ -3,6 +3,7 @@
 from worker.llm.base import LLMAdapter, LLMRequest, LLMResult
 from worker.llm.call_log import JsonlCallLog, ask_and_log
 from worker.llm.fake import FakeAdapter
+from worker.llm.select import LLMSelectError, make_adapter
 
 __all__ = [
     "FakeAdapter",
@@ -10,5 +11,7 @@ __all__ = [
     "LLMAdapter",
     "LLMRequest",
     "LLMResult",
+    "LLMSelectError",
     "ask_and_log",
+    "make_adapter",
 ]
