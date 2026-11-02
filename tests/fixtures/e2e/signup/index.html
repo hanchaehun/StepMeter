@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>스터디 모임 참가 신청</title>
+    <style>
+      body { margin: 0; font-family: sans-serif; background: #ffffff; color: #111111; }
+      main { width: 480px; margin: 80px auto; }
+      label { display: block; margin-bottom: 8px; font-size: 16px; }
+      input { display: block; width: 300px; height: 40px; margin-bottom: 24px; font-size: 16px; }
+      button { width: 120px; height: 44px; font-size: 16px; color: #ffffff; background: #1a56db; border: 0; }
+    </style>
+  </head>
+  <body>
+    <!-- E2E M2 고정 페이지. 상호작용 요소는 문서 순서로 입력칸(1), 신청 버튼(2) 두 개뿐이다.
+         요소를 더하거나 순서를 바꾸면 fake_replies.json의 target 번호도 같이 고친다. -->
+    <main>
+      <h1>스터디 모임 참가 신청</h1>
+      <form action="done.html" method="get">
+        <label for="nickname">이름</label>
+        <input id="nickname" name="nickname" type="text" required>
+        <button type="submit">신청</button>
+      </form>
+    </main>
+  </body>
+</html>
