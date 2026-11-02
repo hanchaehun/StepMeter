@@ -60,7 +60,7 @@
 | model | 사용한 LLM 모델 이름 | 모델별 비용·성능 비교를 구현하기 위해, 측정 요청 본문에서 모델 이름을 전달받아 run에 저장하고 워커의 LLM 어댑터에 넘겨야 한다. (§3, §11) |
 | prompt_version | 사용한 프롬프트 버전 | 결과 재현과 프롬프트 개선 효과 비교를 구현하기 위해, 워커가 측정에 쓴 prompts/ 파일 버전을 전달받아 run에 저장해야 한다. (§4.4, §9.3) |
 | status | queued / running / completed / failed / canceled | 진행 상황 화면을 구현하기 위해, API가 run을 만들 때 queued로 저장하고, 워커가 작업을 꺼낼 때 running, 끝날 때 completed로 바꿔야 한다. 에이전트 실패나 사이트 차단은 completed + attempt.end_reason으로 표현하고, failed는 서비스 장애에만 쓴다. 취소 요청(POST /runs/{id}/cancel)을 받으면 canceled로 바꾼다. (§2.2) |
-| progress | 진행률 0~100 정수 | 대시보드의 진행률 표시(2초 폴링)를 구현하기 위해, 워커가 단계를 끝낼 때마다 진행 정도를 계산해 run에 갱신하고, GET /runs/{id}가 이 값을 돌려줘야 한다. 계산식(예: 끝난 단계 수 ÷ (repeat_n × 30))은 아직 미정. (§2.2) |
+| progress | 진행률 0~100 정수 | 대시보드의 진행률 표시(2초 폴링)를 구현하기 위해, 워커가 step 행을 추가한 트랜잭션 안에서 update_progress가 step 행을 모아 다시 계산해 run에 갱신하고, GET /runs/{id}가 이 값을 돌려줘야 한다. 계산식은 docs/worker_api_spec.md 2번 묶음. (§2.2) |
 | cost_usd | 이 측정에 든 LLM 비용 합계(달러) | 예산 상한·알림을 구현하기 위해, 이 run에 속한 llm_call의 cost_usd를 모두 더해 run에 저장해야 한다. 그래야 측정 1건 비용을 바로 보여주고 하루·월 합계를 빠르게 셀 수 있다. [추정: 합산 시점(측정 끝날 때 vs 호출마다)은 미정] (§16, §13) |
 | started_at | 워커가 시작한 시각 | 측정에 걸린 시간을 보여주기 위해, 워커가 큐에서 작업을 꺼낸 순간의 시각을 run에 저장해야 한다. 대기 중(queued)이면 비어 있다. (§2.2) |
 | finished_at | 끝난 시각 (완료·실패·취소 모두) | 측정 소요 시간 계산과 이력 화면을 구현하기 위해, run 상태가 completed·failed·canceled로 바뀌는 순간의 시각을 저장해야 한다. (§2.2) |
@@ -70,7 +70,7 @@
 **처리할 일**
 - [ ] `status` 경계 규칙 정하기: 워커가 잡아서 기록할 수 있는 오류는 `attempt.end_reason = error`, 워커 자체가 죽거나 저장 실패면 `run.status = failed` (W2 큐·워커 연결 때)
 - [ ] queued에 너무 오래 머문 run을 failed로 바꾸는 시간 초과 기준 정하기
-- [ ] `progress` 계산식 정하기 (예: 끝난 단계 수 ÷ (repeat_n × 30))
+- [x] `progress` 계산식 정하기 → docs/worker_api_spec.md 2번 묶음 (2026-11-02)
 - [ ] `cost_usd` 합산 시점 정하기 (호출마다 vs 측정 끝날 때)
 - [ ] `representative_attempt_id`: 성공한 실행이 없으면 null로 두고, 그 run을 기준으로 한 auto 측정은 에이전트로 돌게 처리
 - [ ] `mode` 기본값 auto는 openapi.yaml RunCreate에서 확정됨 — 확인만
