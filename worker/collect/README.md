@@ -16,7 +16,7 @@ python -m unittest tests.test_collect
 from worker.collect.collector import record_first_view, observe, snapshot
 
 await record_first_view(page)       # 페이지 로드 직후 1회 (이동할 때마다 다시)
-items = await observe(page)         # [{el_id, role, name, landmark, bbox, occluded}]
+items = await observe(page)         # [{el_id, tag, role, name, landmark, label_text, bbox, occluded}]
 snap = await snapshot(page, el_id)  # ElementSnapshot (click·type 직전)
 ```
 

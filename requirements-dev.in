@@ -7,3 +7,4 @@ jsonschema>=4.23,<5
 ruff>=0.14,<0.15
 mypy>=1.18,<1.19
 anthropic>=2.3,<3
+rapidfuzz>=3.14,<4
