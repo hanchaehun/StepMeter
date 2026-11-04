@@ -184,11 +184,14 @@ function observe() {
   }
   return observed.map((entry, i) => {
     const b = bboxOf(entry);
+    const name = nameOf(entry.el);
     return {
       el_id: i + 1,
+      tag: entry.el.tagName.toLowerCase(),
       role: roleOf(entry.el),
-      name: nameOf(entry.el),
+      name,
       landmark: landmarkOf(entry.el),
+      label_text: name ? null : labelText(entry.el), // 이름 없는 요소 매칭 지문 (7.2)
       bbox: b,
       occluded: isOccluded(entry.el, b),
     };

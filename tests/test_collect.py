@@ -71,6 +71,12 @@ class CollectTests(unittest.IsolatedAsyncioTestCase):
         s = await self.snap("")
         self.assertEqual((s.name, s.label_text), ("", "수량"))
 
+    async def test_observe_has_fingerprint_fields(self):
+        # 요소 매칭(worker/matching)은 observe() 결과를 현재 화면으로 쓴다
+        by_name = {i["name"]: i for i in self.items}
+        self.assertEqual((by_name[""]["tag"], by_name[""]["label_text"]), ("button", "수량"))
+        self.assertEqual((by_name["구매"]["tag"], by_name["구매"]["label_text"]), ("button", None))
+
     async def test_inline_link_in_sentence(self):
         self.assertTrue((await self.snap("여기")).inline_in_text)
         self.assertFalse((await self.snap("도움말")).inline_in_text)
