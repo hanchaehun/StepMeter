@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from apps.api.db.models import AccessCode, Attempt, Base, Issue, Metric, Project, Run, Step, Task
 from worker.metrics.persistence import save_attempt_metrics, save_run_medians
+from worker.metrics.postprocess import finalize_run_metrics
 from worker.rules.candidate import Candidate
 from worker.rules.persistence import save_candidates
 
@@ -24,6 +25,40 @@ def jsonb_for_sqlite(_type, _compiler, **_kw):
 
 
 class PersistenceTests(unittest.TestCase):
+    def test_finalize_reads_actions_and_saves_run_median(self):
+        # Agent attempts have 1, 0, 2 actions; failed attempt's work also counts.
+        # Replay is excluded. done is excluded. Median(1,0,2) = 1.
+        for idx, action in enumerate(("click", "type", "done")):
+            self.session.add(Step(attempt_id=self.attempts[2].id, idx=idx,
+                                  action={"action": action}, thought="test",
+                                  url="https://local.invalid", state_hash="h",
+                                  changed=False, effect_type="no_change"))
+        row = finalize_run_metrics(self.session, self.run.id)
+        self.assertEqual((row.key, row.value, row.unit, row.attempt_id),
+                         ("step_count", 1, "count", None))
+        self.assertEqual(finalize_run_metrics(self.session, self.run.id).id, row.id)
+        self.session.rollback()
+        self.assertEqual(self.session.scalar(select(func.count()).select_from(Metric)), self.initial_metrics)
+
+    def test_finalize_all_failed_and_cancellation(self):
+        for attempt in self.attempts:
+            attempt.success = False
+            attempt.end_reason = "gave_up"
+        self.assertEqual(finalize_run_metrics(self.session, self.run.id).value, 0)
+        self.run.status = "canceled"
+        with self.assertRaises(ValueError):
+            finalize_run_metrics(self.session, self.run.id)
+
+    def test_finalize_rejects_unfinished_and_invalid_actions_before_writes(self):
+        self.attempts[0].end_reason = None
+        with self.assertRaises(ValueError):
+            finalize_run_metrics(self.session, self.run.id)
+        self.attempts[0].end_reason = "success"
+        self.step.action = {"action": "invalid"}
+        with self.assertRaises(ValueError):
+            finalize_run_metrics(self.session, self.run.id)
+        self.assertEqual(self.session.scalar(select(func.count()).select_from(Metric)), self.initial_metrics)
+
     def setUp(self):
         self.engine = create_engine(os.environ.get("TEST_DATABASE_URL", "sqlite://"))
         self.addCleanup(self.engine.dispose)

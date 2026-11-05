@@ -36,6 +36,31 @@ DB 함수는 commit하지 않는다. 후처리 후 caller가 취소 상태를 �
 
 ## 검증
 
+### M2 run 후처리
+
+`finalize_run_metrics(session, run_id, kind="agent")`를 모든 attempt 종료 후,
+run을 completed로 바꾸기 전에 호출한다. 기존 DB Step.action을 idx 순서로 읽고
+done 이전 행동 수를 계산해 attempt별 및 run 단위(`attempt_id=NULL`)
+`step_count` 중앙값을 저장한다. 성공·실패 모두 실제 수행한 작업량을 집계하며,
+성공 경로만을 대상으로 하는 `save_run_medians()`와 모집단이 다르다.
+M2에서는 이 함수를 step_count 최종 작성자로 사용한다.
+kind를 지정해 agent/replay를 섞지 않는다. 종료된 실행에 행동이 없으면 실제 0이다.
+attempt 자체가 없거나 진행 중이면 오류이며, 취소·종료된 run에는 쓰지 않는다.
+동일 호출은 기존 행을 갱신한다. commit 및 run 상태 변경은 코어가 담당한다.
+
+```python
+from worker.metrics.postprocess import finalize_run_metrics
+
+# 코어가 소유한 transaction 안에서, 모든 attempt/step 저장 후 호출
+metric = finalize_run_metrics(session, run_id)
+# 이후 코어에서 진행률·completed 처리 후 transaction commit
+```
+
+코어 담당 전달 제목: `M2 조건 4: finalize_run_metrics 호출 연결`
+내용: 종료 후 위 함수를 호출하고 동일 트랜잭션에서 완료 처리해 주세요.
+API 담당은 run_id에 해당하는 attempt_id=NULL metric을 report.metrics에 반환해야 합니다.
+실행부/API 연결 전에는 DB 수준 검증이며 HTTP E2E 통과를 의미하지 않습니다.
+
 ```sh
 python -m unittest tests.test_cursor_distance tests.test_metrics_w2 tests.test_measurement_persistence
 ```
