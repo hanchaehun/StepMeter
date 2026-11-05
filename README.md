@@ -3,7 +3,8 @@
 AI 에이전트가 웹사이트를 한 단계씩 써보며 UX를 숫자로 측정하는 도구.
 
 - 기획: [docs/StepMeter_서비스기획서.docx](docs/StepMeter_서비스기획서.docx)
-- 설계·일정: [docs/StepMeter_개발계획서.docx](docs/StepMeter_개발계획서.docx)
+- 설계: [docs/StepMeter_개발계획서.docx](docs/StepMeter_개발계획서.docx)
+- 일정: [ADR 0008](docs/adr/0008-schedule-to-1204.md) (기능 동결 11/27, 최종 발표 12/4). 기획서의 일정과 다르면 ADR을 따른다
 
 역할 배정과 협업 규칙은 팀 노션에서 관리한다. 폴더 구성은 개발계획서 12장을 따르고, 각 폴더의 `README.md`에 담당 역할과 참고할 문서 절이 적혀 있다.
 

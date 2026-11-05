@@ -110,7 +110,7 @@ API가 `base_url`을 검사해 사설 주소(`127.0.0.1`, `host.docker.internal`
 
 `test_m2_flow.py`의 `PAGES`에 `E2EPage`를 더한다. 자리는 주석으로 남겨 두었다.
 
-- `benchmark/apps.json`의 `split: development` 앱만 쓴다. 홀드아웃 앱은 W7 최종 평가 전에 돌리지 않는다([ADR 0003](../../docs/adr/0003-holdout-private.md)).
+- `benchmark/apps.json`의 `split: development` 앱만 쓴다. 홀드아웃 앱은 11/30–12/1 최종 평가 전에 돌리지 않는다([ADR 0003](../../docs/adr/0003-holdout-private.md), [ADR 0008](../../docs/adr/0008-schedule-to-1204.md)).
 - 앱 주소는 `site_env`에 적은 환경 변수로 받는다. 변수가 없으면 그 페이지만 건너뛴다.
 - 페이지마다 가짜 LLM 답 목록이 필요하다. 목록과 페이지 버전이 어긋나지 않게 `FixtureReplyTests` 같은 확인을 같이 둔다.
 

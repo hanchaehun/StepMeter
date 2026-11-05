@@ -1,4 +1,4 @@
-# 0004. 테스트 계정 입력은 M3 이후로 미룬다
+# 0004. 테스트 계정은 이번 일정(12/4까지)에서는 구현하지 않는다
 
 - **날짜:** 2026-10-30 (OpenAPI 동결, PR #11)
 - **근거 기록:** [apps/api/openapi.yaml](../../apps/api/openapi.yaml) `TaskCreate`, [apps/api/db/db-columns.md](../../apps/api/db/db-columns.md) `credentials_ref`, [docs/wireframes/f01-measure-create.md](../wireframes/f01-measure-create.md)
@@ -10,8 +10,9 @@
 
 ## 결정
 
-M3(11월 22일)까지 테스트 계정을 받지 않는다. `TaskCreate`와 `task` 테이블에 `credentials_ref`가 없고, F01 입력칸은 비활성이며, 로그인이 필요한 화면은 측정하지 않는다.
-보관 위치와 기간은 M3 이후에 정한다.
+테스트 계정은 이번 일정(12/4까지)에서는 구현하지 않는다(2026-11-05 변경, [ADR 0008](0008-schedule-to-1204.md)). 처음 결정은 M3(11월 22일) 이후로 미루는 것이었다.
+`TaskCreate`와 `task` 테이블에 `credentials_ref`가 없고, F01 입력칸은 비활성이며, 로그인이 필요한 화면은 측정하지 않는다.
+보관 위치와 기간은 구현할 때 정한다.
 
 ## 대안
 

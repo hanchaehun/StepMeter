@@ -78,7 +78,7 @@ class Task(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"), index=True)
     description: Mapped[str] = mapped_column(Text)
     success_condition: Mapped[dict | None] = mapped_column(JSONB)
-    # credentials_ref: 암호화 저장소가 정해지면 추가 (M3 이후, db-columns.md)
+    # credentials_ref: 이번 일정(12/4까지)에서는 구현하지 않음. 암호화 저장소가 정해지면 추가 (ADR 0004, db-columns.md)
 
 
 class Run(Base):
