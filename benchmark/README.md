@@ -6,3 +6,5 @@
 - **참고:** 개발계획서 8장
 
 W1 선정·고정 커밋·재현 방법과 클리닝 범위: [selection.md](selection.md), [apps.json](apps.json).
+
+W2 도구·전환 과업·검증과 남은 작업: [w2.md](w2.md).

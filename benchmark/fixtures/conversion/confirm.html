@@ -1,0 +1,4 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>구독 확인</title><style>body{font:18px system-ui;color:#172033;background:white;margin:12px}button{font:inherit;min-height:48px;padding:12px;background:#1746a2;color:white;border:0}</style><main><button id="confirm" disabled>구독 내용 확인하기</button><p id="confirmation" role="status"></p></main><script>
+addEventListener('message',e=>{if(e.origin===location.origin&&e.source===parent&&e.data==='pro')document.getElementById('confirm').disabled=false});
+document.getElementById('confirm').onclick=()=>document.getElementById('confirmation').textContent='Pro 월 9,900원 · 데모 구독 확인 완료';
+</script></html>

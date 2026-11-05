@@ -1,0 +1,44 @@
+{
+  "split": "development",
+  "review_status": "pending",
+  "evidence": "benchmark/evidence/conversion/verification.json",
+  "cases": {
+    "baseline": [],
+    "below-fold": [
+      {
+        "rule": "R06",
+        "target": "#signup"
+      }
+    ],
+    "contrast": [
+      {
+        "rule": "R02",
+        "target": "#signup"
+      }
+    ],
+    "inert": [
+      {
+        "rule": "R03",
+        "target": "#signup"
+      }
+    ],
+    "overlay": [
+      {
+        "rule": "R04",
+        "target": "#signup"
+      }
+    ],
+    "small": [
+      {
+        "rule": "R01",
+        "target": "#signup"
+      }
+    ],
+    "unnamed": [
+      {
+        "rule": "R10",
+        "target": "#signup"
+      }
+    ]
+  }
+}

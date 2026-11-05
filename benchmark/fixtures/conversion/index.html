@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch — 가입과 구독 데모</title>
+<style>
+*{box-sizing:border-box}body{margin:0;color:#172033;background:#f4f6fa;font:18px/1.5 system-ui}header{position:sticky;top:0;background:#172033;color:white;padding:16px 32px;z-index:2}main{max-width:1000px;margin:24px auto;padding:0 24px}section{background:white;padding:24px;margin:20px 0;border-radius:12px}button,input,select{font:inherit;padding:12px;min-height:48px}button{background:#1746a2;color:white;border:0;border-radius:6px;cursor:pointer}label{display:block;margin:12px 0}input{display:block;width:100%;border:1px solid #48546a}iframe{width:100%;height:150px;border:0}#cookie{position:fixed;inset:0;background:#0008;z-index:10;display:grid;place-items:center}#cookie>div{background:white;padding:32px;max-width:480px}#cookie[hidden]{display:none}#signup{width:100%}#result{font-weight:bold}
+header{padding:10px 24px}main{margin:12px auto}section{padding:12px 20px;margin:10px 0}h1{margin:8px 0}h2{margin:4px 0}label{margin:4px 0}#result{margin:4px 0}
+</style>
+<header>Launch</header><main><h1>서비스 시작하기</h1><p>로컬 데모입니다. 계정 생성·결제·외부 전송은 없습니다.</p>
+<section><h2>무료 회원가입</h2><form id="registration"><label>이메일<input id="email" type="email" required autocomplete="off"></label><label>비밀번호<input id="password" type="password" required minlength="8" autocomplete="off"></label><button id="signup" type="submit">무료로 가입하기</button></form><p id="result" role="status"></p></section>
+<section><h2>구독 플랜 선택</h2><div id="plans"></div><iframe title="구독 확인" src="confirm.html"></iframe></section>
+</main><div id="cookie" role="dialog" aria-modal="true" aria-labelledby="cookie-title"><div><h2 id="cookie-title">쿠키 설정</h2><p>필수 쿠키만 사용하거나 모두 허용할 수 있습니다.</p><button id="essential">필수만 사용</button> <button id="accept">모두 허용</button></div></div>
+<script>
+const cookie=document.querySelector('#cookie');
+for(const id of ['essential','accept'])document.getElementById(id).onclick=()=>{cookie.hidden=true;document.getElementById('email').focus()};
+document.getElementById('essential').focus();
+document.getElementById('registration').onsubmit=e=>{e.preventDefault();document.getElementById('result').textContent='데모 가입 완료'};
+const root=document.getElementById('plans').attachShadow({mode:'open'});
+root.innerHTML='<style>button{font:18px system-ui;padding:12px;min-height:48px;background:#1746a2;color:white;border:0;border-radius:6px}</style><button id="pro">Pro 월 9,900원 선택</button><p role="status" id="chosen"></p>';
+root.getElementById('pro').onclick=()=>{root.getElementById('chosen').textContent='Pro 선택됨';document.querySelector('iframe').contentWindow.postMessage('pro',location.origin)};
+</script></html>

@@ -1,0 +1,16 @@
+{
+  "id": "small",
+  "app": "conversion",
+  "rule": "R01",
+  "selector": "#signup",
+  "operation": "tiny_toolbar",
+  "style": {
+    "padding": "0",
+    "width": "16px",
+    "height": "16px",
+    "minHeight": "0",
+    "fontSize": "8px",
+    "overflow": "hidden",
+    "verticalAlign": "top"
+  }
+}

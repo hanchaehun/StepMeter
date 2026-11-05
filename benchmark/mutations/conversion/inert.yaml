@@ -1,0 +1,7 @@
+{
+  "id": "inert",
+  "app": "conversion",
+  "rule": "R03",
+  "selector": "#signup",
+  "operation": "no_handler"
+}
