@@ -1,0 +1,10 @@
+{
+  "id": "below-fold",
+  "app": "conversion",
+  "rule": "R06",
+  "selector": "#signup",
+  "operation": "style",
+  "style": {
+    "marginTop": "100vh"
+  }
+}

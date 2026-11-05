@@ -1,0 +1,7 @@
+{
+  "id": "unnamed",
+  "app": "conversion",
+  "rule": "R10",
+  "selector": "#signup",
+  "operation": "remove_name"
+}

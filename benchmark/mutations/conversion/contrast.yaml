@@ -1,0 +1,11 @@
+{
+  "id": "contrast",
+  "app": "conversion",
+  "rule": "R02",
+  "selector": "#signup",
+  "operation": "style",
+  "style": {
+    "color": "#eeeeee",
+    "backgroundColor": "#ffffff"
+  }
+}

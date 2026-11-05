@@ -1,0 +1,7 @@
+{
+  "id": "overlay",
+  "app": "conversion",
+  "rule": "R04",
+  "selector": "#signup",
+  "operation": "overlay"
+}
