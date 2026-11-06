@@ -6,8 +6,8 @@
 
 ## W1 POC: 로컬 axe-core 직접 주입
 
-작업 기준 main의 a11y 폴더에는 실행 코드가 없고 저장소에는 패키지 관리 파일도 없다. 기존 워커의 비동기
-인터페이스에 맞춰 Python Playwright의 async `Page`를 받는다.
+W1에서 Python Playwright의 async `Page`를 받는 직접 주입 POC를 추가했다.
+현재 main은 루트 package.json/package-lock.json에서 axe-core 4.10.3을 관리한다.
 
 | 방식 | 장점 | 이번 범위에서의 비용 |
 |---|---|---|
@@ -59,10 +59,38 @@ python -m unittest discover -s tests
 사라지는지 확인한다. 전체 violation 개수는 고정하지 않는다. 설치 누락은
 skip 처리하지 않으며 파일·주입·실행 실패의 예외 전파도 검사한다.
 
-## W1 비범위
+## W2: 경로·단계 연결
 
-R01~R11 매핑, DB persistence, issue severity 판정, path filtering,
-path/step 결합, LLM 연동은 구현하지 않는다.
+W1 `run_axe()`는 호환성을 유지한다. W2 `scan_page()`는 violations뿐 아니라
+incomplete/passes도 보존하고 각 node에 `path_keys`, `is_reference`, `in_viewport`를 붙인다.
+path key는 caller가 정한 0 이상 임시 키(예: 행동 순번)다. 행동 후 step 저장이 끝나면
+`evaluate_axe()`에 임시 키 → 실제 DB step ID 매핑을 전달한다.
+
+```python
+from worker.a11y.scan import scan_page
+from worker.rules.engine import evaluate_axe, axe_target_size_result
+
+# 행동 전: 0은 이번 행동을 식별하는 임시 키다.
+results = await scan_page(page, "node_modules/axe-core/axe.min.js", {0: target_locator})
+size_result = axe_target_size_result(results, 0)  # True/False/None
+# 행동 후 코어가 step을 저장한 다음 (DB step ID 12 예시):
+candidates = evaluate_axe(results, {0: 12}, {12: snapshot})
+```
+
+같은 이름이나 선택자 문자열로 추측하지 않고 실제 DOM identity로 연결한다.
+대상 내부 텍스트의 대비 문제도 해당 경로에 묶는다. 경로 밖 문제는 참고로 남기며,
+이동 후 과거 Locator를 한꺼번에 검사하지 않는다. 요소 누락·중복·분리와 검사 오류는
+예외로 전파한다. `iframes=False`로 main document와 open shadow root를 검사한다.
+iframe 대상은 지원되는 것처럼 처리하지 않고 명시적으로 거절한다.
+
+R01 최소 크기 판정은 axe 확정 결과를 우선 사용하고, 간격·인라인 예외·44px 안내는
+`worker/rules/r01.py`에서 snapshot과 결합한다. R02/R10은 violations만 매핑한다.
+`incomplete`는 실패도 통과도 아니며 원본에 남긴다. 이미지/그라디언트의 픽셀 대비
+추정은 아직 구현하지 않았다. 휴리스틱 점수·LLM 설명·iframe별 검사는 후속 범위다.
+DB 저장과 severity는 `worker/rules/`가 맡고 axe 실행 계층에서는 판단하지 않는다.
+
+로컬 W2 테스트: `python -m unittest tests.test_a11y_scan`.
+이름 없는 경로 안/밖 버튼, #777/흰 배경 대비, shadow DOM, 모호한 대상 및 오류를 확인한다.
 
 참고: [Python wrapper](https://pypi.org/project/axe-playwright-python/),
 [axe API](https://www.deque.com/axe/core-documentation/api-documentation/),
