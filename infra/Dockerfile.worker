@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir -r requirements-dev.txt \
     && useradd --create-home --uid 10001 stepmeter
 COPY worker worker
 COPY tests tests
+# tests/test_baseline_axe.py imports this module (axe baseline, plan 8.3).
+COPY benchmark/baseline_axe.py benchmark/baseline_axe.py
 # Evaluation tests import this module; do not copy private holdouts or evidence.
 COPY benchmark/eval.py benchmark/eval.py
 COPY prompts prompts

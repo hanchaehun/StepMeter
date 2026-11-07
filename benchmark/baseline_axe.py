@@ -26,7 +26,6 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
 
-from benchmark.verify_conversion import QuietHandler
 from worker.rules.r10 import NAME_RULES
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,6 +114,10 @@ async def collect(origin: str) -> dict[str, list[dict]]:
 
 
 def main() -> None:
+    # 연습용 페이지 서버는 실행할 때만 불러온다. 테스트(Docker 이미지)는 to_predictions만 쓰므로
+    # 이 파일과 worker/만 있으면 된다.
+    from benchmark.verify_conversion import QuietHandler
+
     handler = partial(QuietHandler, directory=str(ROOT / f'benchmark/fixtures/{APP}'))
     server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
     Thread(target=server.serve_forever, daemon=True).start()
