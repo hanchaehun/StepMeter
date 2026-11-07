@@ -11,3 +11,7 @@ screenshots
 data
 docs
 benchmark/apps
+
+# Private holdouts and raw evidence must never enter the build context.
+benchmark/holdout
+benchmark/evidence
