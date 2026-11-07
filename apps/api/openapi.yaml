@@ -97,6 +97,11 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
         '429': {$ref: '#/components/responses/DailyLimitExceeded'}
+        '500':
+          description: 측정 작업을 큐에 넣지 못함 (Redis 장애 등). 만든 run은 status=failed로 남긴다
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
     get:
       summary: 측정 이력과 지표 추이 (F11)
       operationId: listTaskRuns
@@ -235,6 +240,11 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Error'}
+        '500':
+          description: 큐 연결 실패 (Redis 장애 등). run 상태는 바뀌지 않는다
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
 
   /issues/{id}/label:
     parameters:
@@ -331,7 +341,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
     NotFinished:
-      description: 측정이 아직 끝나지 않음 (status가 queued 또는 running)
+      description: 리포트가 없음 (status가 completed가 아님). queued·running은 아직 진행 중, failed·canceled는 리포트를 만들지 않는다
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
