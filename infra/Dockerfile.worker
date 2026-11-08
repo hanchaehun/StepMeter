@@ -18,7 +18,8 @@ COPY tests tests
 # Baseline tests import these modules (axe and LLM baselines, plan 8.3).
 COPY benchmark/baseline_axe.py benchmark/baseline_llm.py benchmark/
 # Evaluation tests import this module; do not copy private holdouts or evidence.
-COPY benchmark/eval.py benchmark/eval.py
+COPY benchmark/eval.py benchmark/mutate.py benchmark/
+COPY human-study human-study
 COPY infra/scripts infra/scripts
 COPY prompts prompts
 COPY apps/api apps/api
