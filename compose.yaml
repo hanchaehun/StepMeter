@@ -30,6 +30,67 @@ services:
       dockerfile: infra/Dockerfile.web
     ports:
       - "127.0.0.1:${WEB_PORT:-8080}:8080"
+  # M2 services are opt-in while API/agent implementations are pending.
+  api:
+    profiles: ["m2"]
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.worker
+    command: ["python", "-m", "infra.scripts.start_api"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://stepmeter:stepmeter@db:5432/stepmeter
+      REDIS_URL: redis://redis:6379/0
+      STEPMETER_ENV: development
+      STEPMETER_API_COMMAND: ${STEPMETER_API_COMMAND:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=3).close()"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    volumes:
+      - screenshots:/app/data/screenshots
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  worker:
+    profiles: ["m2"]
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.worker
+    command: ["python", "-m", "infra.scripts.start_worker"]
+    init: true
+    shm_size: 1gb
+    environment:
+      DATABASE_URL: postgresql+psycopg://stepmeter:stepmeter@db:5432/stepmeter
+      REDIS_URL: redis://redis:6379/0
+      STEPMETER_ENV: development
+      STEPMETER_LLM: fake
+      STEPMETER_FAKE_REPLIES: tests/fixtures/e2e/signup/fake_replies.json
+      STEPMETER_E2E_SITE_URL: http://m2-fixtures:8765/
+    volumes:
+      - screenshots:/app/data/screenshots
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      m2-fixtures:
+        condition: service_healthy
+  m2-fixtures:
+    profiles: ["m2"]
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.worker
+    command: ["python", "-m", "http.server", "8765", "--bind", "0.0.0.0", "--directory", "tests/fixtures/e2e"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/signup/index.html', timeout=3)"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
   test-db:
     profiles: ["test"]
     image: postgres:16-alpine
@@ -44,6 +105,14 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  test-redis:
+    profiles: ["test"]
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
   tests:
     profiles: ["test"]
     build:
@@ -52,12 +121,15 @@ services:
     init: true
     shm_size: 1gb
     environment:
+      TEST_REDIS_URL: redis://test-redis:6379/15
       TEST_DATABASE_URL: postgresql+psycopg://stepmeter:stepmeter@test-db:5432/stepmeter_test
     depends_on:
       test-db:
         condition: service_healthy
+      test-redis:
+        condition: service_healthy
   migrate:
-    profiles: ["tools"]
+    profiles: ["tools", "m2"]
     build:
       context: .
       dockerfile: infra/Dockerfile.worker
@@ -69,3 +141,4 @@ services:
         condition: service_healthy
 volumes:
   pgdata:
+  screenshots:

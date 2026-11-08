@@ -4,7 +4,14 @@ import { spreadQualityText, spreadText } from '@/lib/report';
 const LABEL: Record<string, string> = {
   est_task_time: '예상 소요 시간',
   click_count: '클릭 수',
+  type_count: '입력 수',
+  step_count: '단계 수',
+  back_count: '뒤로 가기 수',
+  no_response_click_count: '무반응 클릭 수',
+  repeated_click_count: '반복 클릭 수',
+  page_transition_count: '페이지 전환 수',
   travel_distance: '커서 이동 거리',
+  scroll_distance: '스크롤 거리',
   fitts_id_sum: '이동 난이도 합',
 };
 

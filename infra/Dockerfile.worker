@@ -1,4 +1,4 @@
-# W1 browser/test runtime. The queue worker entrypoint belongs to the agent team.
+# Shared local M2/browser/test runtime. API and agent implementations belong to their owners.
 FROM node:22-bookworm-slim AS collect
 WORKDIR /build
 COPY package.json package-lock.json ./
@@ -15,11 +15,15 @@ RUN pip install --no-cache-dir -r requirements-dev.txt \
     && useradd --create-home --uid 10001 stepmeter
 COPY worker worker
 COPY tests tests
+# tests/test_baseline_axe.py imports this module (axe baseline, plan 8.3).
+COPY benchmark/baseline_axe.py benchmark/baseline_axe.py
 # Evaluation tests import this module; do not copy private holdouts or evidence.
 COPY benchmark/eval.py benchmark/eval.py
+COPY infra/scripts infra/scripts
 COPY prompts prompts
 COPY apps/api apps/api
 COPY --from=collect /build/worker/collect/dist worker/collect/dist
 COPY --from=collect /build/node_modules/axe-core/axe.min.js node_modules/axe-core/axe.min.js
+RUN mkdir -p /app/data/screenshots && chown -R stepmeter:stepmeter /app/data
 USER stepmeter
 CMD ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]

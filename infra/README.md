@@ -58,7 +58,7 @@ curl --fail http://127.0.0.1:8080/healthz
 - `tests`는 포트를 공개하지 않는 별도 `test-db`를 사용한다. 테스트가 테이블을 비워도 개발 DB는 보존된다.
 - 테스트 DB는 tmpfs, 개발 DB는 `pgdata` 볼륨이다. 종료는 `docker compose --profile test down`.
   `down -v`는 개발 데이터도 지우므로 일상 종료에 사용하지 않는다.
-- `Dockerfile.worker`는 Chromium/테스트 실행 이미지다. 아직 없는 RQ 워커나 API 서버를 흉내 내지 않는다.
+- `Dockerfile.worker`는 Chromium/테스트와 로컬 M2 서비스가 공유하는 이미지다. API·코어 구현이 없으면 M2 시작 스크립트가 오류로 종료한다([m2.md](m2.md)).
 - Chromium은 일반 사용자로 실행하며, 이 이미지는 신뢰하는 로컬 테스트 페이지에 사용한다.
 
 브라우저 확인과 스크린샷:
@@ -86,3 +86,7 @@ mypy는 현재 통과하는 이동거리 모듈에 적용하며, 스키마는 �
 매주 개발 앱을 평가하는 작업은 `eval.py`가 생기는 후속 단계에서 연결한다.
 
 스테이징 절차는 [staging.md](staging.md), 이번 검증 결과는 [w1-status.md](w1-status.md)를 참고한다.
+
+W2 M2 Compose·Redis CI·실행 및 연결 대기 사항: [m2.md](m2.md).
+
+2026-11-06 로컬 M2 검증 결과: [w2-m2-status.md](w2-m2-status.md).

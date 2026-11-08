@@ -21,7 +21,7 @@ W1을 마치고 저장소를 점검하니 개발계획서·ADR과 다른 값과 
 
 ## 담당 결정 대기
 
-- **진행률(progress) 저장 위치와 계산식 (플랫폼 백엔드, W2 큐 구현 때):** 지금 `docs/worker_api_spec.md` 2절, `apps/api/db/models.py`·`apps/api/db/db-columns.md`의 `run.progress`, `apps/api/openapi.yaml`의 `progress` 설명이 서로 다르다. 정한 뒤 세 문서를 맞춘다. `worker/queue/README.md`와 `apps/api/README.md`에 할 일로 적어 두었다.
+- **진행률(progress) 저장 위치와 계산식 (플랫폼 백엔드, W2 큐 구현 때):** 결정됨(PR #22·#25, DB `run.progress`, `update_progress`). `docs/worker_api_spec.md` 2절, `apps/api/db/models.py`·`apps/api/db/db-columns.md`의 `run.progress`, `apps/api/openapi.yaml`의 `progress` 설명을 맞췄다.
 
 ## 대안
 

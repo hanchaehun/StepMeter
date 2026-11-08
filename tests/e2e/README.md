@@ -26,31 +26,29 @@
 
 스키마 검사는 `tests/test_openapi_schema.py`의 `body_schema`와 `Draft202012Validator`를 그대로 쓴다. 그 테스트처럼 `format`(date-time, uri)은 검사하지 않는다.
 
-## 지금 상태 (11/2)
+## 지금 상태 (11/8)
 
-API 서버가 없어서 `STEPMETER_API_URL`을 주지 않으면 `M2FlowTests`는 전부 건너뛴다(CI도 같다). `FixtureReplyTests`만 돈다.
-흐름 코드는 목 JSON(`tests/fixtures/mock/api/`)을 돌려주는 임시 서버로만 확인했다. 실제 API·워커로는 아직 돌려 보지 않았다.
+API 서버(`apps/api/main.py`), 큐(`worker/queue/runs.py`), 가짜 LLM 선택(`worker/llm/select.py`), run 단위 지표 저장(`worker/metrics/postprocess.py`), Compose `m2` 서비스는 들어왔다. 아직 에이전트 루프(`worker/agent/run.py`)와 드라이버(`worker/driver/`)가 없어서 `STEPMETER_API_URL`을 주지 않으면 `M2FlowTests`는 전부 건너뛴다(CI도 같다). `FixtureReplyTests`만 돈다.
 
 ## 실행 방법
 
-### 지금 (API 없음)
+### 지금 (에이전트 루프·드라이버 없음)
 
 ```sh
 python -m unittest tests.e2e.test_m2_flow -v     # FixtureReplyTests만 돌고 M2FlowTests는 skip
 ```
 
-### API·워커가 생긴 뒤
+### 에이전트 루프·드라이버가 생긴 뒤
 
-1. DB·Redis를 띄우고 마이그레이션한다 ([infra/README.md](../../infra/README.md) "Docker").
+1. DB·Redis·API·워커·내부 fixture 서버를 띄운다 ([infra/m2.md](../../infra/m2.md)).
    ```sh
-   docker compose up -d --build --wait db redis
-   docker compose run --rm migrate
+   docker compose --profile m2 up -d --build --wait api worker
    ```
-2. API 서버와 워커를 띄운다. 워커는 **가짜 LLM 설정**으로 띄운다(아래 "가짜 LLM"). compose에 `api`·`worker` 서비스가 아직 없어 명령은 플랫폼 백엔드가 정하면 여기에 적는다.
-3. 초대 코드를 하나 발급한다(관리자 스크립트, 아직 없음).
-4. 테스트를 실행한다.
+2. 초대 코드를 하나 발급한다 (`python -m apps.api.issue_code "e2e"`).
+3. 테스트를 실행한다.
    ```sh
    export STEPMETER_API_URL=http://127.0.0.1:8000     # 예시. API 서버 주소 (경로 앞부분이 있으면 포함)
+   export STEPMETER_E2E_SITE_URL=http://m2-fixtures:8765/
    export STEPMETER_ACCESS_CODE=<발급한 초대 코드>
    python -m unittest tests.e2e.test_m2_flow -v
    ```
@@ -95,14 +93,14 @@ export STEPMETER_E2E_SITE_URL=http://host.docker.internal:8765/   # Linux는 com
 
 | 부품 | 담당 | 지금 | E2E에 필요한 것 |
 |---|---|---|---|
-| API 서버 | 플랫폼 백엔드 | `apps/api/`에 openapi.yaml, DB 모델, 마이그레이션만 있음 | `POST /projects`, `POST /projects/{id}/tasks`, `POST /tasks/{id}/runs`, `GET /runs/{id}`, `GET /runs/{id}/report`, `GET /runs/{id}/attempts/{n}/steps` |
-| 큐(Redis + RQ)·워커 진입점 | 플랫폼 백엔드 | `worker/queue/` README만 | run을 큐에 넣고 꺼내 status를 `running`→`completed`로 기록 (`docs/worker_api_spec.md`) |
-| 초대 코드 발급 | 플랫폼 백엔드 (관리자 스크립트) | 없음 | E2E용 코드 1개 |
-| compose의 `api`·`worker` 서비스 | 플랫폼 백엔드, 회귀 비교·인프라 | `db`, `redis`, `web`만 있음 | 한 명령으로 띄우기. Docker 워커가 고정 페이지에 닿는 방법(`host.docker.internal` 또는 `tests/fixtures/e2e/`를 서빙하는 서비스) |
-| 에이전트 루프 | 에이전트 코어 | `worker/agent/` README만 | attempt·step·element_snapshot 저장, 성공 조건 판정 |
+| API 서버 | 플랫폼 백엔드 | 구현됨 (`apps/api/main.py`, PR #32) | 완료 |
+| 큐(Redis + RQ)·워커 진입점 | 플랫폼 백엔드 | 구현됨 (`worker/queue/runs.py`, PR #25·#32) | 완료 (`JOB_FUNC = "worker.agent.run.run"`) |
+| 초대 코드 발급 | 플랫폼 백엔드 (관리자 스크립트) | 구현됨 (`apps/api/issue_code.py`, PR #32) | 완료 (`python -m apps.api.issue_code`) |
+| compose의 `api`·`worker` 서비스 | 플랫폼 백엔드, 회귀 비교·인프라 | 구현됨 (`compose.yaml` `m2` 프로필, PR #30) | 완료 (`m2-fixtures` 포함) |
+| 에이전트 루프 | 에이전트 코어 | `worker/agent/` README만 | `worker.agent.run.run`, attempt·step·element_snapshot 저장, 성공 조건 판정 |
 | 드라이버 | 에이전트 코어 | `worker/driver/` README만 | PlaywrightDriver(desktop), 효과 유형 |
-| 가짜 LLM 설정 | LLM·프롬프트 (에이전트 코어가 불러 씀) | `FakeAdapter`만 있음 | 위 "가짜 LLM" |
-| run 단위 지표 저장 | 측정 지표·규칙 | `worker/metrics/cursor_distance.py`만 | 조건 4: `metric` 행(`attempt_id = null`) 1개 이상. 지표 이름 목록 미정 |
+| 가짜 LLM 설정 | LLM·프롬프트 (에이전트 코어가 불러 씀) | 구현됨 (`worker/llm/select.py`, PR #23) | 완료 (`make_adapter`) |
+| run 단위 지표 저장 | 측정 지표·규칙 | 구현됨 (`worker/metrics/postprocess.py`, PR #28) | 완료 (`finalize_run_metrics`, 코어 호출 연결 필요) |
 
 API가 `base_url`을 검사해 사설 주소(`127.0.0.1`, `host.docker.internal`)를 막는다면 개발·E2E 환경에서는 열어 두어야 한다(플랫폼 백엔드).
 
@@ -118,3 +116,5 @@ API가 `base_url`을 검사해 사설 주소(`127.0.0.1`, `host.docker.internal`
 
 - `test_m2_flow.py`: M2 합격 기준 E2E, 가짜 LLM 답 목록 확인
 - `../fixtures/e2e/signup/`: 고정 페이지(`index.html` 이름 입력 → `done.html`), 가짜 LLM 답 목록(`fake_replies.json`)
+
+Compose 내부 fixture 서버와 API/worker 실행 준비는 [infra/m2.md](../../infra/m2.md)를 따른다. 실제 API·코어 구현 전에는 M2FlowTests 합격으로 간주하지 않는다.
