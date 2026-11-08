@@ -64,15 +64,13 @@ class RulesW2Tests(unittest.TestCase):
         for reason in (None, "success", "budget_exceeded", "gave_up"):
             self.assertIsNone(r05.evaluate(reason))
 
-    def test_r06_first_target_and_late_element(self):
+    def test_r06_click_target_and_late_element(self):
         outside = target(in_first_view=False, first_view_scroll_px=120)
-        self.assertEqual(r06.evaluate(outside, is_first_target=True).measured, 120)
-        self.assertIsNone(r06.evaluate(outside, is_first_target=False))
-        self.assertIsNone(r06.evaluate(target(), is_first_target=True))
-        self.assertIsNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=None),
-                                      is_first_target=True))
-        self.assertIsNotNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=0),
-                                         is_first_target=True))
+        self.assertEqual(r06.evaluate(outside).measured, 120)
+        self.assertIsNone(r06.evaluate(outside, action="type"))
+        self.assertIsNone(r06.evaluate(target()))
+        self.assertIsNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=None)))
+        self.assertIsNotNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=0)))
 
     def test_r07_top_tenth_width_boundary_ties_and_unmeasurable(self):
         # 10 targets: the largest ID alone is the upper 10%.

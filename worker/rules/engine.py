@@ -16,13 +16,13 @@ def element_key(snapshot: ElementSnapshot) -> str:
 
 
 def evaluate_step(snapshot: ElementSnapshot, *, step_id: int, action: str,
-                  effect_type: str, is_first_target: bool, mobile: bool = False,
+                  effect_type: str, is_first_target: bool = True, mobile: bool = False,
                   axe_target_size: bool | None = None) -> list[Candidate]:
-    """Only call for a target-bearing step; first_target is attempt-wide."""
+    """Only call for a target-bearing step."""
     candidates = (
         r01.evaluate(snapshot, mobile=mobile, axe_violation=axe_target_size),
         r03.evaluate(action, effect_type), r04.evaluate(snapshot),
-        r06.evaluate(snapshot, is_first_target=is_first_target),
+        r06.evaluate(snapshot, action=action, is_first_target=is_first_target),
     )
     return [replace(candidate, step_id=step_id, element_key=element_key(snapshot))
             for candidate in candidates if candidate is not None]
