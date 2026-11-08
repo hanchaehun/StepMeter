@@ -1,0 +1,13 @@
+diff --git a/src/features/users/index.tsx b/src/features/users/index.tsx
+index 45e8e7d..f3864d7 100644
+--- a/src/features/users/index.tsx
++++ b/src/features/users/index.tsx
+@@ -30,7 +30,7 @@ export function Users() {
+         <div className='flex flex-wrap items-end justify-between gap-2'>
+           <div>
+             <h1 className='text-2xl font-bold tracking-tight'>User List</h1>
+-            <p className='text-muted-foreground'>
++            <p className='min-h-svh text-muted-foreground'>
+               Manage your users and their roles here.
+             </p>
+           </div>

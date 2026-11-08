@@ -1,0 +1,33 @@
+diff --git a/src/features/users/components/users-primary-buttons.tsx b/src/features/users/components/users-primary-buttons.tsx
+index 6ccee69..87e2f8f 100644
+--- a/src/features/users/components/users-primary-buttons.tsx
++++ b/src/features/users/components/users-primary-buttons.tsx
+@@ -5,16 +5,23 @@ import { useUsers } from './users-provider'
+ export function UsersPrimaryButtons() {
+   const { setOpen } = useUsers()
+   return (
+-    <div className='flex gap-2'>
++    <div className='flex gap-1'>
+       <Button
+         variant='outline'
+-        className='space-x-1'
++        size='icon'
++        className='size-4'
++        aria-label='Invite User'
+         onClick={() => setOpen('invite')}
+       >
+-        <span>Invite User</span> <MailPlus size={18} />
++        <MailPlus size={12} />
+       </Button>
+-      <Button className='space-x-1' onClick={() => setOpen('add')}>
+-        <span>Add User</span> <UserPlus size={18} />
++      <Button
++        size='icon'
++        className='size-4'
++        aria-label='Add User'
++        onClick={() => setOpen('add')}
++      >
++        <UserPlus size={12} />
+       </Button>
+     </div>
+   )
