@@ -29,21 +29,25 @@ export function IssueRow({ issue, steps, variant = 'compact', onOpen }: Props) {
       type="button"
       onClick={() => onOpen(issue.id)}
       className={cn(
-        'grid w-full items-center gap-4 border-t border-hair py-3 text-left hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-        full ? 'grid-cols-[128px_90px_1fr_72px] gap-6 py-5' : 'grid-cols-[72px_80px_1fr_56px]',
+        // 좁은 화면: 썸네일 | (심각도 / 제목 / 단계) 2열. sm 이상: 한 줄 4열. 390px에서 넘치지 않게 1fr은 minmax(0,1fr)
+        'grid w-full items-center gap-x-3 gap-y-1 border-t border-hair py-3 text-left hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        'grid-cols-[72px_minmax(0,1fr)]',
+        full ? 'sm:grid-cols-[128px_90px_minmax(0,1fr)_72px] sm:gap-6 sm:py-5' : 'sm:grid-cols-[72px_80px_minmax(0,1fr)_56px] sm:gap-4',
         issue.is_reference && 'text-muted',
       )}
     >
-      <Thumb step={step} issue={issue} full={full} />
+      <div className="row-span-3 sm:row-span-1">
+        <Thumb step={step} issue={issue} full={full} />
+      </div>
       <Severity level={issue.severity} />
-      <div className={cn('font-semibold leading-tight', full && 'text-base', issue.is_reference && 'font-medium')}>
+      <div className={cn('min-w-0 font-semibold leading-tight', full && 'text-base', issue.is_reference && 'font-medium')}>
         {title}
         <small className="mt-0.5 block text-xs font-normal text-faint">
           {sub}
           {full && issue.explanation ? ` · ${issue.explanation}` : ''}
         </small>
       </div>
-      <span className="text-right text-xs text-faint">{issue.step ? `Step ${issue.step.idx}` : '—'}</span>
+      <span className="text-xs text-faint sm:text-right">{issue.step ? `Step ${issue.step.idx}` : '—'}</span>
     </button>
   );
 }

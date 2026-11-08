@@ -7,5 +7,5 @@ test('목 리포트는 run 42, attempts 3, issues 3, steps 3', () => {
   expect(report.attempts).toHaveLength(3);  // attempts 배열 길이
   expect(report.issues).toHaveLength(3);    // issues 배열 길이 (참고 1건 포함)
   expect(steps).toHaveLength(3);            // steps.json 배열 길이
-  expect(task.description).toBe('러닝화 A를 장바구니에 담는다'); // task.json description
+  expect(task?.description).toBe('러닝화 A를 장바구니에 담는다'); // task.json description (목 모드에서만 있음)
 });
