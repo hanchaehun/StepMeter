@@ -26,7 +26,14 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U stepmeter -d stepmeter_test"
           --health-interval 3s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 3s --health-retries 20
     env:
+      TEST_REDIS_URL: redis://localhost:6379/15
       TEST_DATABASE_URL: postgresql+psycopg://stepmeter:stepmeter@localhost:5432/stepmeter_test
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +87,8 @@ jobs:
       - run: docker compose --profile test build web tests
       - run: docker compose --profile test run --rm tests
       - run: docker compose up -d --wait web
+      - name: Worker network and fixture smoke (no API or agent claim)
+        run: docker compose --profile m2 run --rm worker python -m infra.scripts.check_m2_network
       - run: curl --fail http://localhost:8080/healthz && curl --fail http://localhost:8080/
       - if: always()
-        run: docker compose --profile test down
+        run: docker compose --profile test --profile m2 down

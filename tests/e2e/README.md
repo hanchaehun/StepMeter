@@ -118,3 +118,5 @@ API가 `base_url`을 검사해 사설 주소(`127.0.0.1`, `host.docker.internal`
 
 - `test_m2_flow.py`: M2 합격 기준 E2E, 가짜 LLM 답 목록 확인
 - `../fixtures/e2e/signup/`: 고정 페이지(`index.html` 이름 입력 → `done.html`), 가짜 LLM 답 목록(`fake_replies.json`)
+
+Compose 내부 fixture 서버와 API/worker 실행 준비는 [infra/m2.md](../../infra/m2.md)를 따른다. 실제 API·코어 구현 전에는 M2FlowTests 합격으로 간주하지 않는다.
