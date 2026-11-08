@@ -27,8 +27,7 @@
 
 ### `page_id` 형식
 
-`<앱 id>/<페이지>/<변이>`로 쓴다(PM 결정, 2026-11-08). 변이 이름은 `benchmark/mutations/`의 파일 이름과 같고, 정상 페이지는 `baseline`이다.
-`apps/api/openapi.yaml`의 `HumanSession.page_id` 설명은 아직 `"앱/변이"`라 담당자에게 수정을 요청했다. 타입은 문자열이라 수집과 업로드에는 영향이 없다.
+`<앱 id>/<페이지>/<변이>`로 쓴다(PM 결정, 2026-11-08). 변이 이름은 `benchmark/mutations/`의 파일 이름과 같고, 정상 페이지는 `baseline`이다. `apps/api/openapi.yaml`의 `HumanSessionCreate.page_id` 설명도 같은 형식으로 맞췄다.
 
 ### 결함을 넣는 방법
 
