@@ -25,6 +25,7 @@ class LLMRequest:
     system: str  # 시스템 프롬프트 (prompts/ 파일 내용)
     user_text: str  # 과업 설명, 요소 목록, 최근 이력 등
     image_jpeg: bytes | None = None  # 번호 라벨을 그린 스크린샷 (4.2)
+    extra_images_jpeg: tuple[bytes, ...] = ()  # 화면 여러 장을 한 번에 볼 때(베이스라인 8.3) image_jpeg 뒤에 붙는다
     run_id: int | None = None  # 어떤 측정에서 불렀는지. 측정 밖 실험이면 None
 
 
