@@ -1,3 +1,4 @@
+import base64
 """Claude 어댑터 테스트. 진짜 API를 부르지 않고 가짜 client로 확인한다."""
 
 import asyncio
@@ -80,6 +81,16 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.assertIs(tool["input_schema"]["additionalProperties"], False)
         for field in tool["input_schema"]["properties"].values():
             self.assertNotIn("minimum", field)  # strict 모드는 숫자 제약을 지원하지 않는다
+
+    def test_several_images_keep_order_before_text(self):
+        client = fake_client([SimpleNamespace(type="text", text="[]")])
+        request = make_request(purpose="baseline", prompt_version="baseline_v1",
+                               image_jpeg=b"one", extra_images_jpeg=(b"two", b"three"))
+        asyncio.run(ClaudeAdapter(client=client).ask(request))
+        content = client.messages.sent["messages"][0]["content"]
+        self.assertEqual([part["type"] for part in content], ["image", "image", "image", "text"])
+        self.assertEqual([base64.b64decode(part["source"]["data"]) for part in content[:3]],
+                         [b"one", b"two", b"three"])
 
     def test_explain_request_has_no_action_tool(self):
         client = fake_client([SimpleNamespace(type="text", text="버튼이 작다.")])
