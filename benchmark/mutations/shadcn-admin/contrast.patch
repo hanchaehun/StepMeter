@@ -1,0 +1,12 @@
+diff --git a/src/features/tasks/components/data-table-row-actions.tsx b/src/features/tasks/components/data-table-row-actions.tsx
+index 20b246e..0154ebc 100644
+--- a/src/features/tasks/components/data-table-row-actions.tsx
++++ b/src/features/tasks/components/data-table-row-actions.tsx
+@@ -43,6 +43,7 @@ export function DataTableRowActions<TData>({
+       </DropdownMenuTrigger>
+       <DropdownMenuContent align='end' className='w-40'>
+         <DropdownMenuItem
++          className='text-gray-300'
+           onClick={() => {
+             setCurrentRow(task)
+             setOpen('update')

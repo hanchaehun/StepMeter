@@ -116,9 +116,16 @@ def update_progress(session: Session, run_id: int, finished: bool = False) -> bo
 def save_screenshot(data: bytes) -> str:
     """스크린샷을 저장하고 key를 돌려준다. 워커는 key를 step.screenshot_key에 적는다.
 
-    ponytail: 로컬 디스크만. 스테이징·운영의 R2 전환은 W2 "스크린샷 저장"에서
+    확장자는 파일 앞부분으로 정한다: JPEG(개발계획서 4.2, 품질 70) → .jpg, PNG → .png. 그 밖은 ValueError.
+    ponytail: 로컬 디스크만 (개발계획서 3장 "로컬 개발은 디스크"). R2·서명 URL은 Railway 스테이징을 만들 때
     """
-    key = f"{uuid.uuid4().hex}.png"
+    if data.startswith(b"\xff\xd8\xff"):
+        ext = "jpg"
+    elif data.startswith(b"\x89PNG\r\n\x1a\n"):
+        ext = "png"
+    else:
+        raise ValueError("스크린샷은 JPEG 또는 PNG여야 합니다")
+    key = f"{uuid.uuid4().hex}.{ext}"
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
     (SCREENSHOT_DIR / key).write_bytes(data)
     return key

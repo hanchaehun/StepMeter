@@ -1,0 +1,12 @@
+diff --git a/src/features/tasks/components/data-table-row-actions.tsx b/src/features/tasks/components/data-table-row-actions.tsx
+index 20b246e..f029ba2 100644
+--- a/src/features/tasks/components/data-table-row-actions.tsx
++++ b/src/features/tasks/components/data-table-row-actions.tsx
+@@ -38,7 +38,6 @@ export function DataTableRowActions<TData>({
+           className='flex h-8 w-8 p-0 data-[state=open]:bg-muted'
+         >
+           <DotsHorizontalIcon className='h-4 w-4' />
+-          <span className='sr-only'>Open menu</span>
+         </Button>
+       </DropdownMenuTrigger>
+       <DropdownMenuContent align='end' className='w-40'>
