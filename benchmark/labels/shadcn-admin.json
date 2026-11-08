@@ -1,6 +1,6 @@
 {
   "split": "development",
-  "review_status": "pending",
+  "review_status": "approved",
   "evidence": "benchmark/evidence/shadcn-admin/verification.json",
   "cases": {
     "baseline": [],
