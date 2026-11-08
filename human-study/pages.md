@@ -3,7 +3,7 @@
 사람 실험(개발계획서 9.1)에서 쓸 벤치마크 페이지 6개(정상 3, 결함 3)와 과업이다. 에이전트도 같은 페이지를 수행해 비교한다.
 
 - **담당:** 대시보드 UI
-- **상태:** 안. 아래 "확정 전 확인할 것"을 마치면 확정한다.
+- **상태:** 확정 (2026-11-08, PM 승인). 남은 일은 아래 "남은 것" 참고.
 - **결함 페이지 안내 금지:** 참가자에게 어느 페이지에 결함이 있는지 알려 주지 않는다.
 
 ## 선정 기준
@@ -16,16 +16,31 @@
 
 ## 페이지와 과업
 
-| # | 구분 | 앱 / 페이지 | `apps.json` 과업 | 결함 유형 |
+| # | 구분 | `page_id` | `apps.json` 과업 | 결함 유형 |
 |---|---|---|---|---|
-| 1 | 정상 | `sb-admin-2` / `register.html` | 회원가입 폼 입력 후 로그인 화면으로 이동 | 없음 |
-| 2 | 정상 | `material-kit-react` / `/products` | 제품 목록에서 정렬·필터 변경 | 없음 |
-| 3 | 정상 | `material-kit-react` / `/sign-in` | 로그인 폼 입력 후 비밀번호 표시 전환 | 없음 |
-| 4 | 결함 | `sb-admin-2` / `login.html` | 로그인 폼 입력 후 Remember Me 선택 | 작은 타겟 (R01) |
-| 5 | 결함 | `shadcn-admin` / `/tasks` | Tasks 필터 후 작업 상세 열기 | 낮은 대비 (R02) |
-| 6 | 결함 | `shadcn-admin` / `/users` | Users에서 사용자 초대 대화상자 열고 취소 | 첫 화면 밖 핵심 버튼 (R06) |
+| 1 | 정상 | `sb-admin-2/register/baseline` | 회원가입 폼 입력 후 로그인 화면으로 이동 | 없음 |
+| 2 | 정상 | `material-kit-react/products/baseline` | 제품 목록에서 정렬·필터 변경 | 없음 |
+| 3 | 정상 | `material-kit-react/sign-in/baseline` | 로그인 폼 입력 후 비밀번호 표시 전환 | 없음 |
+| 4 | 결함 | `sb-admin-2/login/small` | 로그인 폼 입력 후 Remember Me 선택 | 작은 타겟 (R01) |
+| 5 | 결함 | `shadcn-admin/tasks/contrast` | Tasks 필터 후 작업 편집 열기 | 낮은 대비 (R02) |
+| 6 | 결함 | `shadcn-admin/users/below-fold` | Users에서 사용자 초대 제출 | 첫 화면 밖 핵심 버튼 (R06) |
 
-결함을 어떤 개발 실수 패턴으로 넣을지는 앱별 결함 주입 담당이 정한다.
+### `page_id` 형식
+
+`<앱 id>/<페이지>/<변이>`로 쓴다(PM 결정, 2026-11-08). 변이 이름은 `benchmark/mutations/`의 파일 이름과 같고, 정상 페이지는 `baseline`이다.
+`apps/api/openapi.yaml`의 `HumanSession.page_id` 설명은 아직 `"앱/변이"`라 담당자에게 수정을 요청했다. 타입은 문자열이라 수집과 업로드에는 영향이 없다.
+
+### 결함을 넣는 방법
+
+`mutate.py`(페이지 로드 직후 DOM 수정)를 쓰지 않고, 앱 소스에 직접 넣은 패치 파일을 쓴다. 기준선 패치(`benchmark/baselines/{앱}.patch`)를 적용한 뒤 변이 패치(`benchmark/mutations/{앱}/{변이}.patch`)를 적용해 로컬 서버를 띄운다. 참가자는 진행자 PC 브라우저에서 이 서버를 연다. 패치를 적용해 띄우는 틀은 PM이 준비한다.
+
+| # | 패치 | 상태 |
+|---|---|---|
+| 4 | `benchmark/mutations/sb-admin-2/small.patch` | 대시보드 UI가 만드는 중 |
+| 5 | `benchmark/mutations/shadcn-admin/contrast.patch` | #35로 main에 있음. 행 메뉴의 Edit 글자에 흐린 글자 클래스(대비 1.47:1) |
+| 6 | `benchmark/mutations/shadcn-admin/below-fold.patch` | #35로 main에 있음. 설명 문단의 `min-h-svh` 때문에 Invite User가 첫 화면 밖(top 892px) |
+
+`shadcn-admin`의 기존 문제는 `benchmark/baselines/shadcn-admin.patch`가 정리했다(`benchmark/selection.md` "shadcn-admin 클리닝"). 5·6번은 이 패치를 그대로 쓰기로 PM과 확인했다.
 
 ## 참가자에게 주는 과업 문장
 
@@ -38,7 +53,9 @@
 | 3 | 이메일을 `study@example.com`, 비밀번호를 `Study1234`로 바꿔 입력하고, 비밀번호가 보이게 해 주세요. | 비밀번호 표시로 전환 |
 | 4 | 이메일 `study@example.com`, 비밀번호 `Study1234`를 입력하고 **Remember Me**를 선택해 주세요. | 체크박스 선택 |
 | 5 | Status가 **Todo**인 작업만 보이게 한 뒤, **TASK-8202** 작업의 **Edit** 화면을 열어 주세요. | `TASK-8202`의 수정 화면 열림 |
-| 6 | **Invite User** 창을 열었다가 **Cancel**로 닫아 주세요. | 창 닫힘 |
+| 6 | **Invite User** 창을 열고 이메일 `study@example.com`, Role **Admin**을 입력한 뒤 **Invite**를 눌러 주세요. | "You submitted the following values:" 알림 표시 |
+
+6번 과업은 처음에 "창을 열었다가 Cancel로 닫기"였으나, #35에서 `apps.json` 과업이 "사용자 초대 제출"로 바뀌어 맞췄다. 취소는 화면에 끝난 표시가 남지 않아 에이전트의 성공 조건을 정할 수 없기 때문이다. 기준선 패치에서 알림이 사라지지 않게 해 두었다.
 
 2번 과업을 시작하기 전에 진행자가 "이 페이지는 데모라 정렬이나 필터를 바꿔도 목록은 바뀌지 않습니다"라고 안내한다. 목록이 안 바뀌어 참가자가 헤매는 시간이 측정값에 섞이지 않게 하기 위해서다. 결함 여부는 알려 주지 않는다.
 
@@ -66,7 +83,13 @@
 - [x] 3번 과업을 실행해 확인한다.
 - [x] 5번 과업 문장에 작업 ID(`TASK-8202`)를 넣을지 정한다. → 넣는다.
 - [x] 2번 과업에서 목록이 바뀌지 않는다는 것을 세션 전에 안내할지 정한다. → 안내한다.
-- [ ] `shadcn-admin` 기준선을 확인한다. 기준선 패치가 없어 결함 외 문제가 남아 있을 수 있다.
-- [ ] 결함 주입 담당과 4·5·6번의 페이지와 결함 유형을 맞춘다.
-- [ ] `page_id`(형식: `앱/변이`, `apps/api/openapi.yaml`)에 쓸 변이 이름을 맞춘다.
+- [x] `shadcn-admin` 기준선을 확인한다. → `benchmark/baselines/shadcn-admin.patch`(#35)로 정리됨.
+- [x] 결함 주입 담당과 4·5·6번의 페이지와 결함 유형을 맞춘다. → 지금 안대로 확정, 4·5·6번 모두 대시보드 UI 담당.
+- [x] `page_id`에 쓸 변이 이름을 맞춘다. → `<앱 id>/<페이지>/<변이>`.
+- [x] 6번 과업을 `apps.json`에 맞춰 "초대 제출"로 바꾼다.
+
+## 남은 것
+
+- [ ] 4번 `benchmark/mutations/sb-admin-2/small.patch`를 만들고 렌더링으로 발현을 확인한다.
+- [ ] 6번 과업을 바뀐 문장대로 다시 실행해 끝까지 되는지 확인한다.
 - [ ] 파일럿에서 전체 시간이 20분 안에 끝나는지와, 로그인 과업 3·4번이 비슷해 학습 효과가 생기는지 확인한다.
