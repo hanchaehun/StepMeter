@@ -44,7 +44,7 @@
 | credentials_ref | 로그인이 필요한 과업의 계정 정보 위치(참조값) | 로그인 뒤에만 할 수 있는 과업을 측정하기 위해, 계정 정보는 암호화 저장소에 따로 두고 그 위치만 task에 저장해야 한다. 비밀번호 자체를 DB에 넣지 않기 위해서다. 암호화 저장소가 아직 정해지지 않았고, 이번 일정(12/4까지)에서는 구현하지 않는다(ADR 0004). (§10 비고) |
 
 **처리할 일**
-- [ ] `success_condition` 형식은 openapi.yaml SuccessCondition(`url_contains`, `text_present`, 최소 1개, null이면 LLM 추정)으로 확정됨 — 확인만
+- [x] `success_condition` 형식은 openapi.yaml SuccessCondition(`url_contains`, `text_present`, 최소 1개, null이면 LLM 추정)으로 확정됨 — 확인만
 - [ ] `credentials_ref`의 암호화 저장소 정하기: 이번 일정(12/4까지)에서는 구현하지 않음
 - [ ] 과업 수정 API를 만들 때: 기준 run 이후 과업이 바뀌었는지 알 방법 추가 (`task.updated_at` 또는 run에 과업 버전 저장). §7.2-5 "과업이 바뀌면 재생 안 함" 때문
 
@@ -73,7 +73,7 @@
 - [x] `progress` 계산식 정하기 → docs/worker_api_spec.md 2번 묶음 (2026-11-02)
 - [ ] `cost_usd` 합산 시점 정하기 (호출마다 vs 측정 끝날 때)
 - [ ] `representative_attempt_id`: 성공한 실행이 없으면 null로 두고, 그 run을 기준으로 한 auto 측정은 에이전트로 돌게 처리
-- [ ] `mode` 기본값 auto는 openapi.yaml RunCreate에서 확정됨 — 확인만
+- [x] `mode` 기본값 auto는 openapi.yaml RunCreate에서 확정됨 — 확인만
 
 ## attempt — run 안의 실행 1회 (반복 실행 한 번 또는 재생 한 번)
 
@@ -91,8 +91,8 @@
 | 🆕 **success_estimated** | 성공을 LLM이 "추정"으로 판정했는지 | 리포트의 "추정" 표시를 구현하기 위해, 과업에 성공 조건이 없어서 LLM이 마지막 화면으로 성공을 판정한 경우 워커가 true로 저장해야 한다. 그래야 확실한 성공과 추정 성공을 구분해 보여줄 수 있다. task.success_condition이 null인지로 계산할 수도 있지만, 나중에 과업 수정 기능이 생기면 조건이 바뀐 뒤 과거 측정의 판정이 틀어지므로, 판정 당시 값을 attempt에 저장해 둔다(10/29 결정). (§4.5) |
 
 **처리할 일**
-- [ ] `index`를 0부터 셀지 1부터 셀지 openapi.yaml에서 정하기
-- [ ] `(run_id, index)` 유니크 제약 걸기
+- [x] `index`를 0부터 셀지 1부터 셀지 openapi.yaml에서 정하기
+- [x] `(run_id, index)` 유니크 제약 걸기
 - [ ] 재생이 끊긴 뒤 에이전트가 이어서 한 부분을 같은 replay attempt에 기록할지, 새 agent attempt로 나눌지 정하기 — 에이전트 코어와
 
 ## step — attempt 안의 행동 1번
@@ -144,7 +144,7 @@
 | model_version_id | 이 값을 낸 학습 모델 버전 | 측정 결과 재현을 위해, 워커가 예상 소요 시간 등을 계산할 때 불러온 승인 모델의 버전 번호를 함께 저장해야 한다. 모델을 쓰지 않는 지표면 비어 있다. [추정: 모델 없는 지표의 처리] (§9.4) |
 
 **처리할 일**
-- [ ] `key`에 들어갈 지표 이름 목록을 측정 지표·규칙 담당과 맞추기
+- [x] `key`에 들어갈 지표 이름 목록을 측정 지표·규칙 담당과 맞추기
 
 ## issue — 규칙 엔진이 찾은 문제 하나
 
@@ -166,9 +166,9 @@
 **처리할 일**
 - [ ] `step_id`에 어느 실행의 단계를 넣을지 규칙 정하기 (대표 경로 `representative_attempt_id`의 단계 추천)
 - [ ] 이슈 발견 횟수 칸 추가 여부 정하기 (예: `found_count`, 분모는 run.repeat_n). 이슈 점수 w3에 쓰임
-- [ ] `measured`·`threshold` null 허용 (R03·R04·R10은 숫자 없음), 단위를 따로 담을지 rule_id로 정할지 정하기
-- [ ] `element_key` 형식을 5칸 지문 `tag|role|name|label_text|landmark`로 임의 확정함(10/29). openapi.yaml에 형식 설명과 [검토 필요] 표시를 달고 목 데이터(report.json, comparison.json)를 5칸으로 먼저 맞춘 뒤, 수집·매칭 담당과 협의해 최종 확정. 함께 정할 것: 이름에 `|`가 들어갈 때 escape 규칙
-- [ ] 같은 문제를 합치는 기준(같은 rule_id + 같은 element_key) 확인 — 측정 지표·규칙과
+- [x] `measured`·`threshold` null 허용 (R03·R04·R10은 숫자 없음), 단위를 따로 담을지 rule_id로 정할지 정하기
+- [x] `element_key` 형식을 5칸 지문 `tag|role|name|label_text|landmark`로 임의 확정함(10/29). openapi.yaml에 형식 설명과 [검토 필요] 표시를 달고 목 데이터(report.json, comparison.json)를 5칸으로 먼저 맞춘 뒤, 수집·매칭 담당과 협의해 최종 확정. 함께 정할 것: 이름에 `|`가 들어갈 때 escape 규칙
+- [x] 같은 문제를 합치는 기준(같은 rule_id + 같은 element_key) 확인 — 측정 지표·규칙과
 
 ## comparison — 두 측정의 비교 결과 (캐시)
 
@@ -236,7 +236,7 @@
 
 **처리할 일**
 - [ ] `confirmed_by`를 어떻게 채울지 정하기 (초대 코드, 입력 이름 등)
-- [ ] 지문 형식(ElementFingerprint 5칸)을 issue.element_key와 같은 칸으로 임의 확정함(10/29). 수집·매칭 담당과 협의해 최종 확정 필요
+- [x] 지문 형식(ElementFingerprint 5칸)을 issue.element_key와 같은 칸으로 임의 확정함(10/29). 수집·매칭 담당과 협의해 최종 확정 필요
 
 ## issue_label — 이슈가 진짜 문제인지 사람이 판정한 라벨 (§9.2)
 
