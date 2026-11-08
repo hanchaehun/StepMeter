@@ -114,7 +114,7 @@ export function ReportPage({ data = loadMockReport() }: { data?: ReportData }) {
   const openStep = (idx: number) => goDetail({ issueId: null, stepIdx: idx });
 
   return (
-    <main className="mx-auto max-w-[1200px] px-10 pb-10 pt-7">
+    <main className="mx-auto min-w-0 max-w-[1200px] px-4 pb-10 pt-7 sm:px-10">
       <ReportHeader report={report} task={task} project={project} />
 
       {detail === null ? (

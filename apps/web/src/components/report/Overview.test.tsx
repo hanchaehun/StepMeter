@@ -19,6 +19,12 @@ test('ReportHeader: 과업 문장, 호스트, Compare 링크', () => {
   expect(screen.getByRole('link', { name: 'Compare with #41' })).toBeInTheDocument();              // run.base_run_id 41
 });
 
+test('ReportHeader: 과업·프로젝트가 없으면(실제 API 모드) 과업 번호만', () => {
+  render(<ReportHeader report={report} task={null} project={null} />);
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('과업 #7'); // run.task_id 7
+  expect(screen.queryByText(/shop\.example/)).toBeNull();
+});
+
 test('ReportHeader: 재생 전용이면 표시', () => {
   const r = structuredClone(report);
   r.run.mode = 'replay_only';

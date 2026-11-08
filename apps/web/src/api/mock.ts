@@ -18,8 +18,10 @@ export type ElementSnapshot = components['schemas']['ElementSnapshot'];
 export interface ReportData {
   report: Report;
   steps: Step[];
-  task: Task;
-  project: Project;
+  /** 과업 문장. API에 GET /tasks/{id}가 아직 없어 실제 모드에서는 null */
+  task?: Task | null;
+  /** 프로젝트(사이트 주소). 같은 이유로 실제 모드에서는 null */
+  project?: Project | null;
 }
 
 export function loadMockReport(): ReportData {
