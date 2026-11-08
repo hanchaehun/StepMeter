@@ -403,7 +403,7 @@ export interface components {
             /** @description 워커가 시작하기 전이거나 replay_only면 null */
             prompt_version: string | null;
             status: components["schemas"]["RunStatus"];
-            /** @description 퍼센트. 계산식 미정 */
+            /** @description 퍼센트. 워커가 step을 저장할 때마다 갱신한다. 계산식은 docs/worker_api_spec.md 2번 묶음 */
             progress: number;
             /** @description 이 run의 llm_call 비용 합계 */
             cost_usd: number;
@@ -428,7 +428,7 @@ export interface components {
         /** @description Run + 측정 진행 화면의 "현재 스크린샷, 에이전트의 최근 판단 한 줄" (F02) */
         RunProgress: components["schemas"]["Run"] & {
             /** @description 가장 최근에 저장된 step. 아직 없으면 null.
-             *     에이전트 코어 협의: 단계마다 바로 저장 (13.1 DB 쓰기 경계)
+             *     워커가 행동마다 바로 저장한다 (docs/worker_api_spec.md 3번 묶음)
              *      */
             latest_step: {
                 attempt_index: number;
@@ -853,7 +853,7 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description 측정이 아직 끝나지 않음 (status가 queued 또는 running) */
+        /** @description 리포트가 없음 (status가 completed가 아님). queued·running은 아직 진행 중, failed·canceled는 리포트를 만들지 않는다 */
         NotFinished: {
             headers: {
                 [name: string]: unknown;
@@ -1023,6 +1023,15 @@ export interface operations {
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["DailyLimitExceeded"];
+            /** @description 측정 작업을 큐에 넣지 못함 (Redis 장애 등). 만든 run은 status=failed로 남긴다 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getRun: {
@@ -1188,6 +1197,15 @@ export interface operations {
             404: components["responses"]["NotFound"];
             /** @description 이미 끝난 측정 (completed, failed, canceled) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 큐 연결 실패 (Redis 장애 등). run 상태는 바뀌지 않는다 */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

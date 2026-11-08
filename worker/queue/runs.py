@@ -79,7 +79,19 @@ def update_progress(session: Session, run_id: int, finished: bool = False) -> bo
     floor(90 × (끝난 attempt 수 + Σ 진행 중 attempt의 step 수 ÷ 30) ÷ repeat_n),
     finished=True(후처리까지 끝남)면 100. 이전 값보다 작아지지 않는다.
     워커는 step 행을 추가한 같은 트랜잭션에서 부르고, False면 멈춘다(취소됨).
+    같이 그 run의 모든 attempt.steps_count를 실제 step 행 수로 다시 센다 (run 상태와 상관없이).
     """
+    # 병렬 attempt가 동시에 불러도 한 번에 하나씩: run 행을 먼저 잠근다.
+    # NO KEY UPDATE라 다른 트랜잭션의 attempt 추가(run FK)는 막지 않는다
+    session.execute(text("SELECT id FROM run WHERE id = :id FOR NO KEY UPDATE"), {"id": run_id})
+    # 끝난 attempt도 센다: 마지막 step 저장과 end_reason 기록이 같은 트랜잭션일 수 있다
+    session.execute(
+        text(
+            "UPDATE attempt SET steps_count = (SELECT count(*) FROM step s WHERE s.attempt_id = attempt.id) "
+            "WHERE run_id = :id"
+        ),
+        {"id": run_id},
+    )
     row = session.execute(
         text(
             """

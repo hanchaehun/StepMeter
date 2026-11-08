@@ -139,6 +139,74 @@ class DbTests(unittest.TestCase):
         self.assertFalse(self.update(r))
         self.assertEqual(self.run_row(r).progress, 70)
 
+    # --- attempt.steps_count ---
+    def steps_counts(self, run_id: int) -> list[int]:
+        from sqlalchemy import text
+
+        with self.engine.connect() as c:
+            q = "SELECT steps_count FROM attempt WHERE run_id = :r ORDER BY index"
+            return [row[0] for row in c.execute(text(q), {"r": run_id})]
+
+    def test_steps_count_per_attempt_including_finished(self):
+        # 병렬 3회: attempt마다 자기 step 행 수. 끝난 attempt(마지막 step과 종료가 같은 트랜잭션)도 센다
+        r = self.make_run()
+        self.add_attempt(r, 1, steps=12, end_reason="success")
+        self.add_attempt(r, 2, steps=7)
+        self.add_attempt(r, 3, steps=0)
+        self.update(r)
+        self.assertEqual(self.steps_counts(r), [12, 7, 0])
+
+    def test_steps_count_same_after_repeated_calls(self):
+        # 다시 세서 덮어쓰므로 여러 번 불러도 같다 (+1이 아님)
+        r = self.make_run()
+        self.add_attempt(r, 1, steps=5)
+        for _ in range(3):
+            self.update(r)
+        self.assertEqual(self.steps_counts(r), [5])
+
+    def test_steps_count_updated_after_cancel(self):
+        # 취소된 run: 진행률은 그대로(False)지만 step 수는 실제 값으로
+        r = self.make_run(status="canceled", progress=20)
+        self.add_attempt(r, 1, steps=4)
+        self.assertFalse(self.update(r))
+        self.assertEqual((self.run_row(r).progress, self.steps_counts(r)), (20, [4]))
+
+    def test_steps_count_parallel_workers(self):
+        # 실제 병렬: attempt 3개가 각자 트랜잭션에서 step 저장 + update_progress를 20번씩. 교착 없이 20, 20, 20
+        from concurrent.futures import ThreadPoolExecutor
+
+        from sqlalchemy import text
+        from sqlalchemy.orm import Session
+
+        r = self.make_run()
+        attempts = []
+        for i in (1, 2, 3):
+            self.add_attempt(r, i, steps=0)
+            attempts.append(self.sql("SELECT id FROM attempt WHERE run_id = :r AND index = :i", r=r, i=i)[0])
+
+        def worker(attempt_id: int) -> None:
+            for idx in range(20):
+                with Session(self.engine) as s, s.begin():
+                    s.execute(
+                        text(
+                            "INSERT INTO step (attempt_id, idx, action, thought, url, state_hash, changed, effect_type) "
+                            "VALUES (:a, :i, '{}', 't', 'https://a.example', 'h', true, 'no_change')"
+                        ),
+                        {"a": attempt_id, "i": idx},
+                    )
+                    runs.update_progress(s, r)
+
+        with ThreadPoolExecutor(3) as pool:
+            list(pool.map(worker, attempts))
+        self.assertEqual(self.steps_counts(r), [20, 20, 20])
+
+    def test_steps_count_only_this_run(self):
+        r, other = self.make_run(), self.make_run()
+        self.add_attempt(r, 1, steps=3)
+        self.add_attempt(other, 1, steps=6)
+        self.update(r)
+        self.assertEqual((self.steps_counts(r), self.steps_counts(other)), ([3], [0]))
+
     # --- 취소 ---
     def test_cancel_running(self):
         r = self.make_run(progress=20)
