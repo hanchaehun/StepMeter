@@ -540,11 +540,11 @@ export interface components {
             changed: boolean;
             /** @enum {string} */
             effect_type: "url_change" | "modal_change" | "dom_mutation" | "no_change";
-            /** @description 이 단계 클릭의 Fitts ID (bit). click·type이 아니면 null. DB step 테이블에 칸 추가 (5.3, 10장) */
+            /** @description 이 단계 클릭의 Fitts ID (bit). click·type·select가 아니면 null. DB step 테이블에 칸 추가 (5.3, 10장) */
             fitts_id: number | null;
             /** @description 이 단계의 예상 소요 시간 (초, KLM). 모바일이면 null. DB step 테이블에 칸 추가 (5.10, 10장) */
             est_seconds: number | null;
-            /** @description click·type일 때만 있다 */
+            /** @description click·type·select일 때만 있다 */
             element_snapshot: components["schemas"]["ElementSnapshot"] | null;
         };
         RunHistoryItem: {

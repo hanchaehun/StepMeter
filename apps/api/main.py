@@ -387,7 +387,7 @@ def step_out(request: Request, st: Step, snapshot: dict | None) -> dict[str, Any
         "effect_type": st.effect_type,
         "fitts_id": st.fitts_id,
         "est_seconds": st.est_seconds,
-        "element_snapshot": snapshot,  # click·type일 때만 행이 있다
+        "element_snapshot": snapshot,  # click·type·select일 때만 행이 있다
     }
 
 

@@ -668,7 +668,7 @@ components:
           type: string
           enum: [url_change, modal_change, dom_mutation, no_change]
         fitts_id:
-          description: 이 단계 클릭의 Fitts ID (bit). click·type이 아니면 null. DB step 테이블에 칸 추가 (5.3, 10장)
+          description: 이 단계 클릭의 Fitts ID (bit). click·type·select가 아니면 null. DB step 테이블에 칸 추가 (5.3, 10장)
           type: [number, 'null']
           minimum: 0
         est_seconds:
@@ -676,7 +676,7 @@ components:
           type: [number, 'null']
           minimum: 0
         element_snapshot:
-          description: click·type일 때만 있다
+          description: click·type·select일 때만 있다
           anyOf: [{$ref: '#/components/schemas/ElementSnapshot'}, {type: 'null'}]
 
     RunHistoryItem:

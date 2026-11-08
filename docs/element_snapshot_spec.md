@@ -1,6 +1,6 @@
 # StepMeter ElementSnapshot 형식 (10/27 동결)
 
-`click`·`type` 직전에 대상 요소 하나에 대해 측정 훅이 저장하는 값이다. 개발계획서 5.1(측정 훅), 5.7(가시성), 5.4(타겟 크기 예외), 7.2(매칭 지문), 11장(`element_snapshot` 테이블)을 합쳐 정했다. 측정 지표·규칙, DB 저장, 요소 매칭이 이 형식을 입력으로 쓴다. 데이터 모델은 [`worker/schemas.py`](../worker/schemas.py)에 있다.
+`click`·`type`·`select` 직전에 대상 요소 하나에 대해 측정 훅이 저장하는 값이다. 개발계획서 5.1(측정 훅), 5.7(가시성), 5.4(타겟 크기 예외), 7.2(매칭 지문), 11장(`element_snapshot` 테이블)을 합쳐 정했다. 측정 지표·규칙, DB 저장, 요소 매칭이 이 형식을 입력으로 쓴다. 데이터 모델은 [`worker/schemas.py`](../worker/schemas.py)에 있다.
 
 모든 모델은 `extra="forbid"`, `strict=True`다. 문자열 숫자(`"100"`), `1`을 `true`로 보는 변환, `NaN`·`Infinity`, 정의되지 않은 필드는 거절한다. 좌표와 크기는 **최상위 뷰포트 기준 CSS px**다. iframe 안 요소도 최상위 좌표로 바꿔서 준다.
 
