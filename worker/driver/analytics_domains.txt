@@ -1,0 +1,6 @@
+# Exact hosts and their subdomains. Deployment may supply a reviewed override.
+google-analytics.com
+googletagmanager.com
+analytics.google.com
+segment.io
+mixpanel.com

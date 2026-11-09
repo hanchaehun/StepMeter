@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from playwright.async_api import Page
+from playwright.async_api import ElementHandle, Page
 
 from worker.schemas import ElementSnapshot
 
@@ -40,3 +40,35 @@ async def snapshot(page: Page, el_id: int) -> ElementSnapshot:
     await _inject(page)
     raw = await page.evaluate("id => __stepmeter.snapshot(id)", el_id)
     return ElementSnapshot.model_validate(raw)
+
+
+
+async def resolve_element(page: Page, el_id: int) -> ElementHandle:
+    """Return the original numbered node, rejecting disconnected/recycled targets.
+
+    Caller owns handle disposal. This does not run observe or remap IDs. Observe
+    again after navigation, scrolling/rerender or a stale-target error.
+    """
+    if type(el_id) is not int or el_id < 1:
+        raise ValueError("el_id must be a positive integer")
+    await _inject(page)
+    handle = await page.evaluate_handle("id => __stepmeter.resolveElement(id)", el_id)
+    element = handle.as_element()
+    if element is None:
+        await handle.dispose()
+        raise ValueError("numbered target did not resolve to an element")
+    # A node reached through contentDocument is initially a handle in the main
+    # frame execution context. Adopt it into its owning frame so Playwright's
+    # actionability/hit-testing uses the correct iframe coordinates.
+    owner = await element.owner_frame()
+    if owner is not None and owner != page.main_frame:
+        try:
+            adopted = await owner.evaluate_handle("el => el", element)
+        finally:
+            await element.dispose()
+        resolved = adopted.as_element()
+        if resolved is None:
+            await adopted.dispose()
+            raise ValueError("numbered iframe target did not resolve to an element")
+        return resolved
+    return element
