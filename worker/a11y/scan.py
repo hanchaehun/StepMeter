@@ -8,23 +8,29 @@ from playwright.async_api import ElementHandle, Locator, Page
 
 
 async def scan_page(page: Page, axe_script_path: str | Path,
-                    path_targets: Mapping[int, Locator]) -> dict[str, Any]:
+                    path_targets: Mapping[int, Locator | ElementHandle]) -> dict[str, Any]:
     """Bind caller's nonnegative path keys to targets before action/navigation.
 
     W2 covers the main document and its open shadow roots. Frame locators are
-    rejected explicitly. Results retain violations and incomplete separately.
+    rejected explicitly. Caller-owned ElementHandles are never disposed.
+    Results retain violations and incomplete separately.
     Callers must rescan each page state; old locators are not a recorded path.
     """
     handles: list[ElementHandle] = []
+    owned_handles: list[ElementHandle] = []
     try:
-        for path_key, locator in path_targets.items():
+        for path_key, target in path_targets.items():
             if path_key < 0:
                 raise ValueError("Path keys must be nonnegative")
-            if await locator.count() != 1:
-                raise ValueError(f"Path key {path_key} must resolve to exactly one live element")
-            handle = await locator.element_handle()
-            if handle is None:
-                raise ValueError(f"Missing target for path key {path_key}")
+            if isinstance(target, ElementHandle):
+                handle = target
+            else:
+                if await target.count() != 1:
+                    raise ValueError(f"Path key {path_key} must resolve to exactly one live element")
+                handle = await target.element_handle()
+                if handle is None:
+                    raise ValueError(f"Missing target for path key {path_key}")
+                owned_handles.append(handle)
             handles.append(handle)
             if await handle.owner_frame() != page.main_frame:
                 raise ValueError("W2 axe scan supports main-frame targets only")
@@ -63,5 +69,5 @@ async def scan_page(page: Page, axe_script_path: str | Path,
             {"ids": list(path_targets), "elements": handles},
         )
     finally:
-        for handle in handles:
+        for handle in owned_handles:
             await handle.dispose()
