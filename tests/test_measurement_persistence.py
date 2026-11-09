@@ -25,18 +25,23 @@ def jsonb_for_sqlite(_type, _compiler, **_kw):
 
 
 class PersistenceTests(unittest.TestCase):
-    def test_finalize_reads_actions_and_saves_run_median(self):
+    def test_finalize_reads_actions_before_successful_run_median(self):
         # Agent attempts have 1, 0, 2 actions; failed attempt's work also counts.
-        # Replay is excluded. done is excluded. Median(1,0,2) = 1.
+        # Replay and done excluded. Successful counts 1,0 => median 0.5.
         for idx, action in enumerate(("click", "type", "done")):
             self.session.add(Step(attempt_id=self.attempts[2].id, idx=idx,
                                   action={"action": action}, thought="test",
                                   url="https://local.invalid", state_hash="h",
                                   changed=False, effect_type="no_change"))
-        row = finalize_run_metrics(self.session, self.run.id)
+        rows = finalize_run_metrics(self.session, self.run.id)
+        self.assertEqual({row.attempt_id: row.value for row in rows},
+                         {attempt.id: value for attempt, value in zip(self.attempts, (1, 0, 2))})
+        self.assertFalse(any(row.attempt_id is None for row in rows))
+        self.assertEqual({row.id for row in finalize_run_metrics(self.session, self.run.id)},
+                         {row.id for row in rows})
+        row = save_run_medians(self.session, self.run.id)[0]
         self.assertEqual((row.key, row.value, row.unit, row.attempt_id),
-                         ("step_count", 1, "count", None))
-        self.assertEqual(finalize_run_metrics(self.session, self.run.id).id, row.id)
+                         ("step_count", 0.5, "count", None))
         self.session.rollback()
         self.assertEqual(self.session.scalar(select(func.count()).select_from(Metric)), self.initial_metrics)
 
@@ -44,7 +49,9 @@ class PersistenceTests(unittest.TestCase):
         for attempt in self.attempts:
             attempt.success = False
             attempt.end_reason = "gave_up"
-        self.assertEqual(finalize_run_metrics(self.session, self.run.id).value, 0)
+        rows = finalize_run_metrics(self.session, self.run.id)
+        self.assertEqual(sorted(row.value for row in rows), [0, 0, 1])
+        self.assertEqual(save_run_medians(self.session, self.run.id), [])
         self.run.status = "canceled"
         with self.assertRaises(ValueError):
             finalize_run_metrics(self.session, self.run.id)
