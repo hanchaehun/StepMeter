@@ -16,9 +16,13 @@ def element_key(snapshot: ElementSnapshot) -> str:
 
 
 def evaluate_step(snapshot: ElementSnapshot, *, step_id: int, action: str,
-                  effect_type: str, is_first_target: bool = True, mobile: bool = False,
+                  effect_type: str, is_first_target: bool, mobile: bool = False,
                   axe_target_size: bool | None = None) -> list[Candidate]:
-    """Only call for a target-bearing step."""
+    """Only call for a target-bearing step.
+
+    is_first_target: whether this is the first click/type/select on the current screen
+    (page load or SPA route change), e.g. from r06.FirstTargetTracker (ADR 0009).
+    """
     candidates = (
         r01.evaluate(snapshot, mobile=mobile, axe_violation=axe_target_size),
         r03.evaluate(action, effect_type), r04.evaluate(snapshot),

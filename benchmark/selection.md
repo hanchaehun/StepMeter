@@ -103,7 +103,7 @@ Radix가 메뉴를 표의 overflow 상자에 잘리지 않게 body 끝에 포털
 | contrast | R02 | 행 메뉴 Edit (과업 1) | 비활성용 흐린 글자 클래스를 활성 항목에 붙임 | axe 통과 → 대비 1.47:1 |
 | inert | R03 | 초대 대화상자 Invite (과업 2) | 제출 버튼 `type='button'` | 알림 1 → 3초 동안 알림 0, 대화상자 그대로 |
 | overlay | R04 | Status 필터 (과업 1) | 로딩용 반투명 막 제거 누락 | 중심점 최상단 = 버튼 → 막, 클릭해도 안 열림 |
-| below-fold | R06 | Invite User (과업 2의 click 대상, 로드 시 첫 화면 밖) | 설명 문단에 `min-h-svh` | top 116px → 892px (128px 스크롤 필요) |
+| below-fold | R06 | Invite User (과업 2의 첫 행동 대상, 로드 시 첫 화면 밖) | 설명 문단에 `min-h-svh` | top 116px → 892px (128px 스크롤 필요) |
 | unnamed | R10 | 첫 행 `⋯` (과업 1) | 숨김 이름 글자 삭제 | axe 통과 → `button-name` 위반 |
 
 검증은 StepMeter 규칙 코드 없이 DOM 측정값과 axe로 한다. 기준선(8772)과 변이별 빌드(8781~8786)를 띄운 뒤

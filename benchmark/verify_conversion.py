@@ -15,11 +15,50 @@ from worker.collect.collector import observe, record_first_view, snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'benchmark/evidence/conversion'
+# ADR 0009: R06은 화면의 첫 행동 대상만 본다. 가입 폼(index.html)에서는 #signup이 쿠키 닫기·이메일·비밀번호 다음
+# 네 번째 행동이라, below-fold만 #signup 링크 하나뿐인 가입 시작 화면에서 시작한다. 다른 케이스는 index.html.
+ENTRY_PAGES = {'below-fold': 'entry.html'}
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, *_args):
         pass
+
+
+async def verify_entry(page, origin: str, config: dict, errors: list) -> dict:
+    """가입 시작 화면에서 첫 행동 대상 #signup을 결함 적용 전·후로 재고, 눌러서 가입 폼으로 간다."""
+    from worker.rules import r06
+
+    await page.goto(f"{origin}/{ENTRY_PAGES[config['id']]}")
+    # 같은 대상이 결함 없이는 첫 화면 안에 있다 (음성 대조)
+    await record_first_view(page)
+    items = await observe(page)
+    assert len(items) == 1 and items[0]['name'] == '가입 시작하기'
+    normal = await snapshot(page, items[0]['el_id'])
+    assert normal.in_first_view
+    assert r06.evaluate(normal, action='click', is_first_target=True) is None
+    await apply(page, config)
+    await record_first_view(page)
+    assert await observe(page) == []  # 첫 화면에 보이는 행동 대상이 없다
+    await page.screenshot(path=str(OUTPUT / 'below-fold-initial.png'), full_page=True)
+    await page.locator('#signup').scroll_into_view_if_needed()
+    items = await observe(page)
+    assert len(items) == 1
+    snap = await snapshot(page, items[0]['el_id'])
+    assert not snap.in_first_view and snap.first_view_scroll_px > 0
+    assert r06.evaluate(snap, action='click', is_first_target=True).rule_id == 'R06'
+    assert r06.evaluate(snap, action='click', is_first_target=False) is None
+    await page.add_script_tag(path=str(ROOT / 'node_modules/axe-core/axe.min.js'))
+    axe = await page.evaluate('async () => await axe.run()')
+    assert not axe['violations'], {v['id'] for v in axe['violations']}
+    (OUTPUT / 'below-fold-axe.json').write_text(json.dumps(axe, ensure_ascii=False, indent=2), encoding='utf-8')
+    await page.screenshot(path=str(OUTPUT / 'below-fold.png'), full_page=True)
+    await page.locator('#signup').click()  # 이 화면의 첫 click 대상
+    await page.wait_for_url('**/index.html')
+    assert not errors, errors
+    return {'case': config['id'], 'verified': True, 'rule': config['rule'],
+            'start_page': ENTRY_PAGES[config['id']], 'first_target': '#signup',
+            'snapshots': [normal.model_dump(), snap.model_dump()], 'page_errors': errors}
 
 
 async def verify(origin: str) -> dict:
@@ -33,6 +72,11 @@ async def verify(origin: str) -> dict:
                 page = await browser.new_page(viewport={'width': 1280, 'height': 800})
                 errors = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
+                config = load_config(path) if path else None
+                if config and config['id'] in ENTRY_PAGES:
+                    report['cases'].append(await verify_entry(page, origin, config, errors))
+                    await page.close()
+                    continue
                 await page.goto(origin + '/index.html')
                 await page.frame_locator('iframe').locator('#confirm').wait_for()
                 await record_first_view(page)
@@ -41,7 +85,6 @@ async def verify(origin: str) -> dict:
                 signup = next(i for i in items if i['name'] == '무료로 가입하기')
                 assert (await snapshot(page, signup['el_id'])).occluded
                 await page.get_by_role('button', name='필수만 사용').click()
-                config = load_config(path) if path else None
                 name = config['id'] if config else 'baseline'
                 await record_first_view(page)
                 items = await observe(page)
@@ -80,12 +123,6 @@ async def verify(origin: str) -> dict:
                 elif name == 'overlay':
                     s = next(s for s in snaps if s.name == '무료로 가입하기')
                     assert s.occluded and s.occluder is not None
-                elif name == 'below-fold':
-                    assert box['y'] >= 800
-                    await target.scroll_into_view_if_needed()
-                    current = await observe(page)
-                    s = await snapshot(page, next(i['el_id'] for i in current if i['name'] == '무료로 가입하기'))
-                    assert not s.in_first_view and s.first_view_scroll_px > 0
                 elif name == 'unnamed':
                     assert await target.evaluate('el => el.textContent') == ''
                     assert any(s.name == '' and s.tag == 'button' for s in snaps)

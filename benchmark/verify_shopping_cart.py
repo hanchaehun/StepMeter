@@ -36,8 +36,9 @@ async def verify():
                     await search.scroll_into_view_if_needed()
                     items = await observe(page)
                     first = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'Search products'))
-                    assert bool(r06.evaluate(first, is_first_target=True)) == (variant == 'below-fold')
-                    assert r06.evaluate(first, action='type') is None
+                    # ADR 0009: 검색 과업의 첫 행동(검색어 입력)이 첫 화면 밖이면 R06, 첫 행동이 아니면 없음
+                    assert bool(r06.evaluate(first, action='type', is_first_target=True)) == (variant == 'below-fold')
+                    assert r06.evaluate(first, action='type', is_first_target=False) is None
                     if variant == 'below-fold':
                         await page.locator('input[type=search]').click()
                     await search.fill('Broccoli')

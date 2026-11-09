@@ -4,9 +4,9 @@
 
 | 공개 개발 앱 | 결과 |
 |---|---|
-| sb-admin-2 | 정상 로그인·가입 2과업 + 소스 변이 6종 검증, pending 정답 |
-| material-kit-react | 로그인/비밀번호 표시·제품 정렬/필터 2과업 + 소스 변이 6종 검증, pending 정답 |
-| react-shopping-cart | 현대화·외부 데이터 로컬화, 검색/수량2 추가·삭제 2과업 + 소스 변이 6종 검증, pending 정답 |
+| sb-admin-2 | 정상 로그인·가입 2과업 + 소스 변이 6종 검증, 정답 approved |
+| material-kit-react | 로그인/비밀번호 표시·제품 정렬/필터 2과업 + 소스 변이 6종 검증, 정답 approved |
+| react-shopping-cart | 현대화·외부 데이터 로컬화, 검색/수량2 추가·삭제 2과업 + 소스 변이 6종 검증, 정답 approved |
 | shadcn-admin | feat/benchmark-shadcn-admin 브랜치에 제작 결과 있음. main 머지·재현 확인 대기 |
 
 비공개 대체 홀드아웃 2개는 사용자 위임으로 별도 준비했다. 이름·설정·정답은 공개하지 않는다.
@@ -21,14 +21,14 @@ PM 승인 완료 개수나 실제 StepMeter 정확도·M2 E2E 통과 개수와 �
 
 - `build_variant.py`: 원본 보존, 고정 커밋+기준선+변이 소스 패치, patch SHA256 기록.
 - `verify_development.py`: 개발 앱 3개 패치 해시·빌드·정상 과업·18종 변이를 통합 검사. 미제출 앱은 명시.
-- `verify_conversion.py`: R06을 click 행동 대상이 로드 시 첫 화면 밖인 경우로 맞춘 뒤 정상+6변이 검사. axe 예측도 같은 경로로 갱신.
+- `verify_conversion.py`: 정상+6변이 검사(R06 기준은 [ADR 0009](../docs/adr/0009-r06-first-target.md)). axe 예측도 같은 경로로 갱신.
 - 월요일/수동 개발 검사 CI 추가. private manifest는 읽지 않고 홀드아웃 평가는 하지 않는다.
 - checkout.py도 --include-holdout을 명시하지 않으면 비공개 매니페스트를 열지 않는다.
 - 정답 승인 전에는 정식 점수를 출력하지 않는다. API·스키마·규칙 임계값을 결함에 맞춰 고치지 않았다.
 
 ## 남은 팀 승인·의존성
 
-1. PM이 3개 개발 앱 및 수정한 conversion 정답을 교차 검토해야 한다. 상태는 모두 pending이다.
+1. (11/9 완료) PM이 3개 개발 앱과 수정한 conversion 정답을 교차 검토해 모두 approved로 바꿨다.
 2. #26의 실제 에이전트 run(run_id)/Driver 제공 후 실제 M2 E2E·실행 중 취소 정리를 검증한다.
 3. PR #34는 본문이 shadcn인데 head가 feat/api-m2-flow다. 벤치마크 파일은 feat/benchmark-shadcn-admin에 있어 대상을 확인해야 한다.
 4. 사람 실험 초안의 SB Admin 로그인 체크박스 R01과 현재 등록 링크 R01은 다르다. 실험 담당과 변이를 맞춘 뒤 파일럿한다.
@@ -40,7 +40,7 @@ PM 승인 완료 개수나 실제 StepMeter 정확도·M2 E2E 통과 개수와 �
 받는 사람: PM·에이전트 코어·플랫폼 백엔드·사람 실험 담당
 
 내용: SB Admin/MUI/커머스의 정상 6과업·18종 소스 변이와 비공개 2앱의 4과업·12종 변이를 준비·검증했습니다.
-공개 정답과 수정된 conversion R06은 pending이므로 교차 검토 부탁드립니다. 홀드아웃 자료는 비공개로 별도 전달합니다.
+공개 정답과 수정된 conversion R06은 11/9 PM 교차 검토를 거쳐 approved가 됐습니다. 홀드아웃 자료는 비공개로 별도 전달합니다.
 #26의 실제 에이전트 구현이 제공되면 엄격 M2 실행 명령으로 전체 흐름과 실행 중 취소를 검증하겠습니다.
 PR #34의 대상 브랜치와 사람 실험용 SB Admin 변이의 과업 차이도 확인 부탁드립니다.
 
@@ -48,4 +48,4 @@ PR #34의 대상 브랜치와 사람 실험용 SB Admin 변이의 과업 차이�
 
 shadcn 기준선·변이·승인 정답이 main에 합쳐졌다. conversion 정답도 main의 approved 상태를 유지한다.
 SB Admin 기본 small은 로그인 체크박스 변이로 통일하고 정답 대상을 #customCheck로 맞췄다.
-등록 링크 변이는 small-register.patch로 별도 보존한다. 위 제출 대기 문구는 이전 시점의 기록이다. R06은 main 코드(`worker/rules/r06.py`) 기준으로 click 행동 대상이 로드 시 첫 화면 밖일 때 나온다.
+등록 링크 변이는 small-register.patch로 별도 보존한다. 위 제출 대기 문구는 이전 시점의 기록이다. R06은 화면이 로드된 뒤 처음 행동하는 대상(click·type·select)이 로드 시 첫 화면 밖일 때 나온다([ADR 0009](../docs/adr/0009-r06-first-target.md)).

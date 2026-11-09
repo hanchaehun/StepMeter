@@ -52,13 +52,14 @@ async def verify(origin: str):
                     await page.locator('#exampleFirstName').scroll_into_view_if_needed()
                     items = await observe(page)
                     snap = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'First name'))
-                    assert r06.evaluate(snap, is_first_target=True).rule_id == 'R06'
-                    assert r06.evaluate(snap, action='type') is None
+                    # ADR 0009: 가입 과업의 첫 행동(First name 입력)이 첫 화면 밖이면 R06, 첫 행동이 아니면 없음
+                    assert r06.evaluate(snap, action='type', is_first_target=True).rule_id == 'R06'
+                    assert r06.evaluate(snap, action='type', is_first_target=False) is None
                     await page.locator('#exampleFirstName').click()
                 else:
                     items = await observe(page)
                     normal = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'First name'))
-                    assert r06.evaluate(normal, is_first_target=True) is None
+                    assert r06.evaluate(normal, action='type', is_first_target=True) is None
                 await page.locator('#exampleFirstName').fill('Demo')
                 await page.locator('#exampleLastName').fill('User')
                 await page.locator('#exampleInputEmail').fill('demo@example.test')

@@ -16,7 +16,7 @@ Step/ElementSnapshot/API 스키마를 추가하거나 변경하지 않는다.
 | R03 | click + 코어가 노이즈 제외 후 기록한 `no_change` |
 | R04 | snapshot.occluded |
 | R05 | attempt.end_reason == loop. 단순 반복 클릭은 해당하지 않음 |
-| R06 | 클릭 대상이 로드 때 화면 밖. first_view_scroll_px가 null인 나중 생성 요소는 제외 |
+| R06 | 화면(페이지 로드·SPA 라우트 변경)이 로드된 뒤 처음 행동하는 대상(click·type·select)이 로드 시 첫 화면 밖. 화면이 바뀔 때마다 다시 센다([ADR 0009](../../docs/adr/0009-r06-first-target.md)). first_view_scroll_px가 null인 나중 생성 요소는 제외 |
 | R07 | 측정 가능한 대상 중 ID 상위 ceil(N/10), min(width,height)<32, ID>0 |
 | R10 | axe button-name/link-name/label 등 명시된 이름·레이블 규칙 |
 
@@ -25,6 +25,9 @@ R07의 표본 수 반올림·동률 처리는 계획서에 정의되지 않아 �
 R06은 가로로만 화면 밖인 경우도 포함한다(scroll px가 0일 수 있음).
 
 `engine.evaluate_step()`은 R01/R03/R04/R06에 step_id와 요소 지문을 붙인다.
+`is_first_target`은 필수다. `r06.FirstTargetTracker`에 행동 직전 URL과 행동 종류를 순서대로 넣어 얻는다.
+화면은 출처+경로로 구분하고 쿼리만 바뀌면 같은 화면이다. 해시는 `hash_routes=True`일 때만 센다.
+같은 주소를 다시 불러온 페이지 로드는 `new_screen()`으로 알린다.
 `r05.evaluate()`는 실행 종료 때 한 번, `r07.evaluate()`는 실행 전체 ID 계산 후
 호출한다. R07 반환 목록은 입력 순서와 같으며 caller가 해당 step_id·지문을 붙인다.
 `engine.evaluate_axe()`는 경로 밖 결과를 `is_reference=True`로 유지한다.
@@ -41,6 +44,7 @@ R06은 가로로만 화면 밖인 경우도 포함한다(scroll px가 0일 수 �
 - 받는 사람: 에이전트 코어·수집 담당
 - 내용: 행동 전 snapshot/실제 Locator와 임시 키로 axe 검사, 행동 후 DB step ID에 연결 및 노이즈 제외
   effect_type 제공, 초기·각 행동 후 scrollY/URL 및 안정된 대상 identity 수집,
+  화면이 바뀔 때마다 첫 화면 다시 기록(record_first_view)과 FirstTargetTracker로 첫 행동 대상 판정,
   실행 종료 후 R05/R07·metric/issue 저장 호출이 필요하다. 현재 main의 코어 실행부는
   아직 구현되지 않았다. 취소 확인·최종 commit·run 완료 처리는 코어가 맡는다.
 

@@ -37,8 +37,9 @@ async def verify():
                         await page.locator('input[name=email]').scroll_into_view_if_needed()
                     items = await observe(page)
                     initial = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'Email address'))
-                    assert bool(r06.evaluate(initial, is_first_target=True)) == (variant == 'below-fold')
-                    assert r06.evaluate(initial, action='type') is None
+                    # ADR 0009: 로그인 과업의 첫 행동(이메일 입력)이 첫 화면 밖이면 R06, 첫 행동이 아니면 없음
+                    assert bool(r06.evaluate(initial, action='type', is_first_target=True)) == (variant == 'below-fold')
+                    assert r06.evaluate(initial, action='type', is_first_target=False) is None
                     if variant == 'below-fold':
                         await page.locator('input[name=email]').click()
                     await page.locator('input[name=email]').fill('demo@example.test')

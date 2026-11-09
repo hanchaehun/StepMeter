@@ -64,13 +64,49 @@ class RulesW2Tests(unittest.TestCase):
         for reason in (None, "success", "budget_exceeded", "gave_up"):
             self.assertIsNone(r05.evaluate(reason))
 
-    def test_r06_click_target_and_late_element(self):
+    def test_r06_first_target_criterion(self):
+        # ADR 0009: 화면이 로드된 뒤 처음 행동하는 대상(click·type·select)이 로드 시 첫 화면 밖이면 R06
         outside = target(in_first_view=False, first_view_scroll_px=120)
-        self.assertEqual(r06.evaluate(outside).measured, 120)
-        self.assertIsNone(r06.evaluate(outside, action="type"))
-        self.assertIsNone(r06.evaluate(target()))
-        self.assertIsNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=None)))
-        self.assertIsNotNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=0)))
+        # 첫 행동이 화면 밖 → R06 (측정값은 보이게 하는 데 필요한 스크롤)
+        self.assertEqual(r06.evaluate(outside, action="click", is_first_target=True).measured, 120)
+        # 첫 행동이 type이고 화면 밖 → R06
+        self.assertEqual(r06.evaluate(outside, action="type", is_first_target=True).rule_id, "R06")
+        # 첫 화면 안 → 없음
+        self.assertIsNone(r06.evaluate(target(), action="click", is_first_target=True))
+        # 두 번째 행동이 화면 밖 → 없음 (첫 행동은 화면 안의 다른 대상)
+        tracker = r06.FirstTargetTracker()
+        url = "http://127.0.0.1:8766/register.html"
+        self.assertTrue(tracker.is_first_target(url, "type"))
+        second = tracker.is_first_target(url, "click")
+        self.assertFalse(second)
+        self.assertIsNone(r06.evaluate(outside, action="click", is_first_target=second))
+
+    def test_r06_late_and_horizontal_targets(self):
+        # 로드 때 없던 요소(null)는 로드 시 첫 화면 밖이라고 볼 수 없다. 가로로만 밖이면 스크롤 0이어도 밖이다
+        self.assertIsNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=None),
+                                       action="click", is_first_target=True))
+        self.assertIsNotNone(r06.evaluate(target(in_first_view=False, first_view_scroll_px=0),
+                                          action="click", is_first_target=True))
+
+    def test_r06_counts_first_target_again_on_each_screen(self):
+        # 화면이 바뀔 때마다(내비게이션·SPA 라우트 변경) 첫 행동 대상을 다시 센다. 대상 행동은 click·type·select
+        tracker = r06.FirstTargetTracker()
+        steps = [("http://a.test/sign-in", "scroll"),   # 대상 행동이 아니다
+                 ("http://a.test/sign-in", "type"),     # 이 화면의 첫 행동
+                 ("http://a.test/sign-in", "click"),
+                 ("http://a.test/products", "click"),   # 화면이 바뀐 뒤 첫 행동
+                 ("http://a.test/products", "select")]
+        self.assertEqual([tracker.is_first_target(url, action) for url, action in steps],
+                         [False, True, False, True, False])
+        tracker.new_screen()  # 같은 주소를 다시 불러온 페이지 로드
+        self.assertTrue(tracker.is_first_target("http://a.test/products", "click"))
+
+    def test_step_r06_follows_first_target_flag(self):
+        outside = target(44, in_first_view=False, first_view_scroll_px=120)
+        first = evaluate_step(outside, step_id=3, action="type", effect_type="dom_mutation", is_first_target=True)
+        later = evaluate_step(outside, step_id=4, action="type", effect_type="dom_mutation", is_first_target=False)
+        self.assertEqual([c.rule_id for c in first], ["R06"])
+        self.assertEqual(later, [])
 
     def test_r07_top_tenth_width_boundary_ties_and_unmeasurable(self):
         # 10 targets: the largest ID alone is the upper 10%.
