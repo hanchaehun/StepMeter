@@ -1,0 +1,10 @@
+--- a/src/components/Product.jsx
++++ b/src/components/Product.jsx
+@@ -24,6 +24,7 @@
+       <p className="product-price">{price}</p>
+       <div className="product-action">
+         <button
++          style={{color:"#eee",backgroundColor:"#fff"}}
+           className={!isAdded ? "" : "added"}
+           type="button"
+           onClick={handleAddToCart}

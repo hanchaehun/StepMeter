@@ -22,6 +22,41 @@ class QuietHandler(SimpleHTTPRequestHandler):
         pass
 
 
+
+async def verify_entry(page, origin: str, config: dict) -> dict:
+    """R06 uses the first target of an entry page, before cookie/form interactions."""
+    from worker.rules import r06
+
+    await page.goto(origin + '/' + config['page'])
+    # Negative control: the exact same first target is visible without the mutation.
+    await record_first_view(page)
+    items = await observe(page)
+    assert len(items) == 1 and items[0]['name'] == '가입 시작하기'
+    normal = await snapshot(page, items[0]['el_id'])
+    assert normal.in_first_view
+    assert r06.evaluate(normal, is_first_target=True) is None
+    await apply(page, config)
+    await record_first_view(page)
+    assert await observe(page) == []  # no target-bearing action occurred yet
+    await page.screenshot(path=str(OUTPUT / 'below-fold-initial.png'), full_page=True)
+    await page.locator('#signup').scroll_into_view_if_needed()
+    items = await observe(page)
+    assert len(items) == 1
+    snap = await snapshot(page, items[0]['el_id'])
+    assert not snap.in_first_view and snap.first_view_scroll_px > 0
+    assert r06.evaluate(snap, is_first_target=True).rule_id == 'R06'
+    assert r06.evaluate(snap, is_first_target=False) is None
+    await page.add_script_tag(path=str(ROOT / 'node_modules/axe-core/axe.min.js'))
+    axe = await page.evaluate('async () => await axe.run()')
+    assert not axe['violations']
+    (OUTPUT / 'below-fold-axe.json').write_text(json.dumps(axe, ensure_ascii=False, indent=2), encoding='utf-8')
+    await page.screenshot(path=str(OUTPUT / 'below-fold.png'), full_page=True)
+    await page.locator('#signup').click()  # first click/type/select target of this task
+    assert page.url.endswith(config['success_path'])
+    return {'case': 'below-fold', 'verified': True, 'rule': 'R06',
+            'task': config['task'], 'first_target': '#signup',
+            'snapshots': [snap.model_dump()], 'page_errors': []}
+
 async def verify(origin: str) -> dict:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / 'verification.json').unlink(missing_ok=True)
@@ -33,6 +68,13 @@ async def verify(origin: str) -> dict:
                 page = await browser.new_page(viewport={'width': 1280, 'height': 800})
                 errors = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
+                config = load_config(path) if path else None
+                if config and config.get('page') == 'entry.html':
+                    case = await verify_entry(page, origin, config)
+                    assert not errors, errors
+                    report['cases'].append(case)
+                    await page.close()
+                    continue
                 await page.goto(origin + '/index.html')
                 await page.frame_locator('iframe').locator('#confirm').wait_for()
                 await record_first_view(page)
@@ -80,12 +122,6 @@ async def verify(origin: str) -> dict:
                 elif name == 'overlay':
                     s = next(s for s in snaps if s.name == '무료로 가입하기')
                     assert s.occluded and s.occluder is not None
-                elif name == 'below-fold':
-                    assert box['y'] >= 800
-                    await target.scroll_into_view_if_needed()
-                    current = await observe(page)
-                    s = await snapshot(page, next(i['el_id'] for i in current if i['name'] == '무료로 가입하기'))
-                    assert not s.in_first_view and s.first_view_scroll_px > 0
                 elif name == 'unnamed':
                     assert await target.evaluate('el => el.textContent') == ''
                     assert any(s.name == '' and s.tag == 'button' for s in snaps)

@@ -1,0 +1,20 @@
+--- a/src/components/Header.jsx
++++ b/src/components/Header.jsx
+@@ -28,7 +28,7 @@
+   };
+ 
+   return (
+-    <header>
++    <header style={{position:"static"}}>
+       <div className="container">
+         <div className="brand">
+           <Link to="/">
+@@ -40,7 +40,7 @@
+           </Link>
+         </div>
+ 
+-        <div className="search">
++        <div className="search" style={{marginTop:"100vh"}}>
+           <a
+             className="mobile-search"
+             href="#"

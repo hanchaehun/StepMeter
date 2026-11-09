@@ -1,0 +1,44 @@
+{
+  "split": "development",
+  "review_status": "pending",
+  "cases": {
+    "baseline": [],
+    "small": [
+      {
+        "rule": "R01",
+        "target": "form.user a.btn-primary"
+      }
+    ],
+    "contrast": [
+      {
+        "rule": "R02",
+        "target": "form.user a.btn-primary"
+      }
+    ],
+    "inert": [
+      {
+        "rule": "R03",
+        "target": "form.user a.btn-primary"
+      }
+    ],
+    "overlay": [
+      {
+        "rule": "R04",
+        "target": "form.user a.btn-primary"
+      }
+    ],
+    "below-fold": [
+      {
+        "rule": "R06",
+        "target": "#exampleFirstName"
+      }
+    ],
+    "unnamed": [
+      {
+        "rule": "R10",
+        "target": "form.user a.btn-primary"
+      }
+    ],
+    "baseline-login": []
+  }
+}

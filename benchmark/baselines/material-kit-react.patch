@@ -11,6 +11,27 @@ index 6062fe5..df1367c 100644
      </ThemeProvider>
    );
  }
+diff --git a/src/layouts/auth/layout.tsx b/src/layouts/auth/layout.tsx
+index d73d717..8b8f3e0 100644
+--- a/src/layouts/auth/layout.tsx
++++ b/src/layouts/auth/layout.tsx
+@@ -134,15 +134,4 @@ export function AuthLayout({
+ 
+ // ----------------------------------------------------------------------
+ 
+-const backgroundStyles = (): CSSObject => ({
+-  zIndex: 1,
+-  opacity: 0.24,
+-  width: '100%',
+-  height: '100%',
+-  content: "''",
+-  position: 'absolute',
+-  backgroundSize: 'cover',
+-  backgroundRepeat: 'no-repeat',
+-  backgroundPosition: 'center center',
+-  backgroundImage: 'url(/assets/background/overlay.jpg)',
+-});
++const backgroundStyles = (): CSSObject => ({ display: 'none' });
 diff --git a/src/layouts/components/searchbar.tsx b/src/layouts/components/searchbar.tsx
 index 31ac203..05f48c3 100644
 --- a/src/layouts/components/searchbar.tsx
@@ -76,6 +97,38 @@ index 09d3dd9..11fb4dd 100644
            <Iconify width={22} icon="socials:twitter" />
          </IconButton>
        </Box>
+diff --git a/src/sections/product/product-filters.tsx b/src/sections/product/product-filters.tsx
+index 3777a98..3e6f656 100644
+--- a/src/sections/product/product-filters.tsx
++++ b/src/sections/product/product-filters.tsx
+@@ -186,7 +186,11 @@ export function ProductFilters({
+         open={openFilter}
+         onClose={onCloseFilter}
+         slotProps={{
++          backdrop: { sx: { backgroundColor: "transparent" } },
+           paper: {
++            role: "dialog",
++            "aria-modal": true,
++            "aria-label": "Product filters",
+             sx: { width: 280, overflow: 'hidden' },
+           },
+         }}
+@@ -204,13 +208,13 @@ export function ProductFilters({
+             Filters
+           </Typography>
+ 
+-          <IconButton onClick={onResetFilter}>
++          <IconButton aria-label="Reset filters" onClick={onResetFilter}>
+             <Badge color="error" variant="dot" invisible={!canReset}>
+               <Iconify icon="solar:restart-bold" />
+             </Badge>
+           </IconButton>
+ 
+-          <IconButton onClick={onCloseFilter}>
++          <IconButton aria-label="Close filters" onClick={onCloseFilter}>
+             <Iconify icon="mingcute:close-line" />
+           </IconButton>
+         </Box>
 diff --git a/src/sections/product/product-item.tsx b/src/sections/product/product-item.tsx
 index 722d340..0a8f6d6 100644
 --- a/src/sections/product/product-item.tsx
@@ -134,19 +187,3 @@ index 8805602..5ba797f 100644
        dark: '#0C44AE',
        darker: '#042174',
        contrastText: '#FFFFFF',
-diff --git a/yarn.lock b/yarn.lock
-index 7c1494c..cf6e54d 100644
---- a/yarn.lock
-+++ b/yarn.lock
-@@ -2963,11 +2963,6 @@ yaml@^1.10.0:
-   resolved "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz"
-   integrity sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==
- 
--yaml@^2.4.2:
--  version "2.7.1"
--  resolved "https://registry.npmjs.org/yaml/-/yaml-2.7.1.tgz"
--  integrity sha512-10ULxpnOCQXxJvBgxsn9ptjq6uviG/htZKk9veJGhlqn3w/DxQ631zFF+nlQXLwmImeS5amR2dl2U8sg6U9jsQ==
--
- yocto-queue@^0.1.0:
-   version "0.1.0"
-   resolved "https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz"

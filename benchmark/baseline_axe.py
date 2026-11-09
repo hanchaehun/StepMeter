@@ -88,6 +88,17 @@ async def collect(origin: str) -> dict[str, list[dict]]:
                 config = load_config(path) if path else None
                 case = config['id'] if config else 'baseline'
                 page = await browser.new_page(viewport={'width': 1280, 'height': 800})
+                if config and config.get('page') == 'entry.html':
+                    await page.goto(origin + '/' + config['page'])
+                    await apply(page, config)
+                    found = await run_axe(page)
+                    await page.locator('#signup').scroll_into_view_if_needed()
+                    found += await run_axe(page)
+                    await page.locator('#signup').click()
+                    assert page.url.endswith(config['success_path'])
+                    violations_by_case[case] = found
+                    await page.close()
+                    continue
                 await page.goto(origin + '/index.html')
                 await page.frame_locator('iframe').locator('#confirm').wait_for()
                 await page.get_by_role('button', name='필수만 사용').click()

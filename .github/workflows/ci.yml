@@ -54,11 +54,23 @@ jobs:
       - run: mypy --explicit-package-bases --follow-imports=silent worker/metrics/cursor_distance.py
       - run: python -m unittest discover -s tests -v
       - run: python -m benchmark.verify_conversion
+      - run: python -m benchmark.baseline_axe
+      - name: Reproduce pinned SB Admin source variants
+        run: |
+          python benchmark/checkout.py sb-admin-2
+          for variant in baseline small contrast inert overlay below-fold unnamed; do
+            python -m benchmark.build_variant sb-admin-2 "$variant"
+          done
+          python -m benchmark.verify_sb_admin
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: conversion-fixture-evidence
-          path: benchmark/evidence/conversion/
+          path: |
+            benchmark/evidence/conversion/
+            benchmark/evidence/baseline-axe/
+            benchmark/evidence/sb-admin-2/w2/verification.json
+            benchmark/evidence/sb-admin-2/w2/*.png
   web:
     runs-on: ubuntu-latest
     defaults:
@@ -87,6 +99,10 @@ jobs:
       - run: docker compose --profile test build web tests
       - run: docker compose --profile test run --rm tests
       - run: docker compose up -d --wait web
+      - name: Real API and queue integration (agent pending)
+        run: |
+          docker compose --profile m2 up -d --build --wait api
+          docker compose --profile m2 run --rm api python -m infra.scripts.check_m2_api
       - name: Worker network and fixture smoke (no API or agent claim)
         run: docker compose --profile m2 run --rm worker python -m infra.scripts.check_m2_network
       - run: curl --fail http://localhost:8080/healthz && curl --fail http://localhost:8080/

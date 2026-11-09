@@ -1,0 +1,10 @@
+--- a/src/sections/auth/sign-in-view.tsx
++++ b/src/sections/auth/sign-in-view.tsx
+@@ -27,6 +27,7 @@
+   const renderForm = (
+     <Box
+       sx={{
++        mt: '100vh',
+         display: 'flex',
+         alignItems: 'flex-end',
+         flexDirection: 'column',

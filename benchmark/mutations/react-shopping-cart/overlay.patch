@@ -1,0 +1,12 @@
+--- a/src/components/Product.jsx
++++ b/src/components/Product.jsx
+@@ -22,7 +22,8 @@
+       </div>
+       <h2 className="product-name">{name}</h2>
+       <p className="product-price">{price}</p>
+-      <div className="product-action">
++      <div className="product-action" style={{position:"relative"}}>
++        <span aria-hidden="true" style={{position:"absolute",inset:0,zIndex:5,background:"rgba(255,255,255,.5)"}} />
+         <button
+           className={!isAdded ? "" : "added"}
+           type="button"

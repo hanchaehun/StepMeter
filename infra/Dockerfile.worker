@@ -10,7 +10,9 @@ FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 WORKDIR /app
 COPY requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt \
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir -r requirements-dev.txt \
     && python -m playwright install --with-deps chromium \
     && useradd --create-home --uid 10001 stepmeter
 COPY worker worker
@@ -19,6 +21,7 @@ COPY tests tests
 COPY benchmark/baseline_axe.py benchmark/baseline_axe.py
 # Evaluation tests import this module; do not copy private holdouts or evidence.
 COPY benchmark/eval.py benchmark/eval.py
+COPY benchmark/build_variant.py benchmark/build_variant.py
 COPY infra/scripts infra/scripts
 COPY prompts prompts
 COPY apps/api apps/api

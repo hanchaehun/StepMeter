@@ -90,3 +90,5 @@ mypy는 현재 통과하는 이동거리 모듈에 적용하며, 스키마는 �
 W2 M2 Compose·Redis CI·실행 및 연결 대기 사항: [m2.md](m2.md).
 
 2026-11-06 로컬 M2 검증 결과: [w2-m2-status.md](w2-m2-status.md).
+
+11/8 실제 API 연결·R06·SB Admin 검증 기록: [w2-final-status.md](w2-final-status.md).

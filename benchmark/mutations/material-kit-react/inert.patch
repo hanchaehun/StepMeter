@@ -1,0 +1,11 @@
+--- a/src/sections/auth/sign-in-view.tsx
++++ b/src/sections/auth/sign-in-view.tsx
+@@ -58,7 +58,7 @@
+           input: {
+             endAdornment: (
+               <InputAdornment position="end">
+-                <IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)} edge="end">
++                <IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => { /* disconnected visibility handler */ }} edge="end">
+                   <Iconify icon={showPassword ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
+                 </IconButton>
+               </InputAdornment>

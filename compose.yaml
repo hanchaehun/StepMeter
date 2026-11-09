@@ -41,7 +41,7 @@ services:
       DATABASE_URL: postgresql+psycopg://stepmeter:stepmeter@db:5432/stepmeter
       REDIS_URL: redis://redis:6379/0
       STEPMETER_ENV: development
-      STEPMETER_API_COMMAND: ${STEPMETER_API_COMMAND:-}
+      STEPMETER_API_COMMAND: ${STEPMETER_API_COMMAND:-uvicorn apps.api.main:app --host 0.0.0.0 --port 8000}
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=3).close()"]
       interval: 3s

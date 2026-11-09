@@ -1,0 +1,18 @@
+--- a/src/sections/auth/sign-in-view.tsx
++++ b/src/sections/auth/sign-in-view.tsx
+@@ -51,6 +51,7 @@
+         fullWidth
+         name="password"
+         label="Password"
++        sx={{ "& .MuiInputLabel-root": { color: "#eee !important", backgroundColor: "#fff" } }}
+         defaultValue="@demo1234"
+         type={showPassword ? 'text' : 'password'}
+         slotProps={{
+@@ -65,7 +66,6 @@
+             ),
+           },
+         }}
+-        sx={{ mb: 3 }}
+       />
+ 
+       <Button

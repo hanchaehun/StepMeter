@@ -1,0 +1,44 @@
+{
+  "split": "development",
+  "review_status": "pending",
+  "cases": {
+    "baseline": [],
+    "small": [
+      {
+        "rule": "R01",
+        "target": ".product-action button:first-of-type"
+      }
+    ],
+    "contrast": [
+      {
+        "rule": "R02",
+        "target": ".product-action button:first-of-type"
+      }
+    ],
+    "inert": [
+      {
+        "rule": "R03",
+        "target": ".product-action button:first-of-type"
+      }
+    ],
+    "overlay": [
+      {
+        "rule": "R04",
+        "target": ".product-action button:first-of-type"
+      }
+    ],
+    "below-fold": [
+      {
+        "rule": "R06",
+        "target": "input[type=\"search\"]"
+      }
+    ],
+    "unnamed": [
+      {
+        "rule": "R10",
+        "target": ".product-action button:first-of-type"
+      }
+    ],
+    "baseline-remove": []
+  }
+}
