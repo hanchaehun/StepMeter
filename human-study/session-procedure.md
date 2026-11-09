@@ -18,7 +18,7 @@
 
 ### 페이지별 주소
 
-패치를 적용해 띄우는 틀은 PM이 준비한다. 틀이 나오면 포트를 그 틀에 맞춘다. 아래 포트는 지금까지 검증에 쓴 값이다.
+서버는 `benchmark/serve_variants.py`로 띄운다. 포트와 주소는 `benchmark/variants.json`에 있고 아래 표와 같다.
 
 | # | `page_id` | 서버 | 시작 주소 |
 |---|---|---|---|
@@ -28,6 +28,17 @@
 | 4 | `sb-admin-2/login/small` | 기준선 + `small.patch` | `http://127.0.0.1:8791/login.html` |
 | 5 | `shadcn-admin/tasks/contrast` | 기준선 + `contrast.patch` 빌드 | `http://127.0.0.1:8782/tasks` |
 | 6 | `shadcn-admin/users/below-fold` | 기준선 + `below-fold.patch` 빌드 | `http://127.0.0.1:8785/users` |
+
+저장소 루트에서 아래 순서로 실행한다.
+
+```sh
+python -m benchmark.serve_variants build   # 처음 한 번. 패치 해시가 같으면 다시 빌드하지 않는다
+python -m benchmark.serve_variants check   # 결함판 5·6번은 결함 발현, 4번은 누름 영역 24→16px 축소, 기준선은 깨끗한지 확인 (실패하면 종료 코드 1)
+python -m benchmark.serve_variants serve   # 서버 5개를 띄우고 page_id별 주소 표를 보여 준다
+python -m benchmark.serve_variants stop    # 그날 세션이 끝나면 정리
+```
+
+빌드 기록(`*.manifest.json`: 앱·커밋·패치 sha256·빌드 시각)과 serve 기록(`serve-history.jsonl`)은 `benchmark/apps/variants/`에 남는다(git 제외).
 
 ## 진행 순서
 
@@ -81,6 +92,7 @@
 
 - 저장된 파일 6개(페이지당 1개)가 있는지 확인한다. `*.invalid.json`이 생겼으면 지우지 말고 오류 내용을 수집 스크립트 담당에게 알린다.
 - 저장 위치는 `data/human/`이다. git 제외 폴더이며 **커밋하지 않는다.**
+- 세션이 끝나면 `benchmark/apps/variants/`의 manifest(`<앱>/<변이>.manifest.json`)와 `serve-history.jsonl`을 참가자 데이터와 같은 비공개 폴더에 복사한다. 참가자가 어떤 빌드를 봤는지 증명하는 기록이다.
 - 서명한 동의서는 데이터와 분리해 보관한다. 사진을 찍거나 스캔해 올리지 않는다.
 - API가 생기면 `upload.py`로 올린다.
 

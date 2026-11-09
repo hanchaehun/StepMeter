@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "description": "사람 실험·벤치마크 측정에 쓰는 결함판 빌드와 고정 포트, page_id → URL 표. 사용법은 benchmark/serve_variants.py 첫 설명",
+  "host": "127.0.0.1",
+  "recipes": {
+    "sb-admin-2": {
+      "note": "정적 HTML. 배포용 CSS·vendor가 원본에 커밋되어 있어 설치·빌드 없이 소스 폴더를 그대로 띄운다",
+      "install": null,
+      "build": null,
+      "serve_root": ".",
+      "spa": false
+    },
+    "material-kit-react": {
+      "install": ["npm", "ci"],
+      "build": ["npm", "run", "build"],
+      "serve_root": "dist",
+      "spa": true
+    },
+    "shadcn-admin": {
+      "note": "pnpm 버전은 selection.md 'shadcn-admin 클리닝'에서 배포용 빌드를 검증한 값",
+      "install": ["npx", "--yes", "pnpm@9.15.9", "install", "--frozen-lockfile"],
+      "build": ["npx", "--yes", "pnpm@9.15.9", "run", "build"],
+      "serve_root": "dist",
+      "spa": true
+    }
+  },
+  "builds": [
+    {"app": "sb-admin-2", "variant": "baseline", "port": 8766},
+    {"app": "sb-admin-2", "variant": "small", "port": 8791,
+     "purpose": "human-study-only",
+     "note": "사람 실험 전용 변이(#39). R01 정답이 아니다. check는 결함 발현 대신 Remember Me 누름 영역 24→16px 축소만 확인한다",
+     "check": {"measure": "size_px", "baseline": 24, "variant": 16}},
+    {"app": "material-kit-react", "variant": "baseline", "port": 8767},
+    {"app": "shadcn-admin", "variant": "baseline", "port": 8772,
+     "note": "check 전용: verify_shadcn_admin이 결함판과 비교하는 기준선. 참가자 페이지 없음"},
+    {"app": "shadcn-admin", "variant": "contrast", "port": 8782},
+    {"app": "shadcn-admin", "variant": "below-fold", "port": 8785}
+  ],
+  "pages": [
+    {"page_id": "sb-admin-2/register/baseline", "path": "/register.html"},
+    {"page_id": "material-kit-react/products/baseline", "path": "/products"},
+    {"page_id": "material-kit-react/sign-in/baseline", "path": "/sign-in"},
+    {"page_id": "sb-admin-2/login/small", "path": "/login.html"},
+    {"page_id": "shadcn-admin/tasks/contrast", "path": "/tasks"},
+    {"page_id": "shadcn-admin/users/below-fold", "path": "/users"}
+  ]
+}

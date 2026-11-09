@@ -31,11 +31,11 @@
 
 ### 결함을 넣는 방법
 
-`mutate.py`(페이지 로드 직후 DOM 수정)를 쓰지 않고, 앱 소스에 직접 넣은 패치 파일을 쓴다. 기준선 패치(`benchmark/baselines/{앱}.patch`)를 적용한 뒤 변이 패치(`benchmark/mutations/{앱}/{변이}.patch`)를 적용해 로컬 서버를 띄운다. 참가자는 진행자 PC 브라우저에서 이 서버를 연다. 패치를 적용해 띄우는 틀은 PM이 준비한다.
+`mutate.py`(페이지 로드 직후 DOM 수정)를 쓰지 않고, 앱 소스에 직접 넣은 패치 파일을 쓴다. 기준선 패치(`benchmark/baselines/{앱}.patch`)를 적용한 뒤 변이 패치(`benchmark/mutations/{앱}/{변이}.patch`)를 적용해 로컬 서버를 띄운다. 참가자는 진행자 PC 브라우저에서 이 서버를 연다. 빌드와 서버는 `python -m benchmark.serve_variants`(build → check → serve → stop)로 띄우고, 빌드·포트·주소는 `benchmark/variants.json`에 있다(`session-procedure.md` "페이지별 주소").
 
 | # | 패치 | 상태 |
 |---|---|---|
-| 4 | `benchmark/mutations/sb-admin-2/small.patch` | 대시보드 UI가 만드는 중 |
+| 4 | `benchmark/mutations/sb-admin-2/small.patch` | #39로 main에 있음. 사람 실험 전용 변이(R01 정답 아님). Remember Me 누름 영역 24→16px. `serve_variants check`가 이 축소를 확인한다 |
 | 5 | `benchmark/mutations/shadcn-admin/contrast.patch` | #35로 main에 있음. 행 메뉴의 Edit 글자에 흐린 글자 클래스(대비 1.47:1) |
 | 6 | `benchmark/mutations/shadcn-admin/below-fold.patch` | #35로 main에 있음. 설명 문단의 `min-h-svh` 때문에 Invite User가 첫 화면 밖(top 892px) |
 
@@ -89,6 +89,6 @@
 
 ## 남은 것
 
-- [ ] 4번 `benchmark/mutations/sb-admin-2/small.patch`를 만들고 렌더링으로 발현을 확인한다.
+- [x] 4번 `benchmark/mutations/sb-admin-2/small.patch`를 만들고 렌더링으로 확인한다. → 사람 실험 전용 변이로 결정(R01 정답 아님, #39). `serve_variants check`가 누름 영역 24→16px 축소를 확인한다.
 - [ ] 6번 과업을 바뀐 문장대로 다시 실행해 끝까지 되는지 확인한다.
 - [ ] 파일럿에서 전체 시간이 20분 안에 끝나는지와, 로그인 과업 3·4번이 비슷해 학습 효과가 생기는지 확인한다.
