@@ -33,7 +33,7 @@
 
 ```sh
 python -m benchmark.serve_variants build   # 처음 한 번. 패치 해시가 같으면 다시 빌드하지 않는다
-python -m benchmark.serve_variants check   # 결함판 5·6번은 결함 발현, 4번은 누름 영역 24→16px 축소, 기준선은 깨끗한지 확인 (실패하면 종료 코드 1)
+python -m benchmark.serve_variants check   # 결함판 4·5·6번은 결함 발현(4번은 R01, #41에서 링크 간격 조정), 기준선은 깨끗한지 확인 (실패하면 종료 코드 1)
 python -m benchmark.serve_variants serve   # 서버 5개를 띄우고 page_id별 주소 표를 보여 준다
 python -m benchmark.serve_variants stop    # 그날 세션이 끝나면 정리
 ```

@@ -26,10 +26,7 @@
   },
   "builds": [
     {"app": "sb-admin-2", "variant": "baseline", "port": 8766},
-    {"app": "sb-admin-2", "variant": "small", "port": 8791,
-     "purpose": "human-study-only",
-     "note": "사람 실험 전용 변이(#39). R01 정답이 아니다. check는 결함 발현 대신 Remember Me 누름 영역 24→16px 축소만 확인한다",
-     "check": {"measure": "size_px", "baseline": 24, "variant": 16}},
+    {"app": "sb-admin-2", "variant": "small", "port": 8791},
     {"app": "material-kit-react", "variant": "baseline", "port": 8767},
     {"app": "shadcn-admin", "variant": "baseline", "port": 8772,
      "note": "check 전용: verify_shadcn_admin이 결함판과 비교하는 기준선. 참가자 페이지 없음"},

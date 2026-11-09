@@ -5,7 +5,7 @@
   - 시작 주소: human-study/session-procedure.md "페이지별 주소"
   - shadcn-admin 기준선 8772: benchmark/selection.md "shadcn-admin 클리닝"
   - sha256("abc"): FIPS 180-2 부록 B.1 예제
-  - sb-admin-2/small: 사람 실험 전용(R01 정답 아님, #39), 누름 영역 24→16px (PR #39 커밋 메시지)
+  - sb-admin-2/small: R01 결함판 (#41에서 링크 간격 조정, PM 결정). verify_sb_admin_2로 발현을 잰다
 """
 from __future__ import annotations
 
@@ -79,43 +79,16 @@ class ConfigTests(unittest.TestCase):
             if b.app in defaults and b.variant != sv.BASELINE:
                 self.assertEqual(b.port, defaults[b.app][b.variant], b.id)
 
-    def test_small_is_human_study_only_with_size_check(self):
-        config = sv.load_config()
-        small = config.build("sb-admin-2/small")
-        self.assertEqual(small.purpose, "human-study-only")
-        self.assertEqual(small.size_check, sv.SizeCheck(baseline=24, variant=16))
-        for b in config.builds:
-            if b.id != "sb-admin-2/small":
-                self.assertIsNone(b.purpose, b.id)
-                self.assertIsNone(b.size_check, b.id)
-
-    def small_index(self, raw: dict) -> int:
-        return next(i for i, b in enumerate(raw["builds"]) if (b["app"], b["variant"]) == ("sb-admin-2", "small"))
-
-    def test_human_study_only_requires_valid_size_check(self):
-        for check in (None, {"measure": "size_px", "baseline": 16, "variant": 24},
-                      {"measure": "contrast", "baseline": 24, "variant": 16},
-                      {"measure": "size_px", "baseline": "24", "variant": 16}):
-            raw = copy.deepcopy(self.raw)
-            build = raw["builds"][self.small_index(raw)]
-            build.pop("check")
-            if check is not None:
-                build["check"] = check
-            self.assertTrue(any(".check" in e for e in self.errors(raw)), check)
-
-    def test_check_without_human_study_purpose_rejected(self):
-        raw = copy.deepcopy(self.raw)
-        raw["builds"][self.small_index(raw)].pop("purpose")
-        self.assertTrue(any("purpose가 human-study-only인 빌드에만" in e for e in self.errors(raw)))
-
-    def test_unknown_purpose_or_baseline_human_study_rejected(self):
-        raw = copy.deepcopy(self.raw)
-        raw["builds"][self.small_index(raw)]["purpose"] = "demo"
-        self.assertTrue(any("purpose" in e for e in self.errors(raw)))
-        raw = copy.deepcopy(self.raw)
-        raw["builds"][0].update(purpose="human-study-only", check={"measure": "size_px", "baseline": 24, "variant": 16})
-        self.assertEqual(raw["builds"][0]["variant"], "baseline")
-        self.assertTrue(any("기준선은" in e for e in self.errors(raw)))
+    def test_every_defect_build_is_measured_by_its_verify_script(self):
+        # check는 결함판마다 verify 스크립트의 같은 이름 측정(CASES)으로 발현을 본다. sb-admin-2/small도 R01 결함판이다
+        import importlib
+        for b in sv.load_config().builds:
+            if b.variant == sv.BASELINE or b.app not in sv.VERIFY_MODULES:
+                continue
+            cases = importlib.import_module(sv.VERIFY_MODULES[b.app]).CASES
+            self.assertIn(b.variant, cases, b.id)
+        from benchmark import verify_sb_admin_2
+        self.assertEqual(verify_sb_admin_2.CASES["small"][0], "R01")
 
     def test_duplicate_port_rejected(self):
         raw = copy.deepcopy(self.raw)
@@ -196,16 +169,7 @@ class ConfigTests(unittest.TestCase):
             config.url_for("sb-admin-2/login/baseline")
 
 
-class SizeCheckAndHostTests(unittest.TestCase):
-    def test_size_check_passes_only_near_expected_values(self):
-        check = sv.SizeCheck(baseline=24, variant=16)
-        self.assertTrue(check.passes(24, 16))
-        self.assertTrue(check.passes(24.3, 15.6))  # 0.5px 안의 소수점 레이아웃 오차
-        self.assertFalse(check.passes(24, 24))  # 줄지 않음
-        self.assertFalse(check.passes(24, 17))
-        self.assertFalse(check.passes(28, 16))
-        self.assertFalse(check.passes(None, 16))
-
+class HostTests(unittest.TestCase):
     def test_parse_host_accepts_ipv4_only(self):
         self.assertEqual(sv.parse_host("127.0.0.1"), "127.0.0.1")
         self.assertEqual(sv.parse_host("0.0.0.0"), "0.0.0.0")

@@ -35,7 +35,7 @@
 
 | # | 패치 | 상태 |
 |---|---|---|
-| 4 | `benchmark/mutations/sb-admin-2/small.patch` | #39로 main에 있음. 사람 실험 전용 변이(R01 정답 아님). Remember Me 누름 영역 24→16px. `serve_variants check`가 이 축소를 확인한다 |
+| 4 | `benchmark/mutations/sb-admin-2/small.patch` | #39로 main에 있음. R01 결함(#41에서 링크 간격 조정: Forgot Password 링크 `margin-left: -24px`). Remember Me 누름 영역 24→16px. `serve_variants check`가 R01 발현을 확인한다 |
 | 5 | `benchmark/mutations/shadcn-admin/contrast.patch` | #35로 main에 있음. 행 메뉴의 Edit 글자에 흐린 글자 클래스(대비 1.47:1) |
 | 6 | `benchmark/mutations/shadcn-admin/below-fold.patch` | #35로 main에 있음. 설명 문단의 `min-h-svh` 때문에 Invite User가 첫 화면 밖(top 892px) |
 
@@ -89,6 +89,6 @@
 
 ## 남은 것
 
-- [x] 4번 `benchmark/mutations/sb-admin-2/small.patch`를 만들고 렌더링으로 확인한다. → 사람 실험 전용 변이로 결정(R01 정답 아님, #39). `serve_variants check`가 누름 영역 24→16px 축소를 확인한다.
+- [x] 4번 `benchmark/mutations/sb-admin-2/small.patch`를 만들고 렌더링으로 발현을 확인한다. → R01 결함(#41에서 링크 간격 조정). 벤치마크와 사람 실험이 같은 패치를 쓰고, `serve_variants check`가 R01 발현을 확인한다.
 - [ ] 6번 과업을 바뀐 문장대로 다시 실행해 끝까지 되는지 확인한다.
 - [ ] 파일럿에서 전체 시간이 20분 안에 끝나는지와, 로그인 과업 3·4번이 비슷해 학습 효과가 생기는지 확인한다.

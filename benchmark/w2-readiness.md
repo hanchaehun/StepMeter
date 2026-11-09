@@ -21,7 +21,7 @@ PM 승인 완료 개수나 실제 StepMeter 정확도·M2 E2E 통과 개수와 �
 
 - `build_variant.py`: 원본 보존, 고정 커밋+기준선+변이 소스 패치, patch SHA256 기록.
 - `verify_development.py`: 개발 앱 3개 패치 해시·빌드·정상 과업·18종 변이를 통합 검사. 미제출 앱은 명시.
-- `verify_conversion.py`: R06 첫 대상 오류 수정 후 정상+6변이 검사. axe 예측도 같은 경로로 갱신.
+- `verify_conversion.py`: R06을 click 행동 대상이 로드 시 첫 화면 밖인 경우로 맞춘 뒤 정상+6변이 검사. axe 예측도 같은 경로로 갱신.
 - 월요일/수동 개발 검사 CI 추가. private manifest는 읽지 않고 홀드아웃 평가는 하지 않는다.
 - checkout.py도 --include-holdout을 명시하지 않으면 비공개 매니페스트를 열지 않는다.
 - 정답 승인 전에는 정식 점수를 출력하지 않는다. API·스키마·규칙 임계값을 결함에 맞춰 고치지 않았다.
@@ -48,4 +48,4 @@ PR #34의 대상 브랜치와 사람 실험용 SB Admin 변이의 과업 차이�
 
 shadcn 기준선·변이·승인 정답이 main에 합쳐졌다. conversion 정답도 main의 approved 상태를 유지한다.
 SB Admin 기본 small은 로그인 체크박스 변이로 통일하고 정답 대상을 #customCheck로 맞췄다.
-등록 링크 변이는 small-register.patch로 별도 보존한다. 위 제출 대기/첫 대상 문구는 이전 시점의 기록이며 R06은 최신 main의 클릭 행동 기준을 따른다.
+등록 링크 변이는 small-register.patch로 별도 보존한다. 위 제출 대기 문구는 이전 시점의 기록이다. R06은 main 코드(`worker/rules/r06.py`) 기준으로 click 행동 대상이 로드 시 첫 화면 밖일 때 나온다.

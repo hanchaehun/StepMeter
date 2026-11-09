@@ -7,7 +7,6 @@ benchmark/variants.json의 (앱, 변이)마다 별도 폴더에 apps.json의 고
 
     python -m benchmark.serve_variants build [<앱>/<변이> ...] [--force]   패치 해시가 같으면 건너뛴다
     python -m benchmark.serve_variants check     verify 스크립트로 결함판=결함 있음, 기준선=깨끗 확인
-                                                 (purpose가 human-study-only인 변이는 builds[].check 값만 확인)
     python -m benchmark.serve_variants serve [<앱>/<변이> ...] [--all] [--foreground] [--host 0.0.0.0]
     python -m benchmark.serve_variants urls [--json]
     python -m benchmark.serve_variants stop
@@ -67,9 +66,6 @@ EVIDENCE = BENCH / "evidence"
 CHECK_PHASE = "variants-check"
 
 BASELINE = "baseline"
-# 사람 실험 전용 변이: 정답(labels/)에 넣지 않으므로 check가 결함 발현 대신 builds[].check의 측정값만 본다
-HUMAN_STUDY_ONLY = "human-study-only"
-SIZE_TOLERANCE_PX = 0.5  # 소수점 레이아웃 오차
 NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 NODE_SHIMS = {"npm", "npx", "pnpm", "corepack"}  # Windows에서는 .cmd 배치 파일이다
 KEY_FIELDS = ("app", "variant", "repository", "revision", "patches", "recipe")  # 같으면 다시 빌드하지 않는다
@@ -119,24 +115,10 @@ class Recipe:
 
 
 @dataclass(frozen=True)
-class SizeCheck:
-    """사람 실험 전용 변이의 check: verify 스크립트가 잰 size_px가 기준선→결함판에서 이 값이어야 한다."""
-    baseline: float
-    variant: float
-
-    def passes(self, baseline_px: float | None, variant_px: float | None) -> bool:
-        return (baseline_px is not None and variant_px is not None
-                and abs(baseline_px - self.baseline) <= SIZE_TOLERANCE_PX
-                and abs(variant_px - self.variant) <= SIZE_TOLERANCE_PX)
-
-
-@dataclass(frozen=True)
 class Build:
     app: str
     variant: str
     port: int
-    purpose: str | None = None
-    size_check: SizeCheck | None = None
 
     @property
     def id(self) -> str:
@@ -217,15 +199,6 @@ def _command_ok(value: Any) -> bool:
     return value is None or (isinstance(value, list) and bool(value) and all(isinstance(x, str) and x for x in value))
 
 
-def _size_check_ok(value: Any) -> bool:
-    def number(x: Any) -> bool:
-        return isinstance(x, (int, float)) and not isinstance(x, bool) and x > 0
-
-    return (isinstance(value, dict) and value.get("measure") == "size_px"
-            and number(value.get("baseline")) and number(value.get("variant"))
-            and value["variant"] < value["baseline"])
-
-
 def validate(raw: dict[str, Any], apps: dict[str, dict[str, Any]], bench: Path = BENCH) -> list[str]:
     """variants.json 검사. 오류 문장 목록을 돌려준다 (비면 통과)."""
     errors: list[str] = []
@@ -283,16 +256,6 @@ def validate(raw: dict[str, Any], apps: dict[str, dict[str, Any]], bench: Path =
         if build_id in build_ids:
             errors.append(f"{where}: {build_id} 빌드가 두 번 있다")
         build_ids.add(build_id)
-        purpose, check = b.get("purpose"), b.get("check")
-        if purpose not in (None, HUMAN_STUDY_ONLY):
-            errors.append(f"{where}: purpose {purpose!r}는 없거나 {HUMAN_STUDY_ONLY!r}여야 한다")
-        elif purpose == HUMAN_STUDY_ONLY:
-            if variant == BASELINE:
-                errors.append(f"{where}: 기준선은 {HUMAN_STUDY_ONLY}일 수 없다")
-            if not _size_check_ok(check):
-                errors.append(f'{where}.check: {{"measure": "size_px", "baseline": 숫자, "variant": 더 작은 숫자}}가 필요하다')
-        elif check is not None:
-            errors.append(f"{where}.check: purpose가 {HUMAN_STUDY_ONLY}인 빌드에만 쓴다")
 
     pages = raw.get("pages")
     if not isinstance(pages, list) or not pages:
@@ -332,9 +295,7 @@ def load_config(path: Path = CONFIG, apps_path: Path = APPS) -> Config:
     }
     return Config(
         host=raw["host"], recipes=recipes,
-        builds=tuple(Build(b["app"], b["variant"], b["port"], purpose=b.get("purpose"),
-                           size_check=SizeCheck(b["check"]["baseline"], b["check"]["variant"]) if b.get("check") else None)
-                     for b in raw["builds"]),
+        builds=tuple(Build(b["app"], b["variant"], b["port"]) for b in raw["builds"]),
         pages=tuple(Page(p["page_id"], p["path"]) for p in raw["pages"]),
         apps={app: apps[app] for app in recipes},
     )
@@ -970,18 +931,12 @@ async def run_checks(config: Config, urls: dict[str, str]) -> list[dict[str, Any
         for b in variants:
             case = report["cases"][b.variant]
             errors = case["baseline"]["page_errors"] + case["variant"]["page_errors"]
-            if b.size_check:  # 사람 실험 전용: 결함 판정(defect) 대신 누름 영역 크기만 본다
-                before, after = case["baseline"].get("size_px"), case["variant"].get("size_px")
-                name, ok = f"{b.id} 누름 영역 축소", b.size_check.passes(before, after)
-                detail = (f"사람 실험 전용(R01 정답 아님) 누름 영역 {before}→{after}px "
-                          f"(기대 {b.size_check.baseline:g}→{b.size_check.variant:g}px)")
-            else:
-                name, ok = f"{b.id} 결함 발현", bool(case["manifested"])
-                detail = (f"{case['rule']} 결함판 defect={case['variant']['defect']}, "
-                          f"기준선 defect={case['baseline']['defect']}")
+            detail = (f"{case['rule']} 결함판 defect={case['variant']['defect']}, "
+                      f"기준선 defect={case['baseline']['defect']}")
             if errors:
                 detail += f", 페이지 오류 {len(errors)}건: {errors[0][:120]}"
-            results.append({"check": name, "ok": ok and not errors, "detail": detail})
+            results.append({"check": f"{b.id} 결함 발현", "ok": bool(case["manifested"]) and not errors,
+                            "detail": detail})
     audit = importlib.import_module("benchmark.audit")
     for app in AUDIT_APPS:
         bid = f"{app}/{BASELINE}"
