@@ -27,6 +27,8 @@ snap = await snapshot(page, el_id)  # ElementSnapshot (click·type 직전)
 
 `resolve_element(page, el_id)`는 마지막 `observe()`의 **원래 요소**를 Playwright ElementHandle로 반환한다. 호출자가 `dispose()`해야 한다. 프레임 내부 요소는 실제 owner frame으로 handle을 옮겨 클릭 좌표를 맞춘다. DOM 연결이 끊기거나 이름·역할·주요 식별 속성·select 옵션 순서가 바뀌면 stale 오류를 내며 다른 번호로 조용히 대체하지 않는다. 스크롤·가상 목록 재활용·라우트 변경 후에는 새 `observe()`를 사용한다. 동일한 속성을 가진 레코드 교체까지 완전히 검출하는 것은 아니다.
 
+SPA 정량 검증과 합성 회귀: [benchmark/spa/README.md](../../benchmark/spa/README.md). 실제 3개 SPA 합격과 합성 테스트 통과는 구분한다.
+
 ### Styled native controls
 
 A transparent native checkbox/radio may still be the actual visible widget's hit

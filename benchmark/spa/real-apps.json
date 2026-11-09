@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "purpose": "Acceptance preparation only. Not executable labels and not completed SPA certification.",
+  "required_apps": 3,
+  "required_coverage": ["cookie_modal", "fixed_header", "virtual_scroll", "open_shadow", "same_origin_iframe"],
+  "apps": [
+    {
+      "id": "shadcn-admin",
+      "kind": "benchmark",
+      "repository": "https://github.com/satnaing/shadcn-admin",
+      "revision": "e16c87f213a5ba5e45964e9b67c792105ec74d26",
+      "scenario_candidates": ["Tasks filter, open edit dialog, close/reopen", "Users invite dialog open/close and route return"],
+      "status": "needs_rendered_state_labels_and_human_review",
+      "coverage_verified": []
+    },
+    {
+      "id": "material-kit-react",
+      "kind": "benchmark",
+      "repository": "https://github.com/minimal-ui-kit/material-kit-react",
+      "revision": "69e780a40c455d664b2e13c525faf1d492a072a7",
+      "scenario_candidates": ["Products sorting/filter drawer repeated transitions", "Login password visibility toggle and route return"],
+      "status": "needs_rendered_state_labels_and_human_review",
+      "coverage_verified": []
+    },
+    {
+      "id": null,
+      "kind": "teammate",
+      "repository": null,
+      "revision": null,
+      "scenario_candidates": [],
+      "status": "needs_teammate_app_repository_revision_and_safe_test_task",
+      "coverage_verified": []
+    }
+  ]
+}
