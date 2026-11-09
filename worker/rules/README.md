@@ -42,7 +42,7 @@ R06은 가로로만 화면 밖인 경우도 포함한다(scroll px가 0일 수 �
 
 - 이슈 제목 제안: `W2 측정·규칙 호출부와 실행 중 관측값 연결`
 - 받는 사람: 에이전트 코어·수집 담당
-- 내용: 행동 전 snapshot/실제 Locator와 임시 키로 axe 검사, 행동 후 DB step ID에 연결 및 노이즈 제외
+- 내용: 행동 전 snapshot과 수집기의 ElementHandle(`scan_page` 반영 전까지는 동일 출처 iframe 제외, [ADR 0010](../../docs/adr/0010-w3-integration-decisions.md)) 및 임시 키로 axe 검사, 행동 후 DB step ID에 연결 및 노이즈 제외
   effect_type 제공, 초기·각 행동 후 scrollY/URL 및 안정된 대상 identity 수집,
   화면이 바뀔 때마다 첫 화면 다시 기록(record_first_view)과 FirstTargetTracker로 첫 행동 대상 판정,
   실행 종료 후 R05/R07·metric/issue 저장 호출이 필요하다. 현재 main의 코어 실행부는
@@ -50,3 +50,8 @@ R06은 가로로만 화면 밖인 경우도 포함한다(scroll px가 0일 수 �
 
 검증: `python -m unittest tests.test_rules_w2 tests.test_a11y_scan tests.test_measurement_persistence`.
 R08/R09/R11, 휴리스틱 가중치 학습, LLM 설명, KLM은 이번 변경 범위에 포함하지 않는다.
+
+## ADR 0010에 따른 할 일
+
+- 같은 step에서 R04(가림)가 나오면 같은 원인 중복을 막기 위해 R03(무반응)은 내지 않는다 (ADR 0010)
+- R02는 axe `color-contrast` 노드의 `contrastRatio`를 `measured`에, `expectedContrastRatio`를 `threshold`에 넣는다 (ADR 0010)

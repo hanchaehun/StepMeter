@@ -20,7 +20,7 @@ items = await observe(page)         # [{el_id, tag, role, name, landmark, label_
 snap = await snapshot(page, el_id)  # ElementSnapshot (click·type 직전)
 ```
 
-- `observe()`는 뷰포트 안의 보이는 요소를 **가려진 요소까지** 돌려준다. LLM에 보낼 목록(가림 제외, 최대 30개, 개발계획서 4.2)은 에이전트 코어가 이 결과를 잘라 만들고, 반환 형식은 에이전트 코어와 정한다.
+- `observe()`는 뷰포트 안의 보이는 요소를 **가려진 요소까지** 돌려준다. LLM에 보낼 목록(가려진 요소 포함·`"(가려짐)"` 표시, 최대 30개, [ADR 0010](../../docs/adr/0010-w3-integration-decisions.md))은 에이전트 코어가 이 결과를 잘라 만들고, 반환 형식은 에이전트 코어와 정한다.
 - 아직 안 하는 것: 다른 출처 iframe, 닫힌 shadow root (W2 SPA 스트레스 테스트 뒤 보완).
 
 ## 번호 대상 해석
@@ -39,3 +39,8 @@ geometry and opacity. General transparent inputs, hidden ancestors and controls
 without that indicator pattern remain excluded. This does not implement arbitrary
 visually-hidden input/label-proxy patterns. A Material Kit drawer regression and
 numbered Driver integration tests cover the supported pattern.
+
+## ADR 0010에 따른 할 일
+
+- LLM에 보내는 요소 목록에 가려진 요소(`occluded=True`)도 빼지 않고 넣으며 `"(가려짐)"`으로 표시한다 (ADR 0010)
+- 가려진 요소도 최대 30개 제한 안에 포함한다 (ADR 0010)

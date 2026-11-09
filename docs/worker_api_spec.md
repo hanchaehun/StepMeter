@@ -25,7 +25,7 @@
 | 항목 | 정한 것 |
 |---|---|
 | 저장 위치 | DB `run.progress`. API는 `GET /runs/{id}`에서 이 값을 읽어 돌려준다 |
-| 갱신 방법 | 워커가 step 행을 추가한 트랜잭션 안에서 플랫폼 백엔드가 제공하는 `update_progress(session, run_id)`를 부른다. 이 함수가 그 run의 step 행을 모아 진행률을 다시 계산하고 한 문장으로 저장한다 (병렬 실행이 동시에 불러도 값이 틀어지지 않게). 같이 그 run의 모든 attempt의 `steps_count`를 실제 step 행 수로 다시 센다(run 상태와 상관없이). 워커는 `steps_count`를 직접 쓰지 않는다. run이 `running`이면 True, 아니면(취소·종료) False를 돌려준다. 후처리가 끝나면 `update_progress(session, run_id, finished=True)`로 100을 기록한다 |
+| 갱신 방법 | 워커가 step 행을 추가한 트랜잭션 안에서 플랫폼 백엔드가 제공하는 `update_progress(session, run_id)`를 부른다. 이 함수가 그 run의 step 행을 모아 진행률을 다시 계산하고 한 문장으로 저장한다 (병렬 실행이 동시에 불러도 값이 틀어지지 않게). 같이 그 run의 모든 attempt의 `steps_count`를 실제 step 행 수로 다시 센다(run 상태와 상관없이). 워커는 `steps_count`를 직접 쓰지 않는다. run이 `running`이면 True, 아니면(취소·종료) False를 돌려준다. 후처리가 끝나면 `update_progress(session, run_id, finished=True)`로 100을 기록한다 (후처리 순서: 시도별 지표 저장 → `save_run_medians` → `update_progress(session, run_id, finished=True)` → `completed`, [ADR 0010](adr/0010-w3-integration-decisions.md)) |
 | 계산식 | `floor(90 × (끝난 attempt 수 + Σ 진행 중 attempt의 step 행 수 ÷ 30) ÷ 예정 attempt 수)`. 후처리(지표·규칙·설명)까지 끝나면 100. 이전 값보다 작아지지 않는다 |
 | 최근 step | 가장 최근에 저장된 step 행 (openapi.yaml `RunProgress.latest_step`, F02 "현재 스크린샷, 에이전트의 최근 판단 한 줄") |
 | 상태 기록 | `queued`는 API가 run을 만들 때. `running`(작업을 꺼낼 때, `started_at`), `completed`·`failed`(끝날 때, `finished_at`)는 워커 |

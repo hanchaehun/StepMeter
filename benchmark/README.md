@@ -10,3 +10,8 @@ W1 선정·고정 커밋·재현 방법과 클리닝 범위: [selection.md](sele
 W2 도구·전환 과업·검증과 남은 작업: [w2.md](w2.md).
 
 W2 앱별 잔여 상태·담당 요청: [w2-readiness.md](w2-readiness.md).
+
+## ADR 0010에 따른 할 일
+
+- `build_variant.py`가 `stepmeter-build.json` 매니페스트에 기록하는 패치 경로는 `as_posix()`로 통일한다 (ADR 0010)
+- 베이스라인(`baseline_axe.py`, `baseline_llm.py`)을 다시 실행할 때 `below-fold` 케이스는 `entry.html`에서 시작한다 (ADR 0010)

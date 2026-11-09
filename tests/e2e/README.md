@@ -26,9 +26,9 @@
 
 스키마 검사는 `tests/test_openapi_schema.py`의 `body_schema`와 `Draft202012Validator`를 그대로 쓴다. 그 테스트처럼 `format`(date-time, uri)은 검사하지 않는다.
 
-## 지금 상태 (11/8)
+## 지금 상태 (11/9)
 
-API 서버(`apps/api/main.py`), 큐(`worker/queue/runs.py`), 가짜 LLM 선택(`worker/llm/select.py`), run 단위 지표 저장(`worker/metrics/postprocess.py`), Compose `m2` 서비스는 들어왔다. 아직 에이전트 루프(`worker/agent/run.py`)와 드라이버(`worker/driver/`)가 없어서 `STEPMETER_API_URL`을 주지 않으면 `M2FlowTests`는 전부 건너뛴다(CI도 같다). `FixtureReplyTests`만 돈다.
+API 서버(`apps/api/main.py`), 큐(`worker/queue/runs.py`), 가짜 LLM 선택(`worker/llm/select.py`), 드라이버(`worker/driver/playwright_driver.py`), 지표 저장(`worker/metrics/postprocess.py`, `persistence.py`), Compose `m2` 서비스는 들어왔다. 아직 에이전트 루프(`worker/agent/run.py`)가 없어서 `STEPMETER_API_URL`을 주지 않으면 `M2FlowTests`는 전부 건너뛴다(CI도 같다). `FixtureReplyTests`만 돈다.
 
 ## 실행 방법
 
@@ -82,7 +82,7 @@ export STEPMETER_E2E_SITE_URL=http://host.docker.internal:8765/   # Linux는 com
 | 답 목록 위치 | 워커 환경 변수 `STEPMETER_FAKE_REPLIES=<파일 경로>`. E2E 첫 파일은 `tests/fixtures/e2e/signup/fake_replies.json` |
 | 답 목록 형식 | `worker/schemas.py` 행동 JSON 객체의 배열. 워커는 각 객체를 `json.dumps`해서 `FakeAdapter(replies)`에 넘긴다 |
 | attempt마다 처음부터 | `repeat_n=3` 반복(병렬일 수 있음)이 어댑터 하나를 같이 쓰면 답 순서가 섞인다. attempt마다 새 `FakeAdapter`를 만들거나 답 위치를 attempt별로 따로 센다 |
-| 요소 번호 | 답의 `target`은 LLM에 보낸 요소 목록 번호다. `fake_replies.json`은 수집 JS `observe()`의 `el_id`(1부터 문서 순서)와 같다고 보고 썼다. 에이전트 코어가 가림 제외·30개 자르기 뒤 번호를 다시 매기면 규칙을 알려 준다(고정 페이지는 요소 2개, 가림 없음이라 지금은 같을 것으로 본다) |
+| 요소 번호 | 답의 `target`은 LLM에 보낸 요소 목록 번호다. `fake_replies.json`은 수집 JS `observe()`의 `el_id`(1부터 문서 순서)와 같다고 보고 썼다. 에이전트 코어는 가려진 요소도 빼지 않고 `"(가려짐)"`을 붙여 최대 30개까지 보여주며 `observe()`의 `el_id`를 그대로 쓴다([ADR 0010](../../docs/adr/0010-w3-integration-decisions.md)) |
 | `explain` 호출 | 문제 설명 생성(W3)이 가짜 모드에서도 불리면 고정 문장 하나를 돌려준다. `Issue.explanation`은 필수 문자열이다 |
 | 비용·키 | 가짜 모드에서는 `ANTHROPIC_API_KEY` 없이 시작해야 한다. `llm_call.model`은 `fake`, `cost_usd`는 0으로 남는다(`FakeAdapter` 그대로) |
 | 운영 차단 | 스테이징·운영 워커에서는 `STEPMETER_LLM=fake`를 켤 수 없게 한다 |
@@ -98,9 +98,9 @@ export STEPMETER_E2E_SITE_URL=http://host.docker.internal:8765/   # Linux는 com
 | 초대 코드 발급 | 플랫폼 백엔드 (관리자 스크립트) | 구현됨 (`apps/api/issue_code.py`, PR #32) | 완료 (`python -m apps.api.issue_code`) |
 | compose의 `api`·`worker` 서비스 | 플랫폼 백엔드, 회귀 비교·인프라 | 구현됨 (`compose.yaml` `m2` 프로필, PR #30) | 완료 (`m2-fixtures` 포함) |
 | 에이전트 루프 | 에이전트 코어 | `worker/agent/` README만 | `worker.agent.run.run`, attempt·step·element_snapshot 저장, 성공 조건 판정 |
-| 드라이버 | 에이전트 코어 | `worker/driver/` README만 | PlaywrightDriver(desktop), 효과 유형 |
+| 드라이버 | 에이전트 코어 | 구현됨 (`worker/driver/playwright_driver.py`, PR #40) | ADR 0010(가려진 대상 무조작 반환·스크롤 뒤 스크린샷) 보완 |
 | 가짜 LLM 설정 | LLM·프롬프트 (에이전트 코어가 불러 씀) | 구현됨 (`worker/llm/select.py`, PR #23) | 완료 (`make_adapter`) |
-| run 단위 지표 저장 | 측정 지표·규칙 | 구현됨 (`worker/metrics/postprocess.py`, PR #28) | 완료 (`finalize_run_metrics`, 코어 호출 연결 필요) |
+| 시도별·run 단위 지표 저장 | 측정 지표·규칙 | 구현됨 (`worker/metrics/postprocess.py`, `persistence.py`, PR #28) | ADR 0010(시도별 `step_count` 저장 후 `save_run_medians` 호출) 연결 필요 |
 
 API가 `base_url`을 검사해 사설 주소(`127.0.0.1`, `host.docker.internal`)를 막는다면 개발·E2E 환경에서는 열어 두어야 한다(플랫폼 백엔드).
 

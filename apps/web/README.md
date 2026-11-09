@@ -32,3 +32,8 @@ npm run gen:api    # apps/api/openapi.yaml → src/api/types.ts (손으로 고�
 - 아직 없는 것: `GET /tasks/{id}`가 API에 없어 실제 모드에서는 과업 문장·사이트 주소 대신 "과업 #id"만 보인다(백엔드에 요청). 라우터 라이브러리는 대시보드 UI와 합의 뒤 도입하며, 지금은 `src/pages/ReportRoute.tsx`가 주소를 직접 읽는다.
 - API 서버 띄우기: `apps/api/README.md`(uvicorn) 또는 `infra/m2.md`(Compose). 초대 코드 발급은 `python -m apps.api.issue_code "라벨"`.
 - 화면은 기획서 6.1대로 "리포트 요약"과 "단계 상세" 둘. 단계 상세는 주소 해시와 동기화된다: `#issue-102`, `#step-1`. 뒤로가기로 요약에 돌아온다.
+
+## ADR 0010에 따른 할 일
+
+- 경로 밖 참고 이슈(`is_reference=True`, `step=null`)도 `element_key=null`일 수 있으므로, 리포트 화면(`StepDetail`, `IssueRow` 등)은 요소 없는 반복 루프 문제 여부를 `element_key === null`이 아니라 `rule_id === "R05"`로 판단한다 (ADR 0010)
+- 성공한 시도가 0개면 run 단위 지표가 없으므로(0으로 채우지 않음) 리포트는 "성공한 시도 없음"으로 보여준다 (ADR 0010)
