@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
+from worker.agent.safety import guard_target
 from worker.collect.collector import resolve_element, snapshot
 from worker.driver.effects import EffectObserver, EffectObservationError, EffectResult
 from worker.schemas import ActionRequest, ElementSnapshot
@@ -13,6 +14,20 @@ from worker.schemas import ActionRequest, ElementSnapshot
 class ActionResult:
     element: ElementSnapshot | None
     effect: EffectResult
+    screenshot: bytes
+
+
+async def enabled_select_options(handle):
+    """Enabled single-select options, in model order; index is native zero-based.
+
+    Share this projection with observation formatting. Disabled options and
+    options inside disabled optgroups do not consume a model option number.
+    """
+    return await handle.evaluate("""el => el.tagName === 'SELECT' && !el.multiple
+        ? [...el.options].map((o, index) => ({index, label: o.label, value: o.value,
+            disabled: o.disabled || !!o.closest('optgroup')?.disabled}))
+          .filter(o => !o.disabled).map(({disabled, ...o}) => o)
+        : null""")
 
 
 class PlaywrightDriver:
@@ -26,6 +41,17 @@ class PlaywrightDriver:
         self.page = page
         self.effects = EffectObserver(page, **effect_options)
         self._busy = False
+        self._select_options = {}
+
+    async def select_options(self, target):
+        """Capture the enabled-option mapping used in the current observation."""
+        handle = await resolve_element(self.page, target)
+        try:
+            options = await enabled_select_options(handle)
+            self._select_options[target] = options
+            return options
+        finally:
+            await handle.dispose()
 
     async def aclose(self):
         await self.effects.aclose()
@@ -47,28 +73,36 @@ class PlaywrightDriver:
             handle = await resolve_element(self.page, action.target)
             try:
                 await handle.scroll_into_view_if_needed()
-                if kind == 'click':
-                    await handle.click(trial=True)
+                # Revalidate after preparation: scrolling can recycle virtual rows.
+                validated = await resolve_element(self.page, action.target)
+                try:
+                    if not await handle.evaluate('(el, current) => el === current', validated):
+                        raise EffectObservationError('Numbered target changed during preparation')
+                finally:
+                    await validated.dispose()
+                element = await snapshot(self.page, action.target)
+                screenshot = await self.page.screenshot(type='jpeg', quality=70, caret='initial')
+                if element.occluded:
+                    return ActionResult(element, EffectResult('no_change'), screenshot)
                 if kind == 'type' and not await handle.is_editable():
                     raise EffectObservationError('Type target is not editable')
                 if kind == 'select' and not await handle.is_enabled():
                     raise EffectObservationError('Select target is disabled')
-                # Revalidate after preparation: scrolling can recycle virtual rows.
-                validated = await resolve_element(self.page, action.target)
-                await validated.dispose()
-                element = await snapshot(self.page, action.target)
-                if element.occluded:
-                    raise EffectObservationError('Numbered action target is occluded')
                 if kind == 'click':
                     callback = lambda: handle.click()
                 elif kind == 'type':
                     callback = lambda: handle.fill(action.text)
                 else:
-                    options = await handle.evaluate('(el) => el.tagName === "SELECT" && !el.multiple ? [...el.options].map(o => ({disabled:o.disabled || o.parentElement?.disabled, value:o.value})) : null')
+                    options = await enabled_select_options(handle)
                     index = action.option - 1
-                    if options is None or index >= len(options) or options[index]['disabled']:
+                    if options is None or index >= len(options):
                         raise EffectObservationError('Native select option unavailable')
-                    callback = lambda: handle.select_option(index=index)
+                    if (action.target in self._select_options
+                            and self._select_options[action.target] != options):
+                        raise EffectObservationError('Native select options changed since observation')
+                    native_index = options[index]['index']
+                    callback = lambda: handle.select_option(index=native_index)
+                await guard_target(handle, kind)
                 async def checked_action():
                     current = await resolve_element(self.page, action.target)
                     try:
@@ -76,8 +110,11 @@ class PlaywrightDriver:
                             raise EffectObservationError('Numbered target changed during preparation')
                     finally:
                         await current.dispose()
+                    if kind == 'select' and await enabled_select_options(handle) != options:
+                        raise EffectObservationError('Native select options changed during preparation')
+                    await guard_target(handle, kind)
                     await callback()
-                return ActionResult(element, await self.effects.observe(checked_action, target=handle))
+                return ActionResult(element, await self.effects.observe(checked_action, target=handle), screenshot)
             finally:
                 await handle.dispose()
         if kind == 'scroll':
@@ -89,4 +126,5 @@ class PlaywrightDriver:
             callback = lambda: asyncio.sleep(1)
         else:
             raise ValueError('Unsupported browser action')
-        return ActionResult(None, await self.effects.observe(callback))
+        screenshot = await self.page.screenshot(type='jpeg', quality=70, caret='initial')
+        return ActionResult(None, await self.effects.observe(callback), screenshot)
