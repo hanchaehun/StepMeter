@@ -37,6 +37,9 @@ async def verify():
                     items = await observe(page)
                     first = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'Search products'))
                     assert bool(r06.evaluate(first, is_first_target=True)) == (variant == 'below-fold')
+                    assert r06.evaluate(first, action='type') is None
+                    if variant == 'below-fold':
+                        await page.locator('input[type=search]').click()
                     await search.fill('Broccoli')
                     assert await page.locator('.product').count() == 1
                     target = page.locator(TARGET).first

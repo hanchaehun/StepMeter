@@ -26,7 +26,8 @@ def main():
     for name, app in apps.items():
         patches = [ROOT / 'baselines' / f'{name}.patch'] + [ROOT / 'mutations' / name / f'{v}.patch' for v in VARIANTS if v != 'baseline']
         if any(not p.exists() for p in patches) or name not in VERIFIERS:
-            results.append({'app': name, 'status': 'waiting_for_source_submission'})
+            results.append({'app': name, 'status': 'waiting_for_verifier_integration'
+                            if all(p.exists() for p in patches) else 'waiting_for_source_submission'})
             continue
         try:
             source = ROOT / 'apps' / name

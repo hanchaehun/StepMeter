@@ -65,11 +65,11 @@ function AttemptRow({
   const dots = Array.from({ length: count }, (_, i) => i);
 
   return (
-    <div className="flex items-center gap-3 border-t border-hair py-2 first:border-t-0">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-hair py-2 first:border-t-0">
       <span className="w-24 text-sm text-muted">
         <b className="font-semibold text-fg">Attempt {a.index}</b>{representative ? ' 대표' : a.kind === 'replay' ? ' 재생' : ''}
       </span>
-      <div className="flex items-center">
+      <div className="flex max-w-full items-center overflow-x-auto">
         {dots.map((i) => {
           const isLast = i === dots.length - 1;
           const issues = representative ? (issuesByStep.get(i)?.length ?? 0) : 0;
@@ -97,7 +97,7 @@ function AttemptRow({
           );
         })}
       </div>
-      <span className="flex-1 text-xs text-faint">
+      <span className="min-w-0 flex-1 basis-40 text-xs text-faint">
         {a.steps_count} steps · {endReasonText(a)}
       </span>
     </div>

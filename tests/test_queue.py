@@ -21,13 +21,24 @@ INI = Path(__file__).resolve().parents[1] / "apps" / "api" / "alembic.ini"
 
 
 class ScreenshotTests(unittest.TestCase):
+    # 파일 형식 표준의 시작 바이트: JPEG FF D8 FF, PNG 89 50 4E 47 0D 0A 1A 0A
+    JPEG = b"\xff\xd8\xff\xe0jpeg-body"
+    PNG = b"\x89PNG\r\n\x1a\npng-body"
+
     def test_saves_bytes_and_returns_new_key(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(runs, "SCREENSHOT_DIR", Path(d)):
-            a = runs.save_screenshot(b"png-a")
-            b = runs.save_screenshot(b"png-b")
+            a = runs.save_screenshot(self.JPEG)
+            b = runs.save_screenshot(self.JPEG)
             self.assertNotEqual(a, b)
-            self.assertTrue(a.endswith(".png"))
-            self.assertEqual((Path(d) / a).read_bytes(), b"png-a")
+            self.assertEqual((Path(d) / a).read_bytes(), self.JPEG)
+
+    def test_extension_from_file_format(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(runs, "SCREENSHOT_DIR", Path(d)):
+            self.assertTrue(runs.save_screenshot(self.JPEG).endswith(".jpg"))  # 개발계획서 4.2: JPEG
+            self.assertTrue(runs.save_screenshot(self.PNG).endswith(".png"))
+            with self.assertRaises(ValueError):
+                runs.save_screenshot(b"GIF89a")
+            self.assertEqual(len(list(Path(d).iterdir())), 2)  # 거부한 건 저장 안 함
 
 
 @unittest.skipUnless(DB_URL, "TEST_DATABASE_URL 없음")

@@ -1,0 +1,44 @@
+{
+  "split": "development",
+  "review_status": "approved",
+  "evidence": "benchmark/evidence/shadcn-admin/verification.json",
+  "cases": {
+    "baseline": [],
+    "below-fold": [
+      {
+        "rule": "R06",
+        "target": "main button:has(svg.lucide-mail-plus)"
+      }
+    ],
+    "contrast": [
+      {
+        "rule": "R02",
+        "target": "[role=\"menu\"] > [role=\"menuitem\"]:first-child"
+      }
+    ],
+    "inert": [
+      {
+        "rule": "R03",
+        "target": "button[form=\"user-invite-form\"]"
+      }
+    ],
+    "overlay": [
+      {
+        "rule": "R04",
+        "target": "button[data-slot=\"popover-trigger\"]:first-of-type"
+      }
+    ],
+    "small": [
+      {
+        "rule": "R01",
+        "target": "main button:has(svg.lucide-mail-plus)"
+      }
+    ],
+    "unnamed": [
+      {
+        "rule": "R10",
+        "target": "tbody tr:first-child button[data-slot=\"dropdown-menu-trigger\"]"
+      }
+    ]
+  }
+}

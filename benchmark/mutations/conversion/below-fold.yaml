@@ -6,8 +6,5 @@
   "operation": "style",
   "style": {
     "marginTop": "100vh"
-  },
-  "page": "entry.html",
-  "task": "가입 시작 링크를 찾아 가입 폼을 연다 (이 페이지의 유일한 상호작용 대상)",
-  "success_path": "/index.html"
+  }
 }

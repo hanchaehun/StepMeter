@@ -28,6 +28,23 @@ async def verify(origin: str):
         try:
             for variant in VARIANTS:
                 page = await browser.new_page(viewport={'width': 1280, 'height': 800})
+                if variant == 'small':
+                    from benchmark.verify_sb_admin_2 import small as measure_small
+                    baseline = await measure_small(page, origin + '/baseline')
+                    measured = await measure_small(page, origin + '/small')
+                    assert not baseline['defect'] and measured['defect']
+                    assert measured['accessible_name_remember_me']
+                    await page.locator('#exampleInputEmail').fill('demo@example.test')
+                    await page.locator('#exampleInputPassword').fill('demo-password')
+                    hit = measured['hit_area_px']
+                    await page.mouse.click(hit['x'] + hit['w'] / 2, hit['y'] + hit['h'] / 2)
+                    assert await page.locator('#customCheck').is_checked()
+                    await page.screenshot(path=str(OUTPUT / 'small.png'), full_page=True)
+                    labels['cases']['small'] = [{'rule': 'R01', 'target': '#customCheck'}]
+                    results.append({'case': 'small', 'verified': True,
+                                    'baseline': baseline, 'measurement': measured})
+                    await page.close()
+                    continue
                 await page.goto(f'{origin}/{variant}/register.html')
                 await record_first_view(page)
                 if variant == 'below-fold':
@@ -36,7 +53,8 @@ async def verify(origin: str):
                     items = await observe(page)
                     snap = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'First name'))
                     assert r06.evaluate(snap, is_first_target=True).rule_id == 'R06'
-                    assert r06.evaluate(snap, is_first_target=False) is None
+                    assert r06.evaluate(snap, action='type') is None
+                    await page.locator('#exampleFirstName').click()
                 else:
                     items = await observe(page)
                     normal = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'First name'))
@@ -51,10 +69,6 @@ async def verify(origin: str):
                 items = await observe(page)
                 snaps = [await snapshot(page, i['el_id']) for i in items]
                 box = await target.bounding_box()
-                if variant == 'small':
-                    assert box['width'] == box['height'] == 16
-                    help_box = await page.get_by_role('button', name='Registration help').bounding_box()
-                    assert abs(help_box['x'] - box['x']) < 24 and help_box['y'] == box['y']
                 if variant == 'overlay':
                     assert next(s for s in snaps if s.name == 'Register Account').occluded
                 await page.add_script_tag(path=str(ROOT.parent / 'node_modules/axe-core/axe.min.js'))

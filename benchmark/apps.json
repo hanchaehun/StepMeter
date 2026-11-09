@@ -10,10 +10,10 @@
       "split": "development",
       "stack": "React / Tailwind / shadcn / TanStack Router",
       "tasks": [
-        "Tasks 필터 후 작업 상세 열기",
-        "Users에서 사용자 초대 대화상자 열고 취소"
+        "Tasks 필터 후 작업 편집 열기",
+        "Users에서 사용자 초대 제출"
       ],
-      "startup": "pnpm install --frozen-lockfile; pnpm dev",
+      "startup": "pnpm install --frozen-lockfile; pnpm build; pnpm exec vite preview",
       "upstream_lockfile": "pnpm-lock.yaml",
       "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
     },

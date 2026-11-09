@@ -16,7 +16,7 @@ Step/ElementSnapshot/API 스키마를 추가하거나 변경하지 않는다.
 | R03 | click + 코어가 노이즈 제외 후 기록한 `no_change` |
 | R04 | snapshot.occluded |
 | R05 | attempt.end_reason == loop. 단순 반복 클릭은 해당하지 않음 |
-| R06 | 첫 대상이 로드 때 화면 밖. first_view_scroll_px가 null인 나중 생성 요소는 제외 |
+| R06 | 클릭 대상이 로드 때 화면 밖. first_view_scroll_px가 null인 나중 생성 요소는 제외 |
 | R07 | 측정 가능한 대상 중 ID 상위 ceil(N/10), min(width,height)<32, ID>0 |
 | R10 | axe button-name/link-name/label 등 명시된 이름·레이블 규칙 |
 

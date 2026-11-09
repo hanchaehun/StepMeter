@@ -1,0 +1,150 @@
+diff --git a/src/components/data-table/faceted-filter.tsx b/src/components/data-table/faceted-filter.tsx
+index 6923a11..79890b3 100644
+--- a/src/components/data-table/faceted-filter.tsx
++++ b/src/components/data-table/faceted-filter.tsx
+@@ -79,7 +79,7 @@ export function DataTableFacetedFilter<TData, TValue>({
+           )}
+         </Button>
+       </PopoverTrigger>
+-      <PopoverContent className='w-50 p-0' align='start'>
++      <PopoverContent className='w-50 p-0' align='start' aria-label={title}>
+         <Command>
+           <CommandInput placeholder={title} />
+           <CommandList>
+diff --git a/src/components/data-table/pagination.tsx b/src/components/data-table/pagination.tsx
+index 5e5991b..45833da 100644
+--- a/src/components/data-table/pagination.tsx
++++ b/src/components/data-table/pagination.tsx
+@@ -48,7 +48,7 @@ export function DataTablePagination<TData>({
+               table.setPageSize(Number(value))
+             }}
+           >
+-            <SelectTrigger className='h-8 w-17.5'>
++            <SelectTrigger className='h-8 w-17.5' aria-label='Rows per page'>
+               <SelectValue placeholder={table.getState().pagination.pageSize} />
+             </SelectTrigger>
+             <SelectContent side='top'>
+diff --git a/src/components/layout/app-sidebar.tsx b/src/components/layout/app-sidebar.tsx
+index 32d9443..17401fb 100644
+--- a/src/components/layout/app-sidebar.tsx
++++ b/src/components/layout/app-sidebar.tsx
+@@ -23,7 +23,7 @@ export function AppSidebar() {
+          /* if you want to use the normal app title instead of TeamSwitch dropdown */}
+         {/* <AppTitle /> */}
+       </SidebarHeader>
+-      <SidebarContent>
++      <SidebarContent role='navigation' aria-label='Main'>
+         {sidebarData.navGroups.map((props) => (
+           <NavGroup key={props.title} {...props} />
+         ))}
+diff --git a/src/components/layout/main.tsx b/src/components/layout/main.tsx
+index b3d6d0a..1b52564 100644
+--- a/src/components/layout/main.tsx
++++ b/src/components/layout/main.tsx
+@@ -9,6 +9,7 @@ type MainProps = React.HTMLAttributes<HTMLElement> & {
+ export function Main({ fixed, className, fluid, ...props }: MainProps) {
+   return (
+     <main
++      id='content'
+       data-layout={fixed ? 'fixed' : 'auto'}
+       className={cn(
+         'px-4 py-6',
+diff --git a/src/components/ui/command.tsx b/src/components/ui/command.tsx
+index e71975d..a81d7e2 100644
+--- a/src/components/ui/command.tsx
++++ b/src/components/ui/command.tsx
+@@ -41,14 +41,14 @@ function CommandDialog({
+ }) {
+   return (
+     <Dialog {...props}>
+-      <DialogHeader className='sr-only'>
+-        <DialogTitle>{title}</DialogTitle>
+-        <DialogDescription>{description}</DialogDescription>
+-      </DialogHeader>
+       <DialogContent
+         className={cn('overflow-hidden p-0', className)}
+         showCloseButton={showCloseButton}
+       >
++        <DialogHeader className='sr-only'>
++          <DialogTitle>{title}</DialogTitle>
++          <DialogDescription>{description}</DialogDescription>
++        </DialogHeader>
+         <Command className='**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5 **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground **:[[cmdk-group]]:px-2 **:[[cmdk-input]]:h-12 **:[[cmdk-item]]:px-2 **:[[cmdk-item]]:py-3'>
+           {children}
+         </Command>
+diff --git a/src/features/tasks/components/tasks-columns.tsx b/src/features/tasks/components/tasks-columns.tsx
+index 6ff51c3..7991e8a 100644
+--- a/src/features/tasks/components/tasks-columns.tsx
++++ b/src/features/tasks/components/tasks-columns.tsx
+@@ -118,6 +118,7 @@ export const tasksColumns: ColumnDef<Task>[] = [
+   },
+   {
+     id: 'actions',
++    header: () => <span className='sr-only'>Actions</span>,
+     cell: ({ row }) => <DataTableRowActions row={row} />,
+   },
+ ]
+diff --git a/src/features/tasks/index.tsx b/src/features/tasks/index.tsx
+index 9ec3e26..5fc20dc 100644
+--- a/src/features/tasks/index.tsx
++++ b/src/features/tasks/index.tsx
+@@ -23,7 +23,7 @@ export function Tasks() {
+       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
+         <div className='flex flex-wrap items-end justify-between gap-2'>
+           <div>
+-            <h2 className='text-2xl font-bold tracking-tight'>Tasks</h2>
++            <h1 className='text-2xl font-bold tracking-tight'>Tasks</h1>
+             <p className='text-muted-foreground'>
+               Here&apos;s a list of your tasks for this month!
+             </p>
+diff --git a/src/features/users/components/users-columns.tsx b/src/features/users/components/users-columns.tsx
+index c353295..c210cf8 100644
+--- a/src/features/users/components/users-columns.tsx
++++ b/src/features/users/components/users-columns.tsx
+@@ -133,6 +133,7 @@ export const usersColumns: ColumnDef<User>[] = [
+   },
+   {
+     id: 'actions',
++    header: () => <span className='sr-only'>Actions</span>,
+     cell: DataTableRowActions,
+   },
+ ]
+diff --git a/src/features/users/data/data.ts b/src/features/users/data/data.ts
+index 0b46fd2..64d0732 100644
+--- a/src/features/users/data/data.ts
++++ b/src/features/users/data/data.ts
+@@ -7,7 +7,7 @@ export const callTypes = new Map<UserStatus, string>([
+   ['invited', 'bg-sky-200/40 text-sky-900 dark:text-sky-100 border-sky-300'],
+   [
+     'suspended',
+-    'bg-destructive/10 dark:bg-destructive/50 text-destructive dark:text-primary border-destructive/10',
++    'bg-destructive/10 dark:bg-destructive/50 text-red-800 dark:text-primary border-destructive/10',
+   ],
+ ])
+ 
+diff --git a/src/features/users/index.tsx b/src/features/users/index.tsx
+index d2c7447..45e8e7d 100644
+--- a/src/features/users/index.tsx
++++ b/src/features/users/index.tsx
+@@ -29,7 +29,7 @@ export function Users() {
+       <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
+         <div className='flex flex-wrap items-end justify-between gap-2'>
+           <div>
+-            <h2 className='text-2xl font-bold tracking-tight'>User List</h2>
++            <h1 className='text-2xl font-bold tracking-tight'>User List</h1>
+             <p className='text-muted-foreground'>
+               Manage your users and their roles here.
+             </p>
+diff --git a/src/routes/__root.tsx b/src/routes/__root.tsx
+index 17faf5b..bb69d28 100644
+--- a/src/routes/__root.tsx
++++ b/src/routes/__root.tsx
+@@ -15,7 +15,7 @@ export const Route = createRootRouteWithContext<{
+       <>
+         <NavigationProgress />
+         <Outlet />
+-        <Toaster duration={5000} />
++        <Toaster duration={Infinity} />
+         {import.meta.env.MODE === 'development' && (
+           <>
+             <ReactQueryDevtools buttonPosition='bottom-left' />

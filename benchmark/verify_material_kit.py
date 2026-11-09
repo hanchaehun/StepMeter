@@ -38,6 +38,9 @@ async def verify():
                     items = await observe(page)
                     initial = await snapshot(page, next(i['el_id'] for i in items if i['name'] == 'Email address'))
                     assert bool(r06.evaluate(initial, is_first_target=True)) == (variant == 'below-fold')
+                    assert r06.evaluate(initial, action='type') is None
+                    if variant == 'below-fold':
+                        await page.locator('input[name=email]').click()
                     await page.locator('input[name=email]').fill('demo@example.test')
                     await page.locator('input[name=password]').fill('demo-password')
                     target = page.locator(TOGGLE)

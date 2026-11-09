@@ -1,0 +1,13 @@
+diff --git a/src/features/users/components/users-invite-dialog.tsx b/src/features/users/components/users-invite-dialog.tsx
+index 5bac16c..5c25b52 100644
+--- a/src/features/users/components/users-invite-dialog.tsx
++++ b/src/features/users/components/users-invite-dialog.tsx
+@@ -140,7 +140,7 @@ export function UsersInviteDialog({
+           <DialogClose asChild>
+             <Button variant='outline'>Cancel</Button>
+           </DialogClose>
+-          <Button type='submit' form='user-invite-form'>
++          <Button type='button' form='user-invite-form'>
+             Invite <Send />
+           </Button>
+         </DialogFooter>

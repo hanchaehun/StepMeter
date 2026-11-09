@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "app": {
+    "id": "material-kit-react",
+    "kind": "benchmark",
+    "revision": "69e780a40c455d664b2e13c525faf1d492a072a7"
+  },
+  "ground_truth_review": {
+    "status": "pending",
+    "note": "Template only; fill exhaustive rendered-state truth and obtain review before acceptance."
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "preparation_required": [
+    "Start the pinned local test app with synthetic data",
+    "Verify routes/selectors and all interactive targets in each rendered state",
+    "Fill truth independently of collector output; declare covered UI categories",
+    "Record human reviewer/date only after actual review"
+  ],
+  "scenarios": []
+}

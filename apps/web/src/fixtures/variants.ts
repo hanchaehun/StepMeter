@@ -24,7 +24,7 @@ export function allFailed(): ReportData {
   };
   d.report.issues = [loop];
   d.steps = [];
-  d.task = { ...d.task, id: 8, description: '무료 계정을 만든다' };
+  d.task = { ...d.task!, id: 8, description: '무료 계정을 만든다' }; // 목 데이터에는 task가 항상 있다
   return d;
 }
 

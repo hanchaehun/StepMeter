@@ -1,0 +1,8 @@
+{
+  "id": "bad",
+  "app": "fixture",
+  "rule": "R02",
+  "selector": "#this-element-does-not-exist",
+  "operation": "style",
+  "style": { "color": "#eeeeee" }
+}

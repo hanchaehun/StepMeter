@@ -17,11 +17,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
     && useradd --create-home --uid 10001 stepmeter
 COPY worker worker
 COPY tests tests
-# tests/test_baseline_axe.py imports this module (axe baseline, plan 8.3).
-COPY benchmark/baseline_axe.py benchmark/baseline_axe.py
+# Baseline tests import these modules (axe and LLM baselines, plan 8.3).
+COPY benchmark/baseline_axe.py benchmark/baseline_llm.py benchmark/
 # Evaluation tests import this module; do not copy private holdouts or evidence.
-COPY benchmark/eval.py benchmark/eval.py
-COPY benchmark/build_variant.py benchmark/build_variant.py
+COPY benchmark/eval.py benchmark/mutate.py benchmark/build_variant.py benchmark/
+# SPA tests use the evaluator and public synthetic labels; never copy holdouts/evidence.
+COPY benchmark/spa_eval.py benchmark/verify_spa.py benchmark/
+COPY benchmark/spa/synthetic.json benchmark/spa/synthetic.json
+COPY human-study human-study
 COPY infra/scripts infra/scripts
 COPY prompts prompts
 COPY apps/api apps/api

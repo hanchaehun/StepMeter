@@ -1,0 +1,296 @@
+{
+  "version": 1,
+  "app": {
+    "id": "material-kit-react",
+    "kind": "benchmark",
+    "revision": "69e780a40c455d664b2e13c525faf1d492a072a7"
+  },
+  "ground_truth_review": {
+    "status": "pending",
+    "note": "Agent-authored candidate based on pinned SignInView source and rendered screenshot; no human approval. Raw collector candidate contract includes placeholder anchors. No external sign-in tested."
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "scenarios": [
+    {
+      "id": "signin",
+      "path": "/sign-in",
+      "exhaustive": true,
+      "coverage": [],
+      "ready": {
+        "selector": "input[name=\"email\"]"
+      },
+      "setup": [],
+      "truth": [
+        {
+          "key": "logo",
+          "selector": "a[aria-label=\"Logo\"]",
+          "name": "Logo",
+          "role": "link"
+        },
+        {
+          "key": "help",
+          "selector": "a[href=\"/sign-in\"]",
+          "name": "Need help?",
+          "role": "link"
+        },
+        {
+          "key": "get-started",
+          "selector": "a:has-text(\"Get started\")",
+          "name": "",
+          "role": null
+        },
+        {
+          "key": "email",
+          "selector": "input[name=\"email\"]",
+          "name": "Email address",
+          "role": "textbox"
+        },
+        {
+          "key": "forgot",
+          "selector": "a:has-text(\"Forgot password?\")",
+          "name": "",
+          "role": null
+        },
+        {
+          "key": "password",
+          "selector": "input[name=\"password\"]",
+          "name": "Password",
+          "role": null
+        },
+        {
+          "key": "toggle",
+          "selector": "button[aria-label=\"Show password\"]",
+          "name": "Show password",
+          "role": "button"
+        },
+        {
+          "key": "signin",
+          "selector": "button[type=\"submit\"]",
+          "name": "Sign in",
+          "role": "button"
+        },
+        {
+          "key": "google",
+          "selector": "button[aria-label=\"Sign in with Google\"]",
+          "name": "Sign in with Google",
+          "role": "button"
+        },
+        {
+          "key": "github",
+          "selector": "button[aria-label=\"Sign in with GitHub\"]",
+          "name": "Sign in with GitHub",
+          "role": "button"
+        },
+        {
+          "key": "twitter",
+          "selector": "button[aria-label=\"Sign in with Twitter\"]",
+          "name": "Sign in with Twitter",
+          "role": "button"
+        },
+        {
+          "key": "source",
+          "selector": "a[aria-label=\"Github\"]",
+          "name": "Github",
+          "role": "link"
+        }
+      ],
+      "clicks": [
+        "toggle",
+        "email"
+      ]
+    },
+    {
+      "id": "password-visible",
+      "path": "/sign-in",
+      "exhaustive": true,
+      "coverage": [],
+      "ready": {
+        "selector": "input[name=\"email\"]"
+      },
+      "setup": [
+        {
+          "action": "click",
+          "selector": "button[aria-label=\"Show password\"]"
+        }
+      ],
+      "truth": [
+        {
+          "key": "logo",
+          "selector": "a[aria-label=\"Logo\"]",
+          "name": "Logo",
+          "role": "link"
+        },
+        {
+          "key": "help",
+          "selector": "a[href=\"/sign-in\"]",
+          "name": "Need help?",
+          "role": "link"
+        },
+        {
+          "key": "get-started",
+          "selector": "a:has-text(\"Get started\")",
+          "name": "",
+          "role": null
+        },
+        {
+          "key": "email",
+          "selector": "input[name=\"email\"]",
+          "name": "Email address",
+          "role": "textbox"
+        },
+        {
+          "key": "forgot",
+          "selector": "a:has-text(\"Forgot password?\")",
+          "name": "",
+          "role": null
+        },
+        {
+          "key": "password",
+          "selector": "input[name=\"password\"]",
+          "name": "Password",
+          "role": "textbox"
+        },
+        {
+          "key": "toggle",
+          "selector": "button[aria-label=\"Hide password\"]",
+          "name": "Hide password",
+          "role": "button"
+        },
+        {
+          "key": "signin",
+          "selector": "button[type=\"submit\"]",
+          "name": "Sign in",
+          "role": "button"
+        },
+        {
+          "key": "google",
+          "selector": "button[aria-label=\"Sign in with Google\"]",
+          "name": "Sign in with Google",
+          "role": "button"
+        },
+        {
+          "key": "github",
+          "selector": "button[aria-label=\"Sign in with GitHub\"]",
+          "name": "Sign in with GitHub",
+          "role": "button"
+        },
+        {
+          "key": "twitter",
+          "selector": "button[aria-label=\"Sign in with Twitter\"]",
+          "name": "Sign in with Twitter",
+          "role": "button"
+        },
+        {
+          "key": "source",
+          "selector": "a[aria-label=\"Github\"]",
+          "name": "Github",
+          "role": "link"
+        }
+      ],
+      "clicks": [
+        "toggle",
+        "email"
+      ]
+    },
+    {
+      "id": "password-retoggled",
+      "path": "/sign-in",
+      "exhaustive": true,
+      "coverage": [],
+      "ready": {
+        "selector": "input[name=\"email\"]"
+      },
+      "setup": [
+        {
+          "action": "click",
+          "selector": "button[aria-label=\"Show password\"]"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label=\"Hide password\"]"
+        }
+      ],
+      "truth": [
+        {
+          "key": "logo",
+          "selector": "a[aria-label=\"Logo\"]",
+          "name": "Logo",
+          "role": "link"
+        },
+        {
+          "key": "help",
+          "selector": "a[href=\"/sign-in\"]",
+          "name": "Need help?",
+          "role": "link"
+        },
+        {
+          "key": "get-started",
+          "selector": "a:has-text(\"Get started\")",
+          "name": "",
+          "role": null
+        },
+        {
+          "key": "email",
+          "selector": "input[name=\"email\"]",
+          "name": "Email address",
+          "role": "textbox"
+        },
+        {
+          "key": "forgot",
+          "selector": "a:has-text(\"Forgot password?\")",
+          "name": "",
+          "role": null
+        },
+        {
+          "key": "password",
+          "selector": "input[name=\"password\"]",
+          "name": "Password",
+          "role": null
+        },
+        {
+          "key": "toggle",
+          "selector": "button[aria-label=\"Show password\"]",
+          "name": "Show password",
+          "role": "button"
+        },
+        {
+          "key": "signin",
+          "selector": "button[type=\"submit\"]",
+          "name": "Sign in",
+          "role": "button"
+        },
+        {
+          "key": "google",
+          "selector": "button[aria-label=\"Sign in with Google\"]",
+          "name": "Sign in with Google",
+          "role": "button"
+        },
+        {
+          "key": "github",
+          "selector": "button[aria-label=\"Sign in with GitHub\"]",
+          "name": "Sign in with GitHub",
+          "role": "button"
+        },
+        {
+          "key": "twitter",
+          "selector": "button[aria-label=\"Sign in with Twitter\"]",
+          "name": "Sign in with Twitter",
+          "role": "button"
+        },
+        {
+          "key": "source",
+          "selector": "a[aria-label=\"Github\"]",
+          "name": "Github",
+          "role": "link"
+        }
+      ],
+      "clicks": [
+        "toggle",
+        "email"
+      ]
+    }
+  ]
+}

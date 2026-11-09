@@ -49,13 +49,14 @@ class ClaudeAdapter:
         """Claude API에 보낼 내용을 만든다 (1단계: 포장)."""
 
         content: list[dict[str, Any]] = []
-        if request.image_jpeg is not None:
+        images = ((request.image_jpeg,) if request.image_jpeg is not None else ()) + request.extra_images_jpeg
+        for image in images:
             content.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
                     "media_type": "image/jpeg",
-                    "data": base64.b64encode(request.image_jpeg).decode("ascii"),
+                    "data": base64.b64encode(image).decode("ascii"),
                 },
             })
         content.append({"type": "text", "text": request.user_text})

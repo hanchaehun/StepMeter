@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>사람 데이터 수집 고정 페이지</title>
+<style>
+  body { margin: 0; font: 16px/1.4 sans-serif; }
+  main { position: relative; height: 2400px; }
+  #buy   { position: absolute; left: 100px; top: 100px; width: 120px; height: 40px; }
+  #email { position: absolute; left: 100px; top: 160px; width: 200px; height: 32px; box-sizing: border-box; }
+  #plain { position: absolute; left: 100px; top: 300px; margin: 0; }
+  #next  { position: absolute; left: 100px; top: 400px; }
+  #far   { position: absolute; left: 100px; top: 2000px; width: 120px; height: 40px; }
+  #agree-label { position: absolute; left: 400px; top: 100px; width: 80px; height: 24px; }
+  #agree { position: absolute; left: 400px; top: 130px; width: 16px; height: 16px; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <!-- 손 계산용 좌표: 구매 버튼 중심 (160, 120), 입력칸 중심 (200, 176), 본문 글 (100~, 300~), 링크 (100, 400) -->
+  <button id="buy" type="button">구매</button>
+  <form id="f" onsubmit="return false"><input id="email" type="email" aria-label="이메일"><button id="submit" type="submit" style="position:absolute;left:0;top:0;width:1px;height:1px;opacity:0.01">보내기</button></form>
+  <p id="plain">이 글은 상호작용 요소가 아니다.</p>
+  <a id="next" href="next.html">다음 페이지</a>
+  <label id="agree-label" for="agree">동의합니다</label>
+  <input id="agree" type="checkbox" aria-label="동의">
+  <button id="far" type="button">아래쪽 버튼</button>
+</main>
+</body>
+</html>

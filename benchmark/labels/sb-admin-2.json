@@ -6,7 +6,7 @@
     "small": [
       {
         "rule": "R01",
-        "target": "form.user a.btn-primary"
+        "target": "#customCheck"
       }
     ],
     "contrast": [

@@ -1,0 +1,21 @@
+diff --git a/src/features/tasks/components/tasks-table.tsx b/src/features/tasks/components/tasks-table.tsx
+index 1383a50..a11c80d 100644
+--- a/src/features/tasks/components/tasks-table.tsx
++++ b/src/features/tasks/components/tasks-table.tsx
+@@ -111,6 +111,8 @@ export function TasksTable({ data }: DataTableProps) {
+         'flex flex-1 flex-col gap-4'
+       )}
+     >
++      <div className='relative'>
++      <div className='absolute inset-0 z-10 bg-background/50' aria-hidden='true' />
+       <DataTableToolbar
+         table={table}
+         searchPlaceholder='Filter by title or ID...'
+@@ -127,6 +129,7 @@ export function TasksTable({ data }: DataTableProps) {
+           },
+         ]}
+       />
++      </div>
+       <div className='overflow-hidden rounded-md border'>
+         <Table className='min-w-xl'>
+           <TableHeader>

@@ -56,8 +56,8 @@ def main():
     result = prepare(app, args.variant, source, destination)
     if args.build:
         commands = {
-            'shadcn-admin': [['npx', '--yes', 'pnpm@10.18.3', 'install', '--frozen-lockfile'],
-                             ['npx', '--yes', 'pnpm@10.18.3', 'exec', 'vite', 'build']],
+            'shadcn-admin': [['npx', '--yes', 'pnpm@9.15.9', 'install', '--frozen-lockfile'],
+                             ['npx', '--yes', 'pnpm@9.15.9', 'exec', 'vite', 'build']],
             'material-kit-react': [['npm', 'ci'], ['npm', 'run', 'build']],
             'sb-admin-2': [],
             'react-shopping-cart': [['npm', 'ci'], ['npm', 'run', 'build']],
