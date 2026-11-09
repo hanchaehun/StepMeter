@@ -12,7 +12,7 @@ diff --git a/login.html b/login.html
 +                                                    aria-labelledby="rememberMeText">
 +                                                <label class="custom-control-label" for="customCheck"></label>
 +                                                <span id="rememberMeText">Remember Me</span>
-+                                                <a class="d-block" href="forgot-password.html">Forgot Password?</a>
++                                                <a class="d-block" style="margin-left: -24px" href="forgot-password.html">Forgot Password?</a>
                                              </div>
                                          </div>
                                          <a href="index.html" class="btn btn-primary btn-user btn-block">

@@ -20,7 +20,7 @@ def main() -> None:
     args = parser.parse_args()
     apps = json.loads((ROOT / "apps.json").read_text(encoding="utf-8"))["apps"]
     holdout = ROOT / "holdout" / "apps.json"
-    if holdout.exists():
+    if args.include_holdout and holdout.exists():
         apps += [
             app for app in json.loads(holdout.read_text(encoding="utf-8"))["apps"]
             if app["split"] == "holdout"
@@ -42,7 +42,8 @@ def main() -> None:
         git(path, "remote", "add", "origin", app["repository"] + ".git")
         git(path, "fetch", "--depth", "1", "origin", app["revision"])
         git(path, "checkout", "--detach", "FETCH_HEAD")
-        patch = ROOT / "baselines" / (app["id"] + ".patch")
+        patch_root = ROOT / "holdout" if app["split"] == "holdout" else ROOT
+        patch = patch_root / "baselines" / (app["id"] + ".patch")
         if patch.exists():
             git(path, "apply", "--check", str(patch))
             git(path, "apply", str(patch))

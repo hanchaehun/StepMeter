@@ -1,0 +1,11 @@
+--- a/src/components/Product.jsx
++++ b/src/components/Product.jsx
+@@ -26,7 +26,7 @@
+         <button
+           className={!isAdded ? "" : "added"}
+           type="button"
+-          onClick={handleAddToCart}
++          onClick={()=>{ /* handler missing */ }}
+         >
+           {!isAdded ? "ADD TO CART" : "✔ ADDED"}
+         </button>

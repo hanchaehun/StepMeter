@@ -2,3 +2,5 @@
 *.docx binary
 *.png binary
 *.jpg binary
+# Unified patch context lines intentionally contain a single space.
+*.patch whitespace=-blank-at-eol

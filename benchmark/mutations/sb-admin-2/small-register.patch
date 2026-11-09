@@ -1,0 +1,13 @@
+--- a/register.html
++++ b/register.html
+@@ -72,9 +72,7 @@
+                                             id="exampleRepeatPassword" placeholder="Repeat Password">
+                                     </div>
+                                 </div>
+-                                <a href="login.html" class="btn btn-primary btn-user btn-block">
+-                                    Register Account
+-                                </a>
++                                <a href="login.html" id="register-target" style="display:inline-block;width:16px;height:16px;padding:0;border:0;font-size:8px;overflow:hidden;vertical-align:top" class="btn btn-primary">Register Account</a><button type="button" aria-label="Registration help" onclick="this.textContent='!'" style="width:16px;height:16px;padding:0;border:0;vertical-align:top">?</button>
+                                 <hr>
+                                 <a href="index.html" class="btn btn-google btn-user btn-block">
+                                     <i class="fab fa-google fa-fw"></i> Register with Google

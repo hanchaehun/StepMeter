@@ -56,14 +56,15 @@
       "license": "MIT",
       "license_file": "LICENSE",
       "split": "development",
-      "stack": "React 17 / SCSS / mobile commerce",
+      "stack": "React 17 / Vite / Dart Sass / local product fixtures",
       "tasks": [
         "상품 검색 후 수량 2개를 장바구니에 추가",
         "장바구니를 열고 상품 삭제"
       ],
-      "startup": "원본 CRA4/node-sass5 의존성 현대화 및 상품 JSON 로컬화 후 npm start",
+      "startup": "npm ci; npm run build; npm run preview",
       "upstream_lockfile": "yarn.lock",
-      "review": "원본 소스·라이선스 확인. 런타임 검증 결과는 selection.md 참고"
+      "review": "W2 local data and modern build baseline prepared; see w2-readiness.md for verification and PM review",
+      "build_lockfile": "package-lock.json"
     }
   ]
 }

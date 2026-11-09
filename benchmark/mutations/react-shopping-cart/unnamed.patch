@@ -1,0 +1,11 @@
+--- a/src/components/Product.jsx
++++ b/src/components/Product.jsx
+@@ -28,7 +28,7 @@
+           type="button"
+           onClick={handleAddToCart}
+         >
+-          {!isAdded ? "ADD TO CART" : "✔ ADDED"}
++          <span aria-hidden="true">{!isAdded ? "ADD TO CART" : "✔ ADDED"}</span>
+         </button>
+       </div>
+     </div>

@@ -38,3 +38,5 @@ benchmark/apps/*/
 # Raw benchmark DOM reports/screenshots can contain upstream sample contact data.
 benchmark/evidence/
 benchmark/holdout/
+
+benchmark/builds/

@@ -1,0 +1,38 @@
+name: Development benchmark render checks
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1' # Monday 09:00 KST
+permissions:
+  contents: read
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: pip install -r requirements-dev.txt
+      - run: npm ci
+      - run: npm run build:collect
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m benchmark.verify_development --build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: development-benchmark-evidence
+          path: |
+            benchmark/evidence/development/summary.json
+            benchmark/evidence/sb-admin-2/w2/verification.json
+            benchmark/evidence/sb-admin-2/w2/*.png
+            benchmark/evidence/material-kit-react/w2/verification.json
+            benchmark/evidence/material-kit-react/w2/*.png
+            benchmark/evidence/react-shopping-cart/w2/verification.json
+            benchmark/evidence/react-shopping-cart/w2/*.png

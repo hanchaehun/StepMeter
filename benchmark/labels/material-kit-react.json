@@ -1,0 +1,44 @@
+{
+  "split": "development",
+  "review_status": "pending",
+  "cases": {
+    "baseline": [],
+    "small": [
+      {
+        "rule": "R01",
+        "target": ".MuiInputBase-root:has(input[name=\"password\"]) button:first-of-type"
+      }
+    ],
+    "contrast": [
+      {
+        "rule": "R02",
+        "target": ".MuiFormControl-root:has(input[name=\"password\"]) > label"
+      }
+    ],
+    "inert": [
+      {
+        "rule": "R03",
+        "target": ".MuiInputBase-root:has(input[name=\"password\"]) button:first-of-type"
+      }
+    ],
+    "overlay": [
+      {
+        "rule": "R04",
+        "target": ".MuiInputBase-root:has(input[name=\"password\"]) button:first-of-type"
+      }
+    ],
+    "below-fold": [
+      {
+        "rule": "R06",
+        "target": "input[name=\"email\"]"
+      }
+    ],
+    "unnamed": [
+      {
+        "rule": "R10",
+        "target": ".MuiInputBase-root:has(input[name=\"password\"]) button:first-of-type"
+      }
+    ],
+    "baseline-products": []
+  }
+}

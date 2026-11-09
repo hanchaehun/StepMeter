@@ -1,0 +1,12 @@
+--- a/src/sections/auth/sign-in-view.tsx
++++ b/src/sections/auth/sign-in-view.tsx
+@@ -57,7 +57,8 @@
+           inputLabel: { shrink: true },
+           input: {
+             endAdornment: (
+-              <InputAdornment position="end">
++              <InputAdornment position="end" sx={{ position: "relative" }}>
++                <Box aria-hidden="true" sx={{ position: "absolute", inset: "-24px -12px -24px 0", backgroundColor: "rgba(255,255,255,.5)", zIndex: 2 }} />
+                 <IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)} edge="end">
+                   <Iconify icon={showPassword ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
+                 </IconButton>

@@ -1,0 +1,17 @@
+--- a/src/components/Product.jsx
++++ b/src/components/Product.jsx
+@@ -24,12 +24,13 @@
+       <p className="product-price">{price}</p>
+       <div className="product-action">
+         <button
++          style={{width:16,height:16,minHeight:0,padding:0,margin:0,fontSize:8,overflow:"hidden",verticalAlign:"top"}}
+           className={!isAdded ? "" : "added"}
+           type="button"
+           onClick={handleAddToCart}
+         >
+           {!isAdded ? "ADD TO CART" : "✔ ADDED"}
+-        </button>
++        </button><button type="button" aria-label="Product help" style={{width:16,height:16,minHeight:0,padding:0,margin:0,verticalAlign:"top"}} onClick={(e)=>{e.currentTarget.textContent="!"}}>?</button>
+       </div>
+     </div>
+   );
