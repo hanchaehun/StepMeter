@@ -1,0 +1,265 @@
+{
+  "version": 1,
+  "app": {
+    "id": "shadcn-admin",
+    "kind": "benchmark",
+    "revision": "e16c87f213a5ba5e45964e9b67c792105ec74d26"
+  },
+  "ground_truth_review": {
+    "status": "pending",
+    "note": "Agent candidate from pinned SignIn/UserAuthForm/PasswordInput source and rendered screen, not collector output; human review pending. No sign-in submission.",
+    "label_revision_note": "GitHub/Facebook expected names include nested role=img SVG title plus visible text per accessible-name content recursion, verified in src/assets/brand-icons/icon-{github,facebook}.tsx. Initial candidate mismatch report preserved."
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "scenarios": [
+    {
+      "id": "signin",
+      "path": "/sign-in",
+      "exhaustive": true,
+      "coverage": [],
+      "ready": {
+        "selector": "input[name=\"email\"]"
+      },
+      "setup": [],
+      "truth": [
+        {
+          "key": "signup",
+          "selector": "a[href=\"/sign-up\"]",
+          "name": "Sign Up",
+          "role": "link"
+        },
+        {
+          "key": "email",
+          "selector": "input[name=\"email\"]",
+          "name": "Email",
+          "role": "textbox"
+        },
+        {
+          "key": "password",
+          "selector": "input[name=\"password\"]",
+          "name": "Password",
+          "role": null
+        },
+        {
+          "key": "toggle",
+          "selector": "button:has-text(\"Show password\")",
+          "name": "Show password",
+          "role": "button"
+        },
+        {
+          "key": "forgot",
+          "selector": "a[href=\"/forgot-password\"]",
+          "name": "Forgot password?",
+          "role": "link"
+        },
+        {
+          "key": "signin",
+          "selector": "form button:not([type])",
+          "name": "Sign in",
+          "role": "button"
+        },
+        {
+          "key": "github",
+          "selector": "button:has-text(\"GitHub\")",
+          "name": "GitHub GitHub",
+          "role": "button"
+        },
+        {
+          "key": "facebook",
+          "selector": "button:has-text(\"Facebook\")",
+          "name": "Facebook Facebook",
+          "role": "button"
+        },
+        {
+          "key": "terms",
+          "selector": "a[href=\"/terms\"]",
+          "name": "Terms of Service",
+          "role": "link"
+        },
+        {
+          "key": "privacy",
+          "selector": "a[href=\"/privacy\"]",
+          "name": "Privacy Policy",
+          "role": "link"
+        }
+      ],
+      "clicks": [
+        "toggle",
+        "forgot"
+      ]
+    },
+    {
+      "id": "password-visible",
+      "path": "/sign-in",
+      "exhaustive": true,
+      "coverage": [],
+      "ready": {
+        "selector": "input[name=\"email\"]"
+      },
+      "setup": [
+        {
+          "action": "click",
+          "selector": "button:has-text(\"Show password\")"
+        }
+      ],
+      "truth": [
+        {
+          "key": "signup",
+          "selector": "a[href=\"/sign-up\"]",
+          "name": "Sign Up",
+          "role": "link"
+        },
+        {
+          "key": "email",
+          "selector": "input[name=\"email\"]",
+          "name": "Email",
+          "role": "textbox"
+        },
+        {
+          "key": "password",
+          "selector": "input[name=\"password\"]",
+          "name": "Password",
+          "role": "textbox"
+        },
+        {
+          "key": "toggle",
+          "selector": "button:has-text(\"Hide password\")",
+          "name": "Hide password",
+          "role": "button"
+        },
+        {
+          "key": "forgot",
+          "selector": "a[href=\"/forgot-password\"]",
+          "name": "Forgot password?",
+          "role": "link"
+        },
+        {
+          "key": "signin",
+          "selector": "form button:not([type])",
+          "name": "Sign in",
+          "role": "button"
+        },
+        {
+          "key": "github",
+          "selector": "button:has-text(\"GitHub\")",
+          "name": "GitHub GitHub",
+          "role": "button"
+        },
+        {
+          "key": "facebook",
+          "selector": "button:has-text(\"Facebook\")",
+          "name": "Facebook Facebook",
+          "role": "button"
+        },
+        {
+          "key": "terms",
+          "selector": "a[href=\"/terms\"]",
+          "name": "Terms of Service",
+          "role": "link"
+        },
+        {
+          "key": "privacy",
+          "selector": "a[href=\"/privacy\"]",
+          "name": "Privacy Policy",
+          "role": "link"
+        }
+      ],
+      "clicks": [
+        "toggle",
+        "forgot"
+      ]
+    },
+    {
+      "id": "password-retoggled",
+      "path": "/sign-in",
+      "exhaustive": true,
+      "coverage": [],
+      "ready": {
+        "selector": "input[name=\"email\"]"
+      },
+      "setup": [
+        {
+          "action": "click",
+          "selector": "button:has-text(\"Show password\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"Hide password\")"
+        }
+      ],
+      "truth": [
+        {
+          "key": "signup",
+          "selector": "a[href=\"/sign-up\"]",
+          "name": "Sign Up",
+          "role": "link"
+        },
+        {
+          "key": "email",
+          "selector": "input[name=\"email\"]",
+          "name": "Email",
+          "role": "textbox"
+        },
+        {
+          "key": "password",
+          "selector": "input[name=\"password\"]",
+          "name": "Password",
+          "role": null
+        },
+        {
+          "key": "toggle",
+          "selector": "button:has-text(\"Show password\")",
+          "name": "Show password",
+          "role": "button"
+        },
+        {
+          "key": "forgot",
+          "selector": "a[href=\"/forgot-password\"]",
+          "name": "Forgot password?",
+          "role": "link"
+        },
+        {
+          "key": "signin",
+          "selector": "form button:not([type])",
+          "name": "Sign in",
+          "role": "button"
+        },
+        {
+          "key": "github",
+          "selector": "button:has-text(\"GitHub\")",
+          "name": "GitHub GitHub",
+          "role": "button"
+        },
+        {
+          "key": "facebook",
+          "selector": "button:has-text(\"Facebook\")",
+          "name": "Facebook Facebook",
+          "role": "button"
+        },
+        {
+          "key": "terms",
+          "selector": "a[href=\"/terms\"]",
+          "name": "Terms of Service",
+          "role": "link"
+        },
+        {
+          "key": "privacy",
+          "selector": "a[href=\"/privacy\"]",
+          "name": "Privacy Policy",
+          "role": "link"
+        }
+      ],
+      "clicks": [
+        "toggle",
+        "forgot"
+      ]
+    }
+  ],
+  "local_test_profile": {
+    "baseline_patch": "benchmark/baselines/shadcn-admin.patch",
+    "fonts": "Official CSS/font bytes vendored in test checkout only; source URLs and SHA256 in accompanying font manifest; runtime external HTTP remains blocked."
+  }
+}

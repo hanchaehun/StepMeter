@@ -1,0 +1,511 @@
+{
+  "version": 1,
+  "app": {
+    "id": "synthetic-spa",
+    "kind": "synthetic",
+    "revision": "fixture-v1"
+  },
+  "ground_truth_review": {
+    "status": "pending",
+    "note": "Hand-authored from fixture HTML, not collector output. Human review is still pending."
+  },
+  "viewport": {
+    "width": 800,
+    "height": 600
+  },
+  "scenarios": [
+    {
+      "id": "cookie",
+      "path": "/tests/fixtures/collect/spa/index.html",
+      "exhaustive": true,
+      "ready": {
+        "selector": "#row"
+      },
+      "truth": [
+        {
+          "key": "route",
+          "selector": "#route",
+          "name": "Details",
+          "role": "link",
+          "occluded": false
+        },
+        {
+          "key": "under-header",
+          "selector": "#under-header",
+          "name": "Under header",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "open-dialog",
+          "selector": "#open-dialog",
+          "name": "Open dialog",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "route-target",
+          "selector": "#route-target",
+          "name": "Overview action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "row",
+          "selector": "#row",
+          "name": "Row 0",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "shadow",
+          "selector": "#shadow-button",
+          "name": "Shadow action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "frame",
+          "selector": "#frame-button",
+          "frame": "#frame",
+          "name": "Frame action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "covered",
+          "selector": "#covered",
+          "name": "Covered action",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "accept",
+          "selector": "#accept",
+          "name": "Accept cookies",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "hidden",
+          "selector": "#hidden",
+          "name": "Hidden",
+          "role": "button",
+          "include": false
+        },
+        {
+          "key": "offscreen",
+          "selector": "#offscreen",
+          "name": "Offscreen",
+          "role": "button",
+          "include": false
+        }
+      ],
+      "coverage": [
+        "cookie_modal",
+        "fixed_header",
+        "open_shadow",
+        "same_origin_iframe"
+      ],
+      "clicks": [
+        "accept",
+        "shadow",
+        "frame"
+      ]
+    },
+    {
+      "id": "accepted",
+      "path": "/tests/fixtures/collect/spa/index.html",
+      "exhaustive": true,
+      "ready": {
+        "selector": "#row"
+      },
+      "truth": [
+        {
+          "key": "route",
+          "selector": "#route",
+          "name": "Details",
+          "role": "link",
+          "occluded": false
+        },
+        {
+          "key": "under-header",
+          "selector": "#under-header",
+          "name": "Under header",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "open-dialog",
+          "selector": "#open-dialog",
+          "name": "Open dialog",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "route-target",
+          "selector": "#route-target",
+          "name": "Overview action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "row",
+          "selector": "#row",
+          "name": "Row 0",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "shadow",
+          "selector": "#shadow-button",
+          "name": "Shadow action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "frame",
+          "selector": "#frame-button",
+          "frame": "#frame",
+          "name": "Frame action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "covered",
+          "selector": "#covered",
+          "name": "Covered action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "hidden",
+          "selector": "#hidden",
+          "name": "Hidden",
+          "role": "button",
+          "include": false
+        },
+        {
+          "key": "offscreen",
+          "selector": "#offscreen",
+          "name": "Offscreen",
+          "role": "button",
+          "include": false
+        }
+      ],
+      "setup": [
+        {
+          "action": "click",
+          "selector": "#accept"
+        }
+      ],
+      "coverage": [
+        "fixed_header",
+        "open_shadow",
+        "same_origin_iframe"
+      ],
+      "clicks": [
+        "open-dialog",
+        "covered",
+        "row"
+      ]
+    },
+    {
+      "id": "modal",
+      "path": "/tests/fixtures/collect/spa/index.html",
+      "exhaustive": true,
+      "ready": {
+        "selector": "#row"
+      },
+      "truth": [
+        {
+          "key": "route",
+          "selector": "#route",
+          "name": "Details",
+          "role": "link",
+          "occluded": true
+        },
+        {
+          "key": "under-header",
+          "selector": "#under-header",
+          "name": "Under header",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "open-dialog",
+          "selector": "#open-dialog",
+          "name": "Open dialog",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "route-target",
+          "selector": "#route-target",
+          "name": "Overview action",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "row",
+          "selector": "#row",
+          "name": "Row 0",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "shadow",
+          "selector": "#shadow-button",
+          "name": "Shadow action",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "frame",
+          "selector": "#frame-button",
+          "frame": "#frame",
+          "name": "Frame action",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "covered",
+          "selector": "#covered",
+          "name": "Covered action",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "hidden",
+          "selector": "#hidden",
+          "name": "Hidden",
+          "role": "button",
+          "include": false
+        },
+        {
+          "key": "offscreen",
+          "selector": "#offscreen",
+          "name": "Offscreen",
+          "role": "button",
+          "include": false
+        },
+        {
+          "key": "close-dialog",
+          "selector": "#close-dialog",
+          "name": "Close dialog",
+          "role": "button",
+          "occluded": false
+        }
+      ],
+      "setup": [
+        {
+          "action": "click",
+          "selector": "#accept"
+        },
+        {
+          "action": "click",
+          "selector": "#open-dialog"
+        }
+      ],
+      "coverage": [
+        "cookie_modal"
+      ],
+      "clicks": [
+        "close-dialog"
+      ]
+    },
+    {
+      "id": "virtual",
+      "path": "/tests/fixtures/collect/spa/index.html",
+      "exhaustive": true,
+      "ready": {
+        "selector": "#row"
+      },
+      "truth": [
+        {
+          "key": "route",
+          "selector": "#route",
+          "name": "Details",
+          "role": "link",
+          "occluded": false
+        },
+        {
+          "key": "under-header",
+          "selector": "#under-header",
+          "name": "Under header",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "open-dialog",
+          "selector": "#open-dialog",
+          "name": "Open dialog",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "route-target",
+          "selector": "#route-target",
+          "name": "Overview action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "row",
+          "selector": "#row",
+          "name": "Row 50",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "shadow",
+          "selector": "#shadow-button",
+          "name": "Shadow action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "frame",
+          "selector": "#frame-button",
+          "frame": "#frame",
+          "name": "Frame action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "covered",
+          "selector": "#covered",
+          "name": "Covered action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "hidden",
+          "selector": "#hidden",
+          "name": "Hidden",
+          "role": "button",
+          "include": false
+        },
+        {
+          "key": "offscreen",
+          "selector": "#offscreen",
+          "name": "Offscreen",
+          "role": "button",
+          "include": false
+        }
+      ],
+      "setup": [
+        {
+          "action": "click",
+          "selector": "#accept"
+        },
+        {
+          "action": "scroll",
+          "selector": "#list",
+          "top": 1500
+        }
+      ],
+      "coverage": [
+        "virtual_scroll"
+      ],
+      "clicks": [
+        "row"
+      ]
+    },
+    {
+      "id": "details",
+      "path": "/tests/fixtures/collect/spa/index.html",
+      "exhaustive": true,
+      "ready": {
+        "selector": "#row"
+      },
+      "truth": [
+        {
+          "key": "route",
+          "selector": "#route",
+          "name": "Details",
+          "role": "link",
+          "occluded": false
+        },
+        {
+          "key": "under-header",
+          "selector": "#under-header",
+          "name": "Under header",
+          "role": "button",
+          "occluded": true
+        },
+        {
+          "key": "open-dialog",
+          "selector": "#open-dialog",
+          "name": "Open dialog",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "route-target",
+          "selector": "#route-target",
+          "name": "Details action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "row",
+          "selector": "#row",
+          "name": "Row 0",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "shadow",
+          "selector": "#shadow-button",
+          "name": "Shadow action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "frame",
+          "selector": "#frame-button",
+          "frame": "#frame",
+          "name": "Frame action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "covered",
+          "selector": "#covered",
+          "name": "Covered action",
+          "role": "button",
+          "occluded": false
+        },
+        {
+          "key": "hidden",
+          "selector": "#hidden",
+          "name": "Hidden",
+          "role": "button",
+          "include": false
+        },
+        {
+          "key": "offscreen",
+          "selector": "#offscreen",
+          "name": "Offscreen",
+          "role": "button",
+          "include": false
+        }
+      ],
+      "setup": [
+        {
+          "action": "click",
+          "selector": "#accept"
+        },
+        {
+          "action": "click",
+          "selector": "#route"
+        }
+      ],
+      "coverage": [],
+      "clicks": [
+        "route-target"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8"><title>Local SPA collector regression</title>
+<style>
+body{margin:0;height:1400px;font:16px sans-serif}button,a{box-sizing:border-box}
+header{position:fixed;left:0;top:0;width:800px;height:48px;background:#ccc;z-index:10}
+#route{position:absolute;left:10px;top:10px}#under-header{position:absolute;left:300px;top:10px;width:100px;height:30px}
+#open-dialog{position:absolute;left:20px;top:70px;width:120px;height:35px}
+#route-target{position:absolute;left:160px;top:70px;width:120px;height:35px}
+#list{position:absolute;left:20px;top:140px;width:180px;height:80px;overflow:auto;border:1px solid}
+#spacer{height:3000px}#row{position:absolute;left:0;top:0;width:150px;height:30px}
+#shadow{position:absolute;left:240px;top:140px}iframe{position:absolute;left:420px;top:140px;width:170px;height:80px;border:0}
+#covered{position:absolute;left:20px;top:520px;width:100px;height:30px}
+#cookie{position:fixed;bottom:0;left:0;width:800px;height:100px;background:#ddd;z-index:20}
+#accept{position:absolute;left:20px;top:20px;width:100px;height:35px}
+#offscreen{position:absolute;top:1200px}dialog{width:220px;height:100px}dialog::backdrop{background:#0005}
+</style>
+<header><a id="route" href="#details">Details</a></header>
+<button id="under-header">Under header</button>
+<button id="open-dialog">Open dialog</button><button id="route-target">Overview action</button>
+<div id="list"><div id="spacer"></div><button id="row">Row 0</button></div>
+<div id="shadow"></div>
+<iframe id="frame" title="Local frame" srcdoc="<button id='frame-button' style='margin:10px'>Frame action</button>"></iframe>
+<button id="covered">Covered action</button><button id="offscreen">Offscreen</button><button id="hidden" hidden>Hidden</button>
+<div id="cookie" role="dialog" aria-label="Cookie preferences"><button id="accept">Accept cookies</button></div>
+<dialog id="modal" aria-label="Edit"><button id="close-dialog">Close dialog</button></dialog>
+<script>
+const $=id=>document.getElementById(id);
+$('accept').onclick=()=>$('cookie').remove();
+$('open-dialog').onclick=()=>$('modal').showModal();
+$('close-dialog').onclick=()=>$('modal').close();
+$('shadow').attachShadow({mode:'open'}).innerHTML='<button id="shadow-button">Shadow action</button>';
+$('list').onscroll=()=>{const row=Math.floor($('list').scrollTop/30);$('row').textContent='Row '+row;$('row').style.top=$('list').scrollTop+'px';};
+addEventListener('hashchange',()=>{$('route-target').textContent=location.hash==='#details'?'Details action':'Overview action';});
+</script>

@@ -21,6 +21,15 @@ const clean = (text, max) => text.replace(/\s+/g, " ").trim().slice(0, max);
 const nameOf = (el) => clean(computeAccessibleName(el), 1000);
 const roleOf = (el) => getRole(el) || null;
 
+// Capture semantic identity, not just isConnected: virtual lists can reuse a DOM
+// node for another row between observe and action. Never renumber on resolve.
+const identityOf = (el) => JSON.stringify([
+  el.tagName, roleOf(el), nameOf(el), el.getAttribute("id"),
+  el.getAttribute("href"), el.getAttribute("name"), el.getAttribute("type"),
+  el.getAttribute("data-id"), el.getAttribute("data-key"), el.getAttribute("data-testid"),
+  el.tagName === "SELECT" ? [...el.options].map(o => [o.value, o.label, o.disabled]) : null,
+]);
+
 // Shadow DOM과 같은 출처 iframe 경계를 넘는 부모. 최상위 html이면 null.
 function up(el) {
   if (el.parentElement) return el.parentElement;
@@ -64,10 +73,33 @@ function bboxOf({ el, ox, oy }) {
   return { x: r.x + ox, y: r.y + oy, width: r.width, height: r.height };
 }
 
+// Styled native checkbox/radio: the transparent input remains the real target,
+// while a visible sibling paints its indicator. Do not widen this to arbitrary
+// transparent controls or replace native target geometry/semantics with a label.
+function hasVisibleNativeIndicator(el) {
+  if (!el.matches('input[type="checkbox"],input[type="radio"]') ||
+      getComputedStyle(el).opacity !== "0" || getComputedStyle(el).pointerEvents === "none" ||
+      !el.checkVisibility({ visibilityProperty: true }) ||
+      !el.parentElement?.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+  const visibleLabels = [...(el.labels || [])].filter(label =>
+    label.checkVisibility({ opacityProperty: true, visibilityProperty: true }) &&
+    label.getBoundingClientRect().width > 0 && label.getBoundingClientRect().height > 0);
+  if (!visibleLabels.length) return false;
+  const box = el.getBoundingClientRect();
+  return [...el.parentElement.children].some(indicator => {
+    if (!indicator.matches("svg,img,canvas") ||
+        !indicator.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+    const r = indicator.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.left >= box.left && r.top >= box.top &&
+      r.right <= box.right && r.bottom <= box.bottom;
+  });
+}
+
 const isVisible = (el, box) =>
   box.width > 0 &&
   box.height > 0 &&
-  el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+  (el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) ||
+   hasVisibleNativeIndicator(el));
 
 const inViewport = (b) =>
   b.x < innerWidth && b.y < innerHeight && b.x + b.width > 0 && b.y + b.height > 0;
@@ -180,7 +212,10 @@ function observe() {
   observed = [];
   for (const entry of walk(document, "document", 0, 0)) {
     const b = bboxOf(entry);
-    if (isVisible(entry.el, b) && inViewport(b)) observed.push(entry);
+    if (isVisible(entry.el, b) && inViewport(b)) {
+      entry.identity = identityOf(entry.el);
+      observed.push(entry);
+    }
   }
   return observed.map((entry, i) => {
     const b = bboxOf(entry);
@@ -254,4 +289,13 @@ function snapshot(elId) {
   };
 }
 
-globalThis.__stepmeter = { recordFirstView, observe, snapshot };
+function resolveElement(elId) {
+  if (!Number.isInteger(elId) || elId < 1) throw new Error("invalid el_id");
+  const entry = observed[elId - 1];
+  if (!entry || !entry.el.isConnected || identityOf(entry.el) !== entry.identity) {
+    throw new Error(`stale el_id ${elId}: observe again`);
+  }
+  return entry.el;
+}
+
+globalThis.__stepmeter = { recordFirstView, observe, snapshot, resolveElement };
