@@ -18,3 +18,10 @@
 - 환경 변수: `REDIS_URL`(기본 `redis://localhost:6379/0`), `DATABASE_URL`
 - RQ 워커는 fork를 써서 Windows에서 바로 돌릴 수 없다. Docker나 WSL에서 실행한다.
 - 테스트: `TEST_DATABASE_URL`, `TEST_REDIS_URL`을 주고 `python -m unittest tests.test_queue -v` (둘 다 비운다)
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- 재측정(`auto`)에서 재생이 끊기면 에이전트가 처음부터 `repeat_n`회 다시 잰다. 진행률의 예정 시도 수는 재생 시도 수에 `repeat_n`을 더한 값이다 (ADR 0011 8번)
+- 병렬 반복은 에이전트 시도에만 쓰고, 재생이 끝난 뒤에 시작한다 (ADR 0011 8번)

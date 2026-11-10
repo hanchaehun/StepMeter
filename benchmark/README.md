@@ -15,3 +15,15 @@ W2 앱별 잔여 상태·담당 요청: [w2-readiness.md](w2-readiness.md).
 
 - `build_variant.py`가 `stepmeter-build.json` 매니페스트에 기록하는 패치 경로는 `as_posix()`로 통일한다 (ADR 0010)
 - 베이스라인(`baseline_axe.py`, `baseline_llm.py`)을 다시 실행할 때 `below-fold` 케이스는 `entry.html`에서 시작한다 (ADR 0010)
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- 개발 앱을 에이전트로 돌려 `eval.py` 예측을 만드는 실행 도구를 W3 안에 만든다. 케이스마다 시작 주소, 과업 문장(입력값 포함), 성공 조건을 이 폴더의 한 파일에 둔다. 사람 실험 6페이지의 과업 문장은 `human-study/pages.md`와 같아야 한다 (ADR 0011 1·2번)
+- 예측은 run의 기본 목록 이슈(`is_reference=false`)를 (케이스, 규칙, 요소)당 1건으로 만든다. 일치, 오탐, 채점하는 규칙 6개, "규칙만"과 "점수 적용" 두 가지 채점은 ADR 0011 2번을 따른다. 정답 정보는 워커의 판정과 점수 계산에 넘기지 않는다 (ADR 0011 2번)
+- 일치를 확인하는 방법은 개발 앱에서 정해 이 폴더 문서에 적고, 홀드아웃 평가가 끝날 때까지 바꾸지 않는다 (ADR 0011 2번)
+- 0차 실행: W3 안에 개발 앱 4개의 정상 과업 8개와 변이 24개를 `claude-haiku-5-5`로 한 번 돌려 완주율과 "규칙만" 점수를 낸다. 돌지 못한 케이스는 이유와 함께 적는다 (ADR 0011 2번)
+- axe 단독·LLM 스크린샷 베이스라인도 같은 단위와 같은 일치 기준으로 채점한다 (ADR 0011 2번)
+- 실행 도구는 비밀번호 칸 화면이 아닌 케이스(shadcn-admin, react-shopping-cart)로 먼저 만든다. sb-admin-2와 material-kit-react는 선행 수정(비밀번호 칸 규칙, label 방식 체크박스, axe 주입, 연결된 label 경로)이 들어오는 대로 돌린다 (ADR 0011 6번)
+- axe 규칙 이슈의 일치 판정에는 axe가 짚은 요소가 필요하다. 지금 그 selector는 `Issue.explanation` 끝에만 있고 `element_key`는 행동 대상의 지문이다. 읽는 방법을 측정 지표·규칙, LLM·프롬프트 담당과 정해 일치 확인 방법 문서에 같이 적는다 (ADR 0011 6번)

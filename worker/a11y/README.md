@@ -101,3 +101,9 @@ DB 저장과 severity는 `worker/rules/`가 맡고 axe 실행 계층에서는 �
 
 - `scan_page`는 `Locator` 대신 수집기가 주는 `ElementHandle`을 받도록 바꾸고, 같은 출처 iframe 안 대상도 지원한다 (ADR 0010)
 - 바뀌기 전까지 에이전트는 iframe 안 대상을 `path_targets`에서 뺀다 (ADR 0010)
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- axe를 `page.add_script_tag` 대신 `page.evaluate`로 주입한다. `script-src` CSP가 있는 페이지에서 `add_script_tag`가 거절돼 시도가 error로 끝난다. `page.evaluate`로 넣으면 같은 CSP에서 `axe.run`까지 된다(2026-11-10 확인) (ADR 0011 6번)

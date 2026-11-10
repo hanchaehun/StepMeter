@@ -40,3 +40,14 @@
 - 스크린샷: 로컬은 워커가 저장한 `data/screenshots/{key}`를 `/screenshots/{key}`로 내준다. R2 서명 URL은 아직 없다.
 - 아직 없는 것: 일일 측정 상한(429, W4), `GET /tasks/{id}/runs`, `/compare`, `/issues/{id}/label`, `/human-sessions`, `/tasks/{id}/aliases`
 - 테스트: `TEST_DATABASE_URL`을 주고 `python -m unittest tests.test_api` (DB를 비운다. Redis는 가짜로 바꿔 쓴다)
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- W4에 `GET /tasks/{id}/runs`(측정 목록)를 만든다 (ADR 0011 6번)
+- `/tasks/{id}/aliases`, `/issues/{id}/label`, `/human-sessions`는 이번 일정에서 구현하지 않는다. 이 경로들은 `openapi.yaml`에 그대로 둔다 (ADR 0011 4번)
+- 스테이징에서 워커가 저장한 스크린샷을 API가 내줄 수 있게 공용 저장(R2 또는 공유 볼륨)을 11/17까지 연결한다 (ADR 0011 6번)
+- `GET /tasks/{id}`와 `GET /projects/{id}/tasks`를 `openapi.yaml`에 더하고 구현한다. 응답은 `Task` 형식 그대로이고, 다른 초대 코드의 과업이면 404다. `GET /tasks/{id}`는 11/17 스테이징 배포 전에, 과업 목록은 W4 측정 목록과 같이 낸다. `openapi.yaml` 변경은 CODEOWNERS 승인 PR로 하고 목 JSON도 같이 맞춘다 (ADR 0011 7번)
+- 위 PR에서 RunMode 설명의 `auto` 문구("끊기면 그 지점부터 에이전트")를 "끊기면 에이전트로 처음부터 repeat_n회"로 고친다. 값과 형식은 바꾸지 않는다 (ADR 0011 8번)
+- 스테이징에서 웹과 API의 출처가 다르면 CORS 설정이 필요하다. `/api` 프록시로 같은 출처에 둘지 CORS를 넣을지는 회귀 비교·인프라 담당과 정한다 (ADR 0011 6번)

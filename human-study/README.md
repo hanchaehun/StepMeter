@@ -15,7 +15,7 @@
 | `collect.js` | 브라우저 안에서 이벤트를 기록해 `window.__hsPush(event)`로 내보낸다. 요소 지문은 이원준 님 수집 번들(`worker/collect/dist/collect.js`)의 `observe()` 값을 그대로 써서 `tag\|role\|name\|label_text\|landmark` 형식(`element_key`와 같음)으로 만든다 |
 | `session.py` | 진행자 명령. Playwright로 화면 있는 Chromium을 띄우고, 페이지마다 수집 스크립트를 넣고, 끝나면 JSON을 저장한다 |
 | `schema.py` | 저장 전·업로드 전에 openapi 스키마로 검사한다 |
-| `upload.py` | 저장된 JSON을 `POST /human-sessions`로 올린다 (API에 엔드포인트가 생긴 뒤) |
+| `upload.py` | 저장된 JSON을 `POST /human-sessions`로 올린다. 이번 일정에서는 엔드포인트를 만들지 않아 쓰지 않는다 (ADR 0011 4번) |
 
 ### 기록하는 것 / 기록하지 않는 것
 
@@ -49,7 +49,7 @@
    Chromium 창이 뜨면 참가자에게 과업 문장(`pages.md`)을 읽어 준다.
 4. 참가자가 끝내면 터미널에서 **Enter**, "과업을 끝냈나요? [y/N]"에 답한다. 참가자가 창을 닫으면 그 즉시 `completed=false`로 저장된다.
 5. 파일은 `data/human/human-session-{참가자}-{page_id}-{시각}.json`에 생긴다. 스키마 검증에 실패하면 버리지 않고 `*.invalid.json`으로 남기고 오류를 보여준다. `data/`는 git 제외다. **커밋하지 않는다.**
-6. API가 생기면 올린다: `python human-study/upload.py data/human/*.json --api http://…` (초대 코드는 환경 변수 `STEPMETER_ACCESS_CODE` 또는 `--code`). 올린 파일 옆에 `.json.uploaded`가 생기고 다시 올리지 않는다.
+6. 파일은 서버에 올리지 않는다(ADR 0011 4번). 진행자가 팀 Notion에서 팀원만 볼 수 있는 페이지에 올려 측정 지표 담당에게 넘긴다. 저장소·이슈·채팅방에는 올리지 않는다.
 
 ### 참가자 PC 요구사항
 
@@ -60,7 +60,7 @@
 
 - 다른 출처 iframe 안의 이벤트는 받지 못한다(수집 번들과 같은 범위).
 - `page_id`는 `<앱 id>/<페이지>/<변이>` 형식을 쓴다(6개 목록은 `pages.md` 참고).
-- `stable`은 속성 변경(class·data-state 등)에도 반응하므로, 마우스를 올리기만 해도 hover 스타일 때문에 `stable`이 생길 수 있다. 생각 시간(M) 표본을 "직전 stable → 다음 동작"으로 뽑으면 짧아질 수 있다. 분석에서 "마지막 click·key 뒤 첫 stable"만 기준점으로 쓰거나, 수집에서 속성 변경을 빼는 쪽 중 하나를 측정 지표 담당과 정해야 한다(미정).
+- `stable`은 속성 변경(class·data-state 등)에도 반응하므로, 마우스를 올리기만 해도 hover 스타일 때문에 `stable`이 생길 수 있다. 생각 시간(M) 표본을 "직전 stable → 다음 동작"으로 뽑으면 짧아질 수 있다. 수집은 바꾸지 않고, 분석에서 "마지막 click·key 뒤 첫 stable"만 기준점으로 쓴다(ADR 0011 3번).
 - 클릭 대상은 누른 좌표의 실제 요소(`elementFromPoint`)에서 위로 올라가며 가장 가까운 대상 요소를 찾고, 번들의 `describe(el)`로 지문을 만든다. label을 누르면 연결된 입력칸(숨긴 체크박스·라디오)이 대상이고, body 끝에 포털로 붙는 팝업·콤보박스 항목(`role=option` 등)도 잡힌다(#43, 2026-11-10). 본문 글처럼 대상 요소가 아니면 null이다.
 - 콤보박스 항목(예: shadcn-admin Role 목록)은 누르는 순간 목록이 닫혀 `click` 없이 `down`·`up`만 남을 수 있다. 분석에서는 `click`이 없으면 `up`을 클릭으로 본다.
 
@@ -71,3 +71,11 @@
 ```
 
 기대값은 `tests/fixtures/human-study/page.html`의 고정 좌표와 `tests/fixtures/mock/api/human_session_request.json`에서 사람이 계산했다.
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- 세션 파일은 서버에 올리지 않고, 팀 Notion에서 팀원만 볼 수 있는 페이지로 넘긴다. 저장소에는 올리지 않는다 (ADR 0011 4번)
+- 보관 기한(2026-12-31)이 지나거나 참가자가 철회하면 진행자 PC의 파일과 함께 Notion 페이지의 파일도 지운다. Notion 휴지통에서도 지운다 (ADR 0011 4번, 동의서 5·6절)
+- 수집 스크립트의 `stable` 기록 방식은 바꾸지 않는다. 마우스를 올려 생긴 `stable`은 분석에서 거른다 (ADR 0011 3번)

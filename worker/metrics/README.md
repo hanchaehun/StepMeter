@@ -74,3 +74,12 @@ SQLite 결과는 PostgreSQL 잠금·동시성 검증을 대신하지 않는다.
 - `finalize_run_metrics`는 시도(attempt)별 `step_count`만 저장하고 run 단위(`attempt_id=NULL`) 값은 쓰지 않는다 (ADR 0010)
 - run 단위 지표는 `save_run_medians` 하나가 성공한 시도의 중앙값으로만 만들고, 성공한 시도가 0개면 run 단위 지표를 만들지 않는다(0으로 채우지 않음) (ADR 0010)
 - 에이전트 후처리 순서는 시도별 지표 저장 → `save_run_medians` → `update_progress(finished=True)` → `completed`로 맞춘다 (ADR 0010)
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- 문헌값 KLM을 순수 함수로 만든다(예: `klm.py`). 행동별 식과 추가 규칙(화면 첫 행동의 M, type 뒤의 H, 스크롤이 필요했을 때의 S)은 ADR 0011 3번을 따른다. R(시스템 응답)은 넣지 않는다 (ADR 0011 3번)
+- 테스트 기대값은 문헌 상수로 사람이 계산한다. ADR 0011 3번의 예(8.88초 + 3.05초 = 11.93초)를 쓸 수 있다 (ADR 0011 3번)
+- `UNITS`에 `est_task_time`(초)을 더한다. run 값은 지금처럼 성공한 시도의 중앙값이다 (ADR 0011 3번)
+- select를 click처럼 세는 작업(`interactions.py`)을 할 때, select 단계가 Fitts ID·이동 거리 경로에도 들어가게 `worker/agent/loop.py`의 대상 조건(지금 `click`·`type`만)을 같이 바꾼다. 위 표의 "click/type 직전 snapshot" 설명도 맞춘다 (ADR 0011 6번)

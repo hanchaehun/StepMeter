@@ -92,3 +92,10 @@ W2 M2 Compose·Redis CI·실행 및 연결 대기 사항: [m2.md](m2.md).
 2026-11-06 로컬 M2 검증 결과: [w2-m2-status.md](w2-m2-status.md).
 
 11/8 실제 API 연결·R06·SB Admin 검증 기록: [w2-final-status.md](w2-final-status.md).
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- 11/17까지 스테이징에 API·워커·DB·Redis를 올린다(외부 사용자 테스트 1차 11/18 전). 워커에는 `STEPMETER_ENV=staging`을 준다. 그때까지 안 되면 1차 테스트는 운영자 PC의 로컬 Compose로 진행한다 (ADR 0011 4·6번)
+- 스테이징에서 웹이 API를 부를 수 있게 한다. 웹과 API의 출처가 다르면 `X-Access-Code` 헤더 때문에 브라우저가 사전 요청(preflight)을 보내는데 API에 CORS 설정이 없다. `vercel.json`에 `/api/*`를 API로 넘기는 rewrite를 두거나(지금 있는 SPA rewrite보다 앞에 둔다) API에 CORS를 넣는다. 어느 쪽으로 할지는 플랫폼 백엔드와 정한다 (ADR 0011 6번)

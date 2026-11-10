@@ -34,7 +34,7 @@
 - 30 = 실행 1회의 step 상한 (4.5)
 - 끝난 attempt = `attempt.end_reason`이 있는 행. 예정 attempt 수 = `run.repeat_n`
 - 진행 중 attempt의 step은 30개까지만 센다. 실행 중 진행률은 최대 90
-- 예정 attempt 수: auto 모드에서 재생 뒤 에이전트를 몇 번 돌리는지에 따라 바뀐다
+- 예정 attempt 수: auto 모드에서 재생이 끊기면 재생 시도 수에 `run.repeat_n`을 더한다 ([ADR 0011](adr/0011-w3-plan-gaps.md) 8번)
 - 에이전트가 과업에 실패하거나 사이트가 막은 경우는 `completed`, 사유는 `attempt.end_reason` (openapi.yaml RunStatus)
 
 ## 3. DB 쓰기 경계 (2.2, 10장)

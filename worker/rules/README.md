@@ -55,3 +55,13 @@ R08/R09/R11, 휴리스틱 가중치 학습, LLM 설명, KLM은 이번 변경 범
 
 - 같은 step에서 R04(가림)가 나오면 같은 원인 중복을 막기 위해 R03(무반응)은 내지 않는다 (ADR 0010)
 - R02는 axe `color-contrast` 노드의 `contrastRatio`를 `measured`에, `expectedContrastRatio`를 `threshold`에 넣는다 (ADR 0010)
+
+## ADR 0011에 따른 할 일
+
+결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
+
+- 화면 변화 없이 서버 응답만 있는 행동은 드라이버가 `dom_mutation`으로 준다. R03을 내지 않는다 (ADR 0011 5번)
+- R07은 시도 종료 때 에이전트 코어가 부른다. 연결되면 step_id와 지문이 붙는지 확인한다 (ADR 0011 6번)
+- 벤치마크 채점은 R01·R02·R03·R04·R06·R10만 한다. 다른 규칙이 기본 목록에 낸 이슈는 건수만 따로 보고한다 (ADR 0011 2번)
+- R08은 구현하는 PR에 `worker/agent/loop.py` 호출까지 넣는다(R07처럼 구현만 되고 호출이 빠지지 않게). R09도 같다(LLM·프롬프트 담당). 에이전트 코어가 리뷰한다 (ADR 0011 6번)
+- axe 규칙(R02·R10) 이슈에서 axe가 짚은 요소의 selector는 지금 `explanation` 끝("대상: …")에만 남고, `element_key`는 행동 대상의 지문이다. 채점 도구가 이 selector를 읽는 방법을 회귀 비교·인프라, LLM·프롬프트 담당과 정한다. 설명 생성이 `explanation`을 바꾼 뒤 같은 후보를 다시 저장하면 `save_candidates`가 새 행을 만든다는 점도 같이 본다 (ADR 0011 6번)
