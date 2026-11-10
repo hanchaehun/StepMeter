@@ -100,10 +100,31 @@ python -m benchmark.serve_variants stop    # 그날 세션이 끝나면 정리
 
 참가자가 코드를 알려 주면 그 코드의 파일을 모두 지우고(올렸다면 서버 데이터도), 지웠다고 답한다. 이미 여러 사람을 합쳐 계산한 결과는 되돌리지 않는다(동의서 6절).
 
+## 수집 스크립트를 고친 뒤 확인 (수집 스크립트 담당)
+
+수집 코드(`human-study/`의 `session.py`·`collect.js`, `worker/collect/`)를 고치면, **수집 스크립트 담당이** 아래를 확인하고 결과를 해당 이슈에 남긴다. 진행자는 이 확인이 끝난 뒤에 세션을 연다.
+
+1. `npm run build:collect`로 수집 번들을 다시 만든다.
+2. `serve_variants serve`로 서버를 띄우고, 위 "페이지별 주소"의 6페이지를 참가자 코드 `P00`으로 과업 문장대로 수행한다. 세션은 창을 닫지 말고 터미널에서 Enter → `y`로 끝낸다(창을 닫으면 `completed=false`).
+3. 각 파일의 `click` 이벤트에서 아래 핵심 클릭의 `target_key`가 **누른 그 요소**로 남는지 본다. null이거나 바탕 영역·아래 깔린 요소로 남으면 고친 것이 아니다. 체크박스·라디오는 그림(네모·동그라미)과 글자를 각각 한 번씩 누른다.
+
+| # | 핵심 클릭 | 기대하는 대상 |
+|---|---|---|
+| 1 | Register Account | `a|link|Register Account` |
+| 2 | 정렬 메뉴 Price: Low-High, Category Apparel(동그라미·글자) | `menuitem` Price: Low-High, `input|radio|Apparel` |
+| 3 | 비밀번호 표시 아이콘 | `button|button|Show password` |
+| 4 | Remember Me(네모) | `#customCheck` 체크박스 |
+| 5 | Status 필터의 Todo, 행 ⋯, Edit | Todo 항목, `button|button|Open menu`, `menuitem|Edit` |
+| 6 | Invite User, Role 목록의 Admin, Invite | `button|button|Invite User`, Admin 항목, `button|button|Invite` |
+
+4. 확인에 쓴 `P00` 파일은 지운다. 저장소와 이슈에 올리지 않는다(필요하면 기록 줄만 붙인다).
+
+2026-11-10 리허설에서 2·4·5·6번의 핵심 클릭이 null이거나 엉뚱한 요소로 남았다(#43). #43이 고쳐지고 위 확인이 끝날 때까지 파일럿과 본 수집을 시작하지 않는다.
+
 ## 파일럿에서 확인할 것
 
 - [ ] 조건 확인부터 코드 안내까지 전체가 20분 안에 끝나는지
 - [ ] 페이지당 3분 제한이 적당한지. 너무 많이 잘리면 늘리고, 전체 시간이 넘치면 줄인다
 - [ ] 3번 뒤의 4번이 눈에 띄게 빨라지는지(학습 효과). 빨라지면 참가자마다 순서를 돌리는 방식을 검토한다
-- [ ] 4번 Remember Me, 2번 Category처럼 숨긴 체크박스를 누른 기록에 대상이 남는지(#33 "알려진 한계"). null로 남으면 수집 스크립트 담당에게 알린다
+- [x] ~~4번 Remember Me, 2번 Category처럼 숨긴 체크박스를 누른 기록에 대상이 남는지~~ → 리허설에서 확인했고 문제가 있었다(#43). 수정 확인은 위 "수집 스크립트를 고친 뒤 확인"으로 수집 스크립트 담당이 한다
 - [ ] 대본에서 참가자가 되묻는 문장이 있는지. 있으면 문장을 고친다
