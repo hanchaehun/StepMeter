@@ -22,6 +22,7 @@ snap = await snapshot(page, el_id)  # ElementSnapshot (click·type 직전)
 
 - `observe()`는 뷰포트 안의 보이는 요소를 **가려진 요소까지** 돌려준다. LLM에 보낼 목록(가려진 요소 포함·`"(가려짐)"` 표시, 최대 30개, [ADR 0010](../../docs/adr/0010-w3-integration-decisions.md))은 에이전트 코어가 이 결과를 잘라 만들고, 반환 형식은 에이전트 코어와 정한다.
 - 아직 안 하는 것: 다른 출처 iframe, 닫힌 shadow root (W2 SPA 스트레스 테스트 뒤 보완).
+- `__stepmeter.describe(el)`: 임의 요소의 지문 필드(`tag`·`role`·`name`·`label_text`·`landmark`)를 `observe()`와 같은 계산으로 돌려준다. 사람 데이터 수집(`human-study/collect.js`)이 참가자가 누른 좌표의 실제 요소에 쓴다. `observe()` 결과와 에이전트 쪽 동작은 바꾸지 않는다 (#43).
 
 ## 번호 대상 해석
 
@@ -39,6 +40,8 @@ geometry and opacity. General transparent inputs, hidden ancestors and controls
 without that indicator pattern remain excluded. This does not implement arbitrary
 visually-hidden input/label-proxy patterns. A Material Kit drawer regression and
 numbered Driver integration tests cover the supported pattern.
+
+W3 할 일(수집기·에이전트 담당): `observe()`가 보이는 label로 조작하는 체크박스·라디오(Bootstrap custom-checkbox 등)도 지원한다. 지금은 지원하지 않아 에이전트가 sb-admin-2 로그인 과업(Remember Me 선택)을 끝낼 수 없다 ([ADR 0010](../../docs/adr/0010-w3-integration-decisions.md) 9번).
 
 ## ADR 0010에 따른 할 일
 

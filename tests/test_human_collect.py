@@ -134,6 +134,38 @@ class HumanCollectTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(clicks), 1, clicks)
         self.assertEqual((clicks[0]["x"], clicks[0]["y"]), (440, 112))
 
+    # ---- #43: 클릭 대상은 좌표의 실제 요소에서 찾는다 (라벨→입력칸, 포털 항목, 투명 체크박스) ----
+    async def test_label_text_click_maps_to_its_control(self):
+        # "Apparel" 글자(label for=apparel)를 누르면 대상은 라디오 input. 이름은 label 글자에서 온다
+        await self.page.mouse.click(464, 208)
+        clicks = [e for e in await self.events() if e["type"] == "click"]
+        self.assertEqual(clicks[-1]["target_key"], "input|radio|Apparel||main", clicks)
+
+    async def test_agree_label_click_target_is_the_checkbox(self):
+        await self.page.mouse.click(440, 112)      # "동의합니다" label. input은 aria-label="동의"
+        clicks = [e for e in await self.events() if e["type"] == "click"]
+        self.assertEqual(clicks[-1]["target_key"], "input|checkbox|동의||main", clicks)
+
+    async def test_hidden_custom_checkbox_box_click_maps_to_input(self):
+        # Bootstrap custom-checkbox: input은 opacity 0·z-index -1, 보이는 네모는 label::before
+        await self.page.mouse.click(408, 270)
+        ev = [e for e in await self.events() if e["type"] in ("down", "up", "click")]
+        self.assertEqual([e["target_key"] for e in ev], ["input|checkbox|Remember Me||main"] * 3, ev)
+
+    async def test_option_in_popup_wins_over_element_beneath(self):
+        # body 끝 포털 목록의 Admin 항목이 textarea 위에 떠 있다. 아래 깔린 textarea가 아니라 항목이 대상
+        await self.page.mouse.click(480, 345)
+        ev = [e for e in await self.events() if e["type"] in ("down", "up", "click")]
+        self.assertEqual([e["target_key"] for e in ev], ["div|option|Admin||"] * 3, ev)
+
+    async def test_menu_closed_on_pointerup_records_down_and_up_on_the_item(self):
+        # 콤보박스 목록(Radix Select 등)은 pointerup에 닫힌다. 항목이 사라지면 Chromium은 click을 내지 않으므로
+        # down·up 두 건이 항목(Admin)으로 남아야 한다. 아래 깔린 textarea가 잡히면 안 된다 (#43의 6번)
+        await self.page.mouse.click(480, 465)
+        ev = [e for e in await self.events() if e["type"] in ("down", "up", "click")]
+        self.assertEqual([(e["type"], e["target_key"]) for e in ev], [("down", "div|option|Admin||"), ("up", "div|option|Admin||")], ev)
+        self.assertIsNone(await self.page.evaluate("() => document.getElementById('popup2')"))  # 목록은 실제로 닫혔다
+
     async def test_repeat_keydown_is_ignored(self):
         await self.page.mouse.click(200, 176)
         await self.page.evaluate(

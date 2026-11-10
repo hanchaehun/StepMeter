@@ -298,4 +298,17 @@ function resolveElement(elId) {
   return entry.el;
 }
 
-globalThis.__stepmeter = { recordFirstView, observe, snapshot, resolveElement };
+// 임의 요소의 지문 필드 (observe() 항목과 같은 계산). 사람 데이터 수집(human-study/collect.js)이
+// 참가자가 누른 좌표의 실제 요소(라벨이 가리키는 입력칸, 포털 목록 항목 등)에 쓴다. observe() 결과는 바꾸지 않는다.
+function describe(el) {
+  const name = nameOf(el);
+  return {
+    tag: el.tagName.toLowerCase(),
+    role: roleOf(el),
+    name,
+    landmark: landmarkOf(el),
+    label_text: name ? null : labelText(el),
+  };
+}
+
+globalThis.__stepmeter = { recordFirstView, observe, snapshot, resolveElement, describe };

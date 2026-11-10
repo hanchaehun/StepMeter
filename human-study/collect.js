@@ -9,8 +9,10 @@
 //   - window.__hsStart: 세션 시작 epoch ms. t_ms = Date.now() − __hsStart
 //   - window.__hsOrigin: 연구용 페이지의 출처. 다른 출처(외부 링크·검색)에서는 설치하지 않는다 (동의서 4절)
 //   - window.__hsPush(ev): 이벤트를 받는 함수 (Playwright expose_function). 페이지 이동 뒤에도 유지된다
-//   - globalThis.__stepmeter: 이원준 님 수집 번들(worker/collect/dist/collect.js). 요소 지문은 observe()의
-//     tag·role·name·label_text·landmark를 그대로 써서 dom-accessibility-api 계산과 어긋나지 않게 한다 (3.1)
+//   - globalThis.__stepmeter: 이원준 님 수집 번들(worker/collect/dist/collect.js). 요소 지문은 번들의 describe(el)로
+//     tag·role·name·label_text·landmark를 계산해 observe()·dom-accessibility-api와 어긋나지 않게 한다 (3.1).
+//     대상 요소는 누른 좌표의 실제 요소(elementFromPoint)에서 찾는다. observe() 목록에 없는 label·포털 목록 항목·
+//     투명 체크박스도 잡기 위해서다 (#43)
 (() => {
   // 최상위 문서에서만, 연구용 페이지 출처에서만 설치한다 (프레임 좌표·stable이 섞이지 않게)
   if (window.top !== window) return;
@@ -36,40 +38,77 @@
   };
 
   // ---- 요소 지문: element_key 형식 `tag|role|name|label_text|landmark` (null → "") ----
+  // 번들의 describe(el)로 계산해 observe()·dom-accessibility-api와 같은 값을 낸다.
   const keyOf = (it) => [it.tag, it.role ?? "", it.name ?? "", it.label_text ?? "", it.landmark ?? ""].join("|");
 
-  function observed() {
+  function describe(el) {
     const S = globalThis.__stepmeter;
-    if (!S) return [];
+    if (!S || !S.describe) return null;
     try {
-      return S.observe();
+      return keyOf(S.describe(el));
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
-  // (x, y) 뷰포트 좌표를 덮는 상호작용 요소 중 가장 작은 것. 가려지지 않은 요소를 우선한다. 없으면 null (본문 글 등).
-  function fingerprintAt(x, y) {
-    let best = null;
-    for (const it of observed()) {
-      const b = it.bbox;
-      if (x < b.x || x > b.x + b.width || y < b.y || y > b.y + b.height) continue;
-      const rank = (it.occluded ? 1 : 0) * 1e9 + b.width * b.height;
-      if (!best || rank < best.rank) best = { it, rank };
+  // 대상이 될 수 있는 요소. 번들 observe()의 INTERACTIVE에 더해, 참가자가 실제로 누르는
+  // label(연결된 입력칸으로 바꾼다), 라디오·옵션·메뉴 항목·스위치(팝업·콤보박스 목록은 body 끝 포털에 붙어 observe()에 없다)
+  const TARGET =
+    "a, button, input, select, textarea, label, [role=button], [role=link], [role=tab], [role=checkbox], [role=radio], " +
+    "[role=menuitem], [role=menuitemcheckbox], [role=menuitemradio], [role=option], [role=switch], [role=treeitem], [onclick]";
+  const isTarget = (el) =>
+    el.matches && (el.matches(TARGET) || (el.hasAttribute("tabindex") && el.tabIndex >= 0));
+
+  // (x, y) 뷰포트 좌표의 맨 위 요소. open shadow root와 같은 출처 iframe 안까지 내려간다 (번들 deepHit와 같은 규칙)
+  function hitAt(x, y) {
+    let root = document;
+    for (;;) {
+      let el = root.elementFromPoint(x, y);
+      if (!el) return null;
+      while (el.shadowRoot) {
+        const inner = el.shadowRoot.elementFromPoint(x, y);
+        if (!inner || inner === el) break;
+        el = inner;
+      }
+      let doc = null;
+      if (el.tagName === "IFRAME") {
+        try {
+          doc = el.contentDocument;
+        } catch (_) {}
+      }
+      if (!doc) return el;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      x -= r.x + el.clientLeft + parseFloat(cs.paddingLeft);
+      y -= r.y + el.clientTop + parseFloat(cs.paddingTop);
+      root = doc;
     }
-    return best ? keyOf(best.it) : null;
   }
 
-  // 포커스된 요소의 지문. observe() 항목 중 같은 자리(±1px)의 것만. 못 찾으면 null (엉뚱한 요소로 대체하지 않는다)
-  function fingerprintOf(el) {
-    if (!el || el === document.body || el === document.documentElement) return null;
-    const r = el.getBoundingClientRect();
-    const same = (a, b) => Math.abs(a - b) <= 1;
-    for (const it of observed()) {
-      const b = it.bbox;
-      if (same(b.x, r.x) && same(b.y, r.y) && same(b.width, r.width) && same(b.height, r.height)) return keyOf(it);
+  // 누른 요소에서 위로 올라가며 가장 가까운 대상 요소를 찾는다. shadow host 경계도 넘는다. 본문 글이면 null.
+  function targetFrom(el) {
+    for (let a = el; a && a !== document.body && a !== document.documentElement; a = a.parentElement ?? a.getRootNode()?.host ?? null) {
+      if (!isTarget(a)) continue;
+      if (a.tagName !== "LABEL") return a;
+      // label은 연결된 입력칸이 진짜 대상 (숨긴 체크박스 위의 네모, 라디오 옆 글자). 없는 label은 글자일 뿐이다
+      const control = a.control ?? a.querySelector("input, select, textarea, button");
+      if (control) return control;
     }
     return null;
+  }
+
+  // (x, y)를 누른 대상의 지문. 좌표의 실제 요소(가려진 것 아래가 아니라 맨 위)에서 찾는다. 없으면 null (본문 글 등).
+  function fingerprintAt(x, y) {
+    const hit = hitAt(x, y);
+    const target = hit && targetFrom(hit);
+    return target ? describe(target) : null;
+  }
+
+  // 포커스된 요소의 지문. 대상 요소가 아니면 null (엉뚱한 요소로 대체하지 않는다)
+  function fingerprintOf(el) {
+    if (!el || el === document.body || el === document.documentElement) return null;
+    const target = targetFrom(el);
+    return target ? describe(target) : null;
   }
 
   // ---- 포인터 ----

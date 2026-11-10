@@ -45,6 +45,12 @@ main `3238e16` 기준 검토에서 에이전트 루프(`worker/agent/`)가 수�
 - 취소(`canceled`) 처리는 바꾸지 않는다.
 - 모델 응답 형식 오류로 모든 시도가 error인 경우는 서비스 쪽 실패로 보며, openapi RunStatus의 'failed = 서비스 장애, 에이전트 실패는 completed' 설명과 같은 뜻이다(에이전트 실패 = gave_up·loop 등).
 
+### 9. 사람 실험 수집의 클릭 대상 (2026-11-10 추가)
+- 사람 실험 수집은 클릭이 실제로 조작한 컨트롤을 기록한다. label이면 연결된 입력칸을 기록하고, 조작된 컨트롤이 없으면(본문 글자 등) `target_key`는 null이다. 입력칸 자체의 CSS(display·visibility·pointer-events·투명도)로는 판단하지 않는다.
+- 근거: #43, #44에서 정한 6페이지 핵심 클릭 기대 대상(4번 Remember Me → `input|checkbox`).
+- 에이전트 `observe()`는 아직 이 방식을 지원하지 않아, sb-admin-2 로그인 과업(Remember Me 선택)을 에이전트가 끝낼 수 없다.
+- `observe()`의 label 방식 지원은 W3 할 일(수집기·에이전트 담당)이다.
+
 | # | 항목 | 반영할 곳 |
 |---|---|---|
 | 1 | 가려진 요소(R04) 목록 포함·무조작 반환·R03 중복 제외 | `worker/collect/`, `worker/agent/`, `worker/driver/`, `worker/rules/` |
@@ -55,6 +61,7 @@ main `3238e16` 기준 검토에서 에이전트 루프(`worker/agent/`)가 수�
 | 6 | `scan_page` `ElementHandle`·동일 출처 iframe 지원 | `worker/a11y/`, `worker/agent/` |
 | 7 | `build_variant.py` `as_posix()`, 베이스라인 `below-fold` `entry.html` | `benchmark/` |
 | 8 | 모든 시도가 error면 run `failed`, 하나라도 아니면 `completed` | `worker/agent/` |
+| 9 | 사람 수집은 클릭이 실제로 조작한 컨트롤을 기록(label이면 연결된 입력칸). `observe()`의 label 방식 지원은 W3 할 일 | `human-study/`, `worker/collect/`, `worker/agent/` |
 
 ## 대안
 
