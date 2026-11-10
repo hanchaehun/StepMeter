@@ -11,7 +11,9 @@ import json
 import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+from benchmark.serve_variants import resolve_command
+
+ROOT =Path(__file__).resolve().parent
 VARIANTS = ('baseline', 'small', 'contrast', 'inert', 'overlay', 'below-fold', 'unnamed')
 
 
@@ -37,7 +39,7 @@ def prepare(app: dict, variant: str, source: Path, destination: Path) -> dict:
     for patch in patches:
         subprocess.run(['git', '-C', str(destination), 'apply', '--check', str(patch)], check=True)
         subprocess.run(['git', '-C', str(destination), 'apply', str(patch)], check=True)
-        provenance.append({'path': str(patch.relative_to(ROOT)), 'sha256': hashlib.sha256(patch.read_bytes()).hexdigest()})
+        provenance.append({'path': patch.relative_to(ROOT).as_posix(),'sha256': hashlib.sha256(patch.read_bytes()).hexdigest()})
     result = {'app': app['id'], 'variant': variant, 'revision': revision, 'patches': provenance}
     (destination / 'stepmeter-build.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
     return result
@@ -63,7 +65,8 @@ def main():
             'react-shopping-cart': [['npm', 'ci'], ['npm', 'run', 'build']],
         }[args.app]
         for command in commands:
-            subprocess.run(command, cwd=destination, check=True)
+            # Windows의 npm·npx는 .cmd라 이름만으로는 실행되지 않는다 (serve_variants와 같은 방식)
+            subprocess.run(resolve_command(command), cwd=destination, check=True)
     print(json.dumps(result))
     print(f'Prepared: {destination}')
 

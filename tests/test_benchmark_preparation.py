@@ -3,6 +3,8 @@
 The fixture patches explicitly specify old->normal->broken content. Expected
 strings come from those patch hunks, independently of the preparation code.
 """
+import contextlib
+import io
 import json
 import subprocess
 import tempfile
@@ -10,6 +12,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from benchmark import build_variant, serve_variants
 from benchmark.build_variant import prepare
 
 
@@ -48,6 +51,17 @@ class PreparationTests(unittest.TestCase):
                          ['baselines/fixture.patch', 'mutations/fixture/small.patch'])
         self.assertEqual(json.loads((destination / 'stepmeter-build.json').read_text()), result)
 
+    def test_manifest_patch_paths_have_no_backslash(self):
+        """ADR 0010 #7: stepmeter-build.json records patch paths with as_posix() on every OS."""
+        destination = self.root / 'build'
+        with patch('benchmark.build_variant.ROOT', self.root):
+            prepare(self.app, 'small', self.source, destination)
+        manifest = json.loads((destination / 'stepmeter-build.json').read_text(encoding='utf-8'))
+        paths = [p['path'] for p in manifest['patches']]
+        self.assertEqual(paths, ['baselines/fixture.patch', 'mutations/fixture/small.patch'])
+        for path in paths:
+            self.assertNotIn('\\', path)
+
     def test_existing_destination_is_never_overwritten(self):
         destination = self.root / 'build'
         destination.mkdir()
@@ -67,3 +81,36 @@ class PreparationTests(unittest.TestCase):
         with patch('benchmark.build_variant.ROOT', self.root), self.assertRaises(ValueError):
             prepare(self.app, 'overlay', self.source, destination)
         self.assertFalse(destination.exists())
+
+
+class BuildCommandTests(unittest.TestCase):
+    """--build starts npm/npx through the Windows launcher lookup shared with serve_variants.
+
+    Expected executables are a platform fact, not read from the code: Windows ships
+    npm and npx as .cmd batch files, and a bare 'npm' cannot be started there
+    (FileNotFoundError, WinError 2).
+    """
+
+    def run_build_on_windows(self, app_id):
+        ran = []
+
+        def windows_resolve(command):
+            return serve_variants.resolve_command(command, os_name='nt', which=lambda name: f'C:/tools/{name}')
+
+        with patch('benchmark.build_variant.prepare', return_value={}), \
+                patch('benchmark.build_variant.resolve_command', windows_resolve), \
+                patch('benchmark.build_variant.subprocess.run', lambda command, **_kwargs: ran.append(command)), \
+                patch('sys.argv', ['build_variant', app_id, 'baseline', '--build']), \
+                contextlib.redirect_stdout(io.StringIO()):
+            build_variant.main()
+        return ran
+
+    def test_npm_build_uses_cmd_launcher_on_windows(self):
+        ran = self.run_build_on_windows('material-kit-react')
+        self.assertTrue(ran)
+        self.assertEqual({command[0] for command in ran}, {'C:/tools/npm.cmd'})
+
+    def test_npx_build_uses_cmd_launcher_on_windows(self):
+        ran = self.run_build_on_windows('shadcn-admin')
+        self.assertTrue(ran)
+        self.assertEqual({command[0] for command in ran}, {'C:/tools/npx.cmd'})
