@@ -41,6 +41,8 @@ without that indicator pattern remain excluded. This does not implement arbitrar
 visually-hidden input/label-proxy patterns. A Material Kit drawer regression and
 numbered Driver integration tests cover the supported pattern.
 
+W3 할 일(수집기·에이전트 담당): `observe()`가 보이는 label로 조작하는 체크박스·라디오(Bootstrap custom-checkbox 등)도 지원한다. 지금은 지원하지 않아 에이전트가 sb-admin-2 로그인 과업(Remember Me 선택)을 끝낼 수 없다 ([ADR 0010](../../docs/adr/0010-w3-integration-decisions.md) 9번).
+
 ## ADR 0010에 따른 할 일
 
 - LLM에 보내는 요소 목록에 가려진 요소(`occluded=True`)도 빼지 않고 넣으며 `"(가려짐)"`으로 표시한다 (ADR 0010)
