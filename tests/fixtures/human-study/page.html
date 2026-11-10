@@ -13,6 +13,17 @@
   #far   { position: absolute; left: 100px; top: 2000px; width: 120px; height: 40px; }
   #agree-label { position: absolute; left: 400px; top: 100px; width: 80px; height: 24px; }
   #agree { position: absolute; left: 400px; top: 130px; width: 16px; height: 16px; margin: 0; }
+  /* #43 재현용: 라디오+글자 라벨, Bootstrap식 투명 체크박스(::before가 네모), 입력칸 위에 뜬 포털 목록 */
+  #cat { position: absolute; left: 400px; top: 200px; margin: 0; padding: 0; border: 0; width: 120px; height: 16px; }
+  #apparel { position: absolute; left: 0; top: 0; width: 16px; height: 16px; margin: 0; }
+  #apparel-label { position: absolute; left: 24px; top: 0; width: 80px; height: 16px; }
+  #remember { position: absolute; left: 400px; top: 260px; width: 140px; height: 20px; }
+  #customCheck { position: absolute; left: 0; top: 0; width: 16px; height: 20px; margin: 0; opacity: 0; z-index: -1; }
+  #remember-label { position: absolute; left: 24px; top: 0; width: 100px; height: 20px; }
+  #remember-label::before { content: ""; position: absolute; left: -24px; top: 2px; width: 16px; height: 16px; border: 1px solid #333; box-sizing: border-box; }
+  #desc { position: absolute; left: 400px; top: 320px; width: 200px; height: 80px; margin: 0; }
+  #popup { position: absolute; left: 420px; top: 330px; width: 120px; height: 60px; background: #fff; border: 1px solid #333; z-index: 10; }
+  #popup [role=option] { height: 30px; }
 </style>
 </head>
 <body>
@@ -25,6 +36,30 @@
   <label id="agree-label" for="agree">동의합니다</label>
   <input id="agree" type="checkbox" aria-label="동의">
   <button id="far" type="button">아래쪽 버튼</button>
+  <!-- 손 계산용 좌표: Apparel 글자 (464, 208), Remember Me 네모 (408, 270) -->
+  <fieldset id="cat" aria-label="Category">
+    <input id="apparel" type="radio" name="cat" value="apparel">
+    <label id="apparel-label" for="apparel">Apparel</label>
+  </fieldset>
+  <div id="remember">
+    <input id="customCheck" type="checkbox">
+    <label id="remember-label" for="customCheck">Remember Me</label>
+  </div>
+  <textarea id="desc" aria-label="Description"></textarea>
 </main>
+<!-- body 끝에 붙는 포털 목록 (main 밖 → landmark 없음). Admin 항목 (480, 345) -->
+<div id="popup" role="listbox" aria-label="Role">
+  <div id="opt-admin" role="option" aria-selected="false">Admin</div>
+  <div id="opt-member" role="option" aria-selected="false">Member</div>
+</div>
+<!-- Radix Select처럼 pointerup에 목록을 닫는 메뉴: #popup2의 항목을 떼는 순간 목록이 사라져 click은 아래 요소 위에서 난다 -->
+<div id="popup2" role="listbox" aria-label="Role 2" style="position:absolute;left:420px;top:450px;width:120px;height:60px;background:#fff;border:1px solid #333;z-index:10">
+  <div id="opt2-admin" role="option" aria-selected="false" style="height:30px">Admin</div>
+  <div id="opt2-member" role="option" aria-selected="false" style="height:30px">Member</div>
+</div>
+<textarea id="desc2" aria-label="Description 2" style="position:absolute;left:400px;top:440px;width:200px;height:80px;margin:0;z-index:1"></textarea>
+<script>
+  document.getElementById("popup2").addEventListener("pointerup", () => document.getElementById("popup2").remove());
+</script>
 </body>
 </html>

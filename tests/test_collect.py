@@ -40,6 +40,14 @@ class CollectTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse({"숨김1", "숨김2", "숨김3", "숨김4", "더보기"} & names)
         self.assertEqual([i["el_id"] for i in self.items], list(range(1, len(self.items) + 1)))
 
+    async def test_describe_matches_observe_fields(self):
+        # describe(el): 임의 요소의 지문 필드. observe() 항목과 같은 계산이어야 한다 (human-study/collect.js가 쓴다)
+        item = next(i for i in self.items if i["name"] == "구매")
+        desc = await self.page.evaluate(
+            "() => __stepmeter.describe([...document.querySelectorAll('button')].find(b => b.textContent.trim() === '구매'))"
+        )
+        self.assertEqual(desc, {k: item[k] for k in ("tag", "role", "name", "landmark", "label_text")})
+
     async def test_plain_button(self):
         s = await self.snap("구매")
         self.assertEqual((s.tag, s.role, s.landmark, s.context), ("button", "button", "main", "document"))
