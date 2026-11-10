@@ -12,6 +12,8 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import JSONB
 
 from apps.api.db.models import AccessCode, Attempt, Base, LlmCall, Metric, Project, Run, Step, Task
+from worker.agent import run as agent_run
+from worker.agent.action_feedback import missing_fields, retry_message
 from worker.agent.run import execute_run
 from worker.agent.observation import state_hash
 from worker.agent.termination import LoopGuard, representative
@@ -47,6 +49,19 @@ class PureTests(unittest.TestCase):
         for n in range(3):
             item = json.loads(action('click',target=1)); item['thought']=str(n)
             self.assertEqual(guard.repeated('same', parse_action_json(json.dumps(item))), n==2)
+
+    def test_missing_fields_names_only_required_fields_of_chosen_action(self):
+        # Required fields per action come from worker/schemas.py (click: target, type: target+text, done: reason).
+        self.assertEqual(missing_fields(action('click')), ('click', ('target',)))
+        self.assertEqual(missing_fields(action('type')), ('type', ('target', 'text')))
+        self.assertEqual(missing_fields(action('done')), ('done', ('reason',)))
+        self.assertEqual(missing_fields(action('wait')), ('wait', ()))
+        for payload in ('not json', '[1]', '{"thought":"x"}', '{"action":"explode"}', None):
+            self.assertEqual(missing_fields(payload), (None, ()))
+
+    def test_retry_message_without_names_keeps_previous_text(self):
+        self.assertEqual(retry_message('invalid_fields', None, ()),
+                         'The previous action was invalid (invalid_fields). Choose a valid action with every required field.')
 
     def test_representative(self):
         rows = [Attempt(id=1,index=2,success=True), Attempt(id=2,index=1,success=True),
@@ -167,7 +182,66 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(s.scalar(select(func.count()).select_from(LlmCall)),3)
             self.assertEqual(s.scalar(select(func.count()).select_from(Step)),2)
         self.assertEqual(json.loads(adapter.received[1].user_text)['invalid_action'],
-                         'The previous action was invalid (invalid_fields). Choose a valid action with every required field.')
+                         'The previous action was invalid (invalid_fields): missing target for click. '
+                         'Include every required field for the chosen action.')
+
+    async def test_done_without_reason_three_times_names_field_not_reply(self):
+        marker='UNIQUE-REPLY-TEXT-7f3a'
+        reply=json.dumps(dict(action='done',thought=marker,expectation=marker,confusion=marker))
+        await self.run_replies([reply])
+        with self.factory() as s:
+            a=s.scalar(select(Attempt))
+            self.assertEqual(a.end_reason,'error')
+            self.assertEqual(a.end_detail,'ActionInputError:invalid_fields:reason')
+            self.assertNotIn(marker,a.end_detail)
+            self.assertEqual(s.scalar(select(func.count()).select_from(LlmCall)),3)
+
+    # ADR 0010 #8 (2026-11-10): all attempts error -> failed; any other end -> completed.
+    async def run_attempts(self, *scripts):
+        with self.factory.begin() as s:
+            s.get(Run,self.run_id).repeat_n=len(scripts)
+        adapters=iter([FakeAdapter(script) for script in scripts])
+        with patch('worker.agent.run.save_run_medians',wraps=agent_run.save_run_medians) as medians:
+            await execute_run(self.run_id,self.factory,browser=self.browser,
+                              adapter_factory=lambda _:next(adapters))
+        self.assertEqual(medians.call_count,1)
+
+    ERROR=['{"action":"explode"}']
+    GAVE_UP=[action('fail')]
+    SUCCESS=[action('click',target=1),action('done',reason='goal_reached')]
+
+    async def test_all_error_attempts_fail_run(self):
+        await self.run_attempts(self.ERROR,self.ERROR,self.ERROR)
+        with self.factory() as s:
+            r=s.get(Run,self.run_id)
+            attempts=list(s.scalars(select(Attempt).order_by(Attempt.index)))
+            self.assertEqual([a.end_reason for a in attempts],['error']*3)
+            self.assertEqual(r.status,'failed')
+            self.assertIsNotNone(r.finished_at)
+            self.assertNotEqual(r.progress,100)
+            per_attempt={m.attempt_id for m in s.scalars(select(Metric).where(Metric.key=='step_count'))}
+            self.assertEqual(per_attempt,{a.id for a in attempts})
+            self.assertEqual(list(s.scalars(select(Metric).where(Metric.attempt_id.is_(None)))),[])
+
+    async def test_errors_with_one_gave_up_complete_without_success_median(self):
+        await self.run_attempts(self.ERROR,self.ERROR,self.GAVE_UP)
+        with self.factory() as s:
+            r=s.get(Run,self.run_id)
+            self.assertEqual([a.end_reason for a in s.scalars(select(Attempt).order_by(Attempt.index))],
+                             ['error','error','gave_up'])
+            self.assertEqual((r.status,r.progress),('completed',100))
+            self.assertIsNone(r.representative_attempt_id)
+            self.assertEqual(list(s.scalars(select(Metric).where(Metric.attempt_id.is_(None)))),[])
+
+    async def test_one_error_two_successes_complete(self):
+        await self.run_attempts(self.ERROR,self.SUCCESS,self.SUCCESS)
+        with self.factory() as s:
+            r=s.get(Run,self.run_id)
+            attempts=list(s.scalars(select(Attempt).order_by(Attempt.index)))
+            self.assertEqual([a.end_reason for a in attempts],['error','success','success'])
+            self.assertEqual((r.status,r.progress),('completed',100))
+            self.assertIn(r.representative_attempt_id,{attempts[1].id,attempts[2].id})
+            self.assertNotEqual(list(s.scalars(select(Metric).where(Metric.attempt_id.is_(None)))),[])
 
     async def test_stale_target_reobserves_before_next_action(self):
         class RerenderAdapter(FakeAdapter):

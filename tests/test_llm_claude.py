@@ -2,10 +2,14 @@ import base64
 """Claude 어댑터 테스트. 진짜 API를 부르지 않고 가짜 client로 확인한다."""
 
 import asyncio
+import json
 import unittest
 from types import SimpleNamespace
 
+from jsonschema import Draft202012Validator
+
 from worker.llm import LLMRequest
+from worker.llm.action_tool import ACTION_TOOL
 from worker.llm.claude import ClaudeAdapter
 from worker.llm.pricing import cost_usd
 from worker.schemas import ClickAction, parse_action_json
@@ -81,6 +85,30 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.assertIs(tool["input_schema"]["additionalProperties"], False)
         for field in tool["input_schema"]["properties"].values():
             self.assertNotIn("minimum", field)  # strict 모드는 숫자 제약을 지원하지 않는다
+
+    def test_every_action_tool_property_is_required(self):
+        # 행동별 필드를 빠뜨리지 못하게 9개 필드 모두 required (2026-11-10 결정).
+        schema = ACTION_TOOL["input_schema"]
+        expected = {"action", "target", "text", "option", "direction", "reason",
+                    "thought", "expectation", "confusion"}
+        self.assertEqual(set(schema["properties"]), expected)
+        self.assertEqual(set(schema["required"]), expected)
+
+    def test_only_action_thought_expectation_reject_null(self):
+        properties = ACTION_TOOL["input_schema"]["properties"]
+        accepts_null = {name for name, prop in properties.items()
+                        if Draft202012Validator(prop).is_valid(None)}
+        self.assertEqual(accepts_null, {"target", "text", "option", "direction", "reason", "confusion"})
+
+    def test_null_tool_fields_are_dropped_from_action_json(self):
+        client = fake_client([tool_block(
+            action="click", target=3, text=None, option=None, direction=None, reason=None,
+            thought="버튼을 누른다", expectation="다음 화면이 나온다", confusion=None,
+        )])
+        result = asyncio.run(ClaudeAdapter(client=client).ask(make_request()))
+        self.assertEqual(json.loads(result.text), {
+            "action": "click", "target": 3, "thought": "버튼을 누른다", "expectation": "다음 화면이 나온다",
+        })
 
     def test_several_images_keep_order_before_text(self):
         client = fake_client([SimpleNamespace(type="text", text="[]")])

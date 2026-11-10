@@ -71,6 +71,10 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             counts = dict(session.execute(select(Metric.attempt_id, Metric.value).where(
                 Metric.run_id == run_id, Metric.attempt_id.is_not(None), Metric.key == 'step_count')).all())
             row.representative_attempt_id = representative(attempts, counts)
+            if all(attempt.end_reason == 'error' for attempt in attempts):
+                # ADR 0010 #8: every attempt errored -> system failure, not a UX result.
+                row.status, row.finished_at = 'failed', datetime.now(timezone.utc)
+                return
             if not update_progress(session, run_id, finished=True):
                 raise Canceled()
             row.status, row.finished_at = 'completed', datetime.now(timezone.utc)

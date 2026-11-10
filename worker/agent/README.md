@@ -7,7 +7,7 @@
 ## ADR 0010에 따른 할 일
 
 - LLM에 보내는 요소 목록(최대 30개, `observe()`의 `el_id` 그대로 유지)에 가려진 요소도 넣고 `"(가려짐)"`으로 표시하며, 드라이버가 가려진 대상에 대해 돌려준 스냅샷(`occluded=True`)과 `no_change` 결과를 그대로 step으로 저장한다 (ADR 0010)
-- 후처리 순서는 시도별 지표 저장(`finalize_run_metrics` 포함) → `save_run_medians` → `update_progress(finished=True)` → `completed`로 한다 (ADR 0010)
+- 후처리 순서는 시도별 지표 저장(`finalize_run_metrics` 포함) → `save_run_medians` → `update_progress(finished=True)` → `completed`로 한다. 단, 모든 시도가 `end_reason=error`면 같은 순서로 `save_run_medians`까지 한 뒤 `update_progress(finished=True)`·`completed` 대신 `status=failed`, `finished_at`을 기록한다(하나라도 error가 아니면 성공 0개여도 `completed`) (ADR 0010)
 - 단계 스크린샷(JPEG 품질 70, `save_screenshot`으로 저장)은 대상이 있는 행동(`click`·`type`·`select`)이면 드라이버가 대상을 스크롤한 뒤 스냅샷과 같은 시점(행동 직전)에 찍고, 대상이 없는 행동(`scroll`·`back`·`wait`·`done`·`fail`)이면 행동 직전에 찍어 저장한다 (ADR 0010)
 - `scan_page`가 `ElementHandle`과 같은 출처 iframe을 지원하기 전까지는 iframe 안 대상을 `path_targets`에서 뺀다 (ADR 0010)
 

@@ -7,6 +7,7 @@ from pathlib import Path
 from playwright.async_api import Error as PlaywrightError
 
 from worker.a11y.scan import scan_page
+from worker.agent.action_feedback import failure_code, missing_fields, retry_message
 from worker.agent.observation import describe, labeled_screenshot, state_hash
 from worker.agent.persistence import Canceled, finish_attempt, log_call, running, save_step
 from worker.agent.safety import SafetyStop, blocked_reason
@@ -76,11 +77,12 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         action = parse_action_json(response.text)
                         break
                     except ActionInputError as error:
+                        # Only field names are derived from the reply; never its values or text.
+                        name, missing = (missing_fields(response.text)
+                                         if error.code == 'invalid_fields' else (None, ()))
                         if retry == 2:
-                            raise
-                        context['invalid_action'] = (
-                            f'The previous action was invalid ({error.code}). '
-                            'Choose a valid action with every required field.')
+                            raise ActionInputError(failure_code(error.code, missing)) from None
+                        context['invalid_action'] = retry_message(error.code, name, missing)
                 if hasattr(action, 'target') and action.target not in {r['el_id'] for r in rows}:
                     raise ValueError('Target is outside the advertised observation')
                 repeated = guard.repeated(state, action)

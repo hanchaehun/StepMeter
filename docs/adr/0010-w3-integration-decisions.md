@@ -38,6 +38,13 @@ main `3238e16` 기준 검토에서 에이전트 루프(`worker/agent/`)가 수�
 - `benchmark/build_variant.py` 매니페스트 경로는 `as_posix()`로 기록한다.
 - 베이스라인(`baseline_axe.py`, `baseline_llm.py`) 재실행 때 `below-fold`는 `entry.html`에서 시작한다([ADR 0009](0009-r06-first-target.md)).
 
+### 8. 모든 시도가 error인 run의 상태 (2026-11-10 추가)
+- run의 모든 시도(attempt)가 `end_reason=error`로 끝나면 run은 `failed`로 끝낸다. 측정 결과가 아니라 시스템 실패로 본다.
+- 하나라도 `success`·`gave_up`·`loop`·`budget_exceeded`·`blocked`·`safety_stop`이면 `completed`로 끝낸다. 성공 0/3이어도 `completed`이며, "사이트가 어렵다"는 UX 결과로 리포트에 그대로 보인다.
+- 두 경우 모두 시도별 지표 저장과 `save_run_medians`를 먼저 실행한다(4번 순서 유지). `failed`일 때는 `update_progress(finished=True)`와 `completed` 대신 기존 실패 처리와 같이 `status=failed`, `finished_at`을 기록한다.
+- 취소(`canceled`) 처리는 바꾸지 않는다.
+- 모델 응답 형식 오류로 모든 시도가 error인 경우는 서비스 쪽 실패로 보며, openapi RunStatus의 'failed = 서비스 장애, 에이전트 실패는 completed' 설명과 같은 뜻이다(에이전트 실패 = gave_up·loop 등).
+
 | # | 항목 | 반영할 곳 |
 |---|---|---|
 | 1 | 가려진 요소(R04) 목록 포함·무조작 반환·R03 중복 제외 | `worker/collect/`, `worker/agent/`, `worker/driver/`, `worker/rules/` |
@@ -47,6 +54,7 @@ main `3238e16` 기준 검토에서 에이전트 루프(`worker/agent/`)가 수�
 | 5 | 스크롤 뒤 행동 직전 스크린샷 촬영 | `worker/driver/`, `worker/agent/` |
 | 6 | `scan_page` `ElementHandle`·동일 출처 iframe 지원 | `worker/a11y/`, `worker/agent/` |
 | 7 | `build_variant.py` `as_posix()`, 베이스라인 `below-fold` `entry.html` | `benchmark/` |
+| 8 | 모든 시도가 error면 run `failed`, 하나라도 아니면 `completed` | `worker/agent/` |
 
 ## 대안
 
