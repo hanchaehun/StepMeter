@@ -3,7 +3,7 @@
 - **담당 역할:** 리포트 UI(수집 스크립트) · 대시보드 UI(동의서·세션 운영)
 - **하는 일:** 사람 데이터 수집 스크립트, 동의서, 과업 목록. 외부 참가자 실험은 IRB 심의 없이 `consent-form.md`의 동의서를 받아 진행한다 (참가자 12~15명, 벤치마크 페이지 6개, [ADR 0001](../docs/adr/0001-no-irb.md)).
 - **참고:** 개발계획서 9.1
-- **문서:** [동의서](consent-form.md) · [6페이지와 과업 문장](pages.md) · [세션 진행 절차](session-procedure.md)
+- **문서:** [동의서](consent-form.md) · [모집 공고](recruitment.md) · [6페이지와 과업 문장](pages.md) · [세션 진행 절차](session-procedure.md) · 세션 직후 검사 `check_sessions.py`
 
 ## 수집 스크립트 (리포트 UI)
 
