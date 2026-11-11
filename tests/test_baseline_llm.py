@@ -1,7 +1,7 @@
 """LLM 베이스라인의 답 해석·번호 변환·다수결 테스트. 브라우저와 LLM 없이 손으로 만든 값을 넣는다."""
 import unittest
 
-from benchmark.baseline_llm import majority, parse_answer, read_array, to_keys
+from benchmark.baseline_llm import majority, parse_answer, read_array, to_keys, user_text
 
 MARKS = [
     [{'number': 1, 'selector': '#email'}, {'number': 2, 'selector': '#signup'}],
@@ -58,3 +58,17 @@ class MajorityTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class UserTextTests(unittest.TestCase):
+    def test_below_fold_uses_entry_task_and_two_screens(self):
+        text = user_text('below-fold')
+        self.assertIn("'가입 시작하기' 링크를 찾아", text)
+        self.assertIn('1. 가입 시작 화면을 처음 연 모습', text)
+        self.assertIn('2. 아래로 스크롤해', text)
+        self.assertNotIn('3.', text)
+
+    def test_other_cases_keep_signup_form_task(self):
+        text = user_text('contrast')
+        self.assertIn('Pro 요금제를 골라 구독을 확인한다', text)
+        self.assertIn('3. Pro 요금제를 고르고 구독을 확인한 뒤', text)
