@@ -40,10 +40,36 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 과업 목록 (ADR 0011 7번)
+         * @description 요청한 초대 코드의 project만. 측정 목록 화면에서 과업을 고를 때 쓴다
+         */
+        get: operations["listTasks"];
         put?: never;
         /** 과업 생성 (F01) */
         post: operations["createTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 과업 조회 (ADR 0011 7번)
+         * @description 리포트 제목의 과업 문장. 사이트 주소는 project_id로 GET /projects 결과에서 찾는다
+         */
+        get: operations["getTask"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -349,7 +375,7 @@ export interface components {
          */
         ViewportPreset: "desktop" | "mobile";
         /**
-         * @description auto = 기준 run의 대표 경로를 LLM 없이 먼저 재생, 끊기면 그 지점부터 에이전트 (재측정 기본)
+         * @description auto = 기준 run의 대표 경로를 LLM 없이 먼저 재생, 끊기면 에이전트로 처음부터 repeat_n회 (재측정 기본, ADR 0011 8번)
          *     agent = 재생 없이 에이전트로 repeat_n회 (첫 측정, 과업이 바뀐 경우)
          *     replay_only = 재생만, 끊기면 멈춤. CI용, 일일 상한에 안 셈 (7.2, F14, F17)
          *
@@ -629,7 +655,7 @@ export interface components {
         /** @description 이름·연락처·입력 내용은 받지 않는다. 참가자 코드만 (9.1) */
         HumanSessionCreate: {
             participant_code: string;
-            /** @description 벤치마크 페이지 "앱/변이" */
+            /** @description 벤치마크 페이지 "<앱 id>/<페이지>/<변이>" */
             page_id: string;
             /** @enum {string} */
             device: "mouse" | "trackpad" | "touch";
@@ -939,6 +965,30 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    listTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description id 내림차순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     createTask: {
         parameters: {
             query?: never;
@@ -966,6 +1016,30 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     listTaskRuns: {

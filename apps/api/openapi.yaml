@@ -70,6 +70,36 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
+    get:
+      summary: 과업 목록 (ADR 0011 7번)
+      description: 요청한 초대 코드의 project만. 측정 목록 화면에서 과업을 고를 때 쓴다
+      operationId: listTasks
+      responses:
+        '200':
+          description: id 내림차순
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Task'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /tasks/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/Id'}
+    get:
+      summary: 과업 조회 (ADR 0011 7번)
+      description: 리포트 제목의 과업 문장. 사이트 주소는 project_id로 GET /projects 결과에서 찾는다
+      operationId: getTask
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /tasks/{id}/runs:
     parameters:
@@ -456,7 +486,7 @@ components:
       enum: [desktop, mobile]
     RunMode:
       description: |
-        auto = 기준 run의 대표 경로를 LLM 없이 먼저 재생, 끊기면 그 지점부터 에이전트 (재측정 기본)
+        auto = 기준 run의 대표 경로를 LLM 없이 먼저 재생, 끊기면 에이전트로 처음부터 repeat_n회 (재측정 기본, ADR 0011 8번)
         agent = 재생 없이 에이전트로 repeat_n회 (첫 측정, 과업이 바뀐 경우)
         replay_only = 재생만, 끊기면 멈춤. CI용, 일일 상한에 안 셈 (7.2, F14, F17)
       type: string

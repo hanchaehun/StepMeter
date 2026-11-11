@@ -25,6 +25,7 @@ MOCKS = {
     "error_422.json": ("/projects", "post", "422"),
     "projects.json": ("/projects", "get", "200"),
     "task.json": ("/projects/{id}/tasks", "post", "201"),
+    "tasks.json": ("/projects/{id}/tasks", "get", "200"),
     "run_queued.json": ("/tasks/{id}/runs", "post", "202"),
     "task_runs.json": ("/tasks/{id}/runs", "get", "200"),
     "run_progress.json": ("/runs/{id}", "get", "200"),
@@ -44,6 +45,8 @@ PLANNED = {
     ("post", "/projects"),
     ("get", "/projects"),
     ("post", "/projects/{id}/tasks"),
+    ("get", "/projects/{id}/tasks"),  # ADR 0011 7번
+    ("get", "/tasks/{id}"),  # ADR 0011 7번
     ("post", "/tasks/{id}/runs"),
     ("get", "/runs/{id}"),
     ("get", "/runs/{id}/report"),
