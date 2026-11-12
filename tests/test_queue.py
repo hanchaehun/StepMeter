@@ -41,6 +41,65 @@ class ScreenshotTests(unittest.TestCase):
             self.assertEqual(len(list(Path(d).iterdir())), 2)  # 거부한 건 저장 안 함
 
 
+R2_VARS = ("STEPMETER_R2_ENDPOINT", "STEPMETER_R2_BUCKET", "STEPMETER_R2_ACCESS_KEY_ID", "STEPMETER_R2_SECRET_ACCESS_KEY")
+R2_ENV = {  # 이슈 #51 PM 답변의 변수 이름과 값 형식. 키는 가짜
+    "STEPMETER_R2_ENDPOINT": "https://acct.r2.cloudflarestorage.com",
+    "STEPMETER_R2_BUCKET": "stepmeter-screenshots-staging",
+    "STEPMETER_R2_ACCESS_KEY_ID": "fake-id",
+    "STEPMETER_R2_SECRET_ACCESS_KEY": "fake-secret",
+}
+
+
+class R2Tests(unittest.TestCase):
+    """이슈 #51: ENDPOINT와 BUCKET이 둘 다 있으면 R2, 없으면 디스크. 서명 URL 900초."""
+
+    def env(self, **values: str):
+        """R2 변수를 모두 지운 뒤 values만 넣는다 (테스트가 끝나면 원래대로)."""
+        patcher = mock.patch.dict(os.environ)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        for name in R2_VARS:
+            os.environ.pop(name, None)
+        os.environ.update(values)
+
+    def test_r2_upload_instead_of_disk(self):
+        self.env(**R2_ENV)
+        client = mock.Mock()
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(runs, "SCREENSHOT_DIR", Path(d)), \
+                mock.patch.object(runs, "_r2_client", return_value=client):
+            key = runs.save_screenshot(ScreenshotTests.JPEG)
+            self.assertEqual(list(Path(d).iterdir()), [])  # 디스크에 안 씀
+        client.put_object.assert_called_once_with(
+            Bucket="stepmeter-screenshots-staging", Key=key, Body=ScreenshotTests.JPEG, ContentType="image/jpeg",
+        )
+
+    def test_disk_unless_endpoint_and_bucket(self):
+        for values in ({}, {"STEPMETER_R2_ENDPOINT": R2_ENV["STEPMETER_R2_ENDPOINT"]},
+                       {"STEPMETER_R2_BUCKET": R2_ENV["STEPMETER_R2_BUCKET"]}):
+            with self.subTest(values=values):
+                self.env(**values)
+                with tempfile.TemporaryDirectory() as d, mock.patch.object(runs, "SCREENSHOT_DIR", Path(d)):
+                    key = runs.save_screenshot(ScreenshotTests.PNG)
+                    self.assertEqual((Path(d) / key).read_bytes(), ScreenshotTests.PNG)
+                self.assertIsNone(runs.screenshot_signed_url(key))  # 디스크면 API가 /screenshots/{key}
+
+    def test_missing_key_is_an_error(self):
+        self.env(STEPMETER_R2_ENDPOINT=R2_ENV["STEPMETER_R2_ENDPOINT"], STEPMETER_R2_BUCKET=R2_ENV["STEPMETER_R2_BUCKET"])
+        with self.assertRaises(KeyError):
+            runs.save_screenshot(ScreenshotTests.JPEG)
+
+    def test_signed_url_900_seconds(self):
+        # 실제 boto3로 서명만 만든다 (네트워크 없음)
+        self.env(**R2_ENV)
+        url = runs.screenshot_signed_url("abc.jpg")
+        self.assertTrue(url.startswith("https://"), url)
+        self.assertIn("acct.r2.cloudflarestorage.com", url)
+        self.assertIn("stepmeter-screenshots-staging", url)
+        self.assertIn("abc.jpg", url)
+        self.assertIn("X-Amz-Expires=900", url)
+        self.assertIn("X-Amz-Signature=", url)
+
+
 @unittest.skipUnless(DB_URL, "TEST_DATABASE_URL 없음")
 class DbTests(unittest.TestCase):
     @classmethod

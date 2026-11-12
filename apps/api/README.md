@@ -37,7 +37,17 @@
   python -m apps.api.issue_code "라벨"
   ```
   요청마다 `X-Access-Code: <코드>` 헤더가 필요하다. 없거나 틀리면 401.
-- 스크린샷: 로컬은 워커가 저장한 `data/screenshots/{key}`를 `/screenshots/{key}`로 내준다. R2 서명 URL은 아직 없다.
+- 스크린샷 (이슈 #51): `STEPMETER_R2_ENDPOINT`와 `STEPMETER_R2_BUCKET`이 **둘 다** 있으면 Cloudflare R2, 없으면 로컬 디스크
+  - 디스크: 워커가 `data/screenshots/{key}`에 저장하고 API가 `/screenshots/{key}`로 내준다 (로컬 개발, 로컬 Compose)
+  - R2: 워커가 R2 버킷에 올리고, API는 900초짜리 서명 URL을 `screenshot_url`로 준다 (스테이징, 운영)
+  - API와 워커 둘 다 아래 변수를 같은 값으로 받는다. 둘만 있고 키가 없으면 스크린샷 저장·조회 때 `KeyError`
+
+  | 변수 | 값 |
+  |---|---|
+  | `STEPMETER_R2_ENDPOINT` | `https://<계정ID>.r2.cloudflarestorage.com` |
+  | `STEPMETER_R2_BUCKET` | 버킷 이름 (스테이징 `stepmeter-screenshots-staging`) |
+  | `STEPMETER_R2_ACCESS_KEY_ID` | 그 버킷만 읽고 쓰는 R2 API 토큰의 Access Key ID |
+  | `STEPMETER_R2_SECRET_ACCESS_KEY` | 같은 토큰의 Secret Access Key. 저장소·이슈에 쓰지 않는다 |
 - 아직 없는 것: 일일 측정 상한(429, W4), `GET /tasks/{id}/runs`, `/compare`, `/issues/{id}/label`, `/human-sessions`, `/tasks/{id}/aliases`
 - 테스트: `TEST_DATABASE_URL`을 주고 `python -m unittest tests.test_api` (DB를 비운다. Redis는 가짜로 바꿔 쓴다)
 
