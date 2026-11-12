@@ -119,6 +119,19 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(list(s.scalars(select(Step)))),2)
             self.assertTrue(all(Path(self.tmp.name,'shots',x.screenshot_key).is_file() for x in s.scalars(select(Step))))
 
+    async def test_label_proxy_completes_agent_path_with_native_snapshot(self):
+        from tests.test_collect_labels import HTML
+        from apps.api.db.models import ElementSnapshot
+        self.html = HTML + '<p id="result"></p><script>document.querySelector("input").addEventListener("change",()=>document.querySelector("#result").textContent="Complete")</script>'
+        await self.run_replies([action('click', target=1), action('done', reason='goal_reached')])
+        with self.factory() as s:
+            self.assertEqual(s.scalar(select(Attempt)).end_reason, 'success')
+            step = s.scalar(select(Step).where(Step.idx == 0))
+            self.assertEqual(step.effect_type, 'dom_mutation')
+            snap = s.scalar(select(ElementSnapshot).where(ElementSnapshot.step_id == step.id))
+            self.assertEqual((snap.data['tag'], snap.data['role'], snap.data['name']),
+                             ('input', 'checkbox', 'Remember Me'))
+
     async def test_false_goal_has_no_success_median(self):
         await self.run_replies([action('done',reason='goal_reached')])
         with self.factory() as s:

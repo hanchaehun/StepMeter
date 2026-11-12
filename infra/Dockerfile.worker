@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
     && python -m playwright install --with-deps chromium \
     && useradd --create-home --uid 10001 stepmeter
 COPY worker worker
+COPY ml ml
 COPY tests tests
 # Baseline tests import these modules (axe and LLM baselines, plan 8.3).
 COPY benchmark/baseline_axe.py benchmark/baseline_llm.py benchmark/

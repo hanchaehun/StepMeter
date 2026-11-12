@@ -18,7 +18,7 @@ const isInteractive = (el) =>
   el.matches(INTERACTIVE) || (el.hasAttribute("tabindex") && el.tabIndex >= 0);
 
 const clean = (text, max) => text.replace(/\s+/g, " ").trim().slice(0, max);
-const nameOf = (el) => clean(computeAccessibleName(el), 1000);
+const nameOf = (el) => clean(computeAccessibleName(el, { hidden: !!labelProxy(el) }), 1000);
 const roleOf = (el) => getRole(el) || null;
 
 // Capture semantic identity, not just isConnected: virtual lists can reuse a DOM
@@ -53,7 +53,7 @@ function frameOffset(iframe, ox, oy) {
   ];
 }
 
-// ponytail: 다른 출처 iframe·닫힌 shadow root는 건너뜀. W2 스트레스 테스트에서 Playwright frame API·접근성 트리로 보완.
+// Cross-origin frames and closed shadow roots remain out of scope (ADR 0011).
 function* walk(root, context, ox, oy) {
   for (const el of root.querySelectorAll("*")) {
     if (isInteractive(el)) yield { el, context, ox, oy };
@@ -68,9 +68,50 @@ function* walk(root, context, ox, oy) {
   }
 }
 
-function bboxOf({ el, ox, oy }) {
-  const r = el.getBoundingClientRect();
+function bboxOf({ el, ox, oy, proxy }) {
+  // Frame positions can change after observe() when the driver scrolls.
+  ox = oy = 0;
+  for (let frame = el.ownerDocument.defaultView?.frameElement; frame;
+       frame = frame.ownerDocument.defaultView?.frameElement) {
+    [ox, oy] = frameOffset(frame, ox, oy);
+  }
+  let r = el.getBoundingClientRect();
+  if (proxy) {
+    const lr = proxy.getBoundingClientRect();
+    // Bootstrap's native 16px rectangle sits over label::before. Preserve it
+    // for target-size measurements. Fully hidden/offscreen inputs instead use
+    // their visible label's action rectangle.
+    const center = [r.x + r.width / 2, r.y + r.height / 2];
+    const before = getComputedStyle(proxy, "::before");
+    const pseudo = before.position === "absolute" && before.content !== "none" && before.content !== "normal"
+      ? { x: lr.x + parseFloat(before.left), y: lr.y + parseFloat(before.top),
+          width: parseFloat(before.width), height: parseFloat(before.height) } : null;
+    const inside = b => b && center[0] >= b.x && center[1] >= b.y &&
+      center[0] < b.x + b.width && center[1] < b.y + b.height;
+    if (r.width <= 1 || r.height <= 1 || (!inside(lr) && !inside(pseudo))) {
+      r = lr.width > 0 && lr.height > 0 ? lr : pseudo || lr;
+    }
+  }
   return { x: r.x + ox, y: r.y + oy, width: r.width, height: r.height };
+}
+
+function visibleLabel(label) {
+  if (!label.isConnected || !label.checkVisibility({ opacityProperty: true, visibilityProperty: true }) ||
+      getComputedStyle(label).pointerEvents === "none") return false;
+  const r = label.getBoundingClientRect();
+  // An empty Bootstrap label can have width 0 but a visible ::before widget.
+  const before = getComputedStyle(label, "::before");
+  return (r.height > 0 && r.width > 0) ||
+    (before.content !== "none" && before.content !== "normal" && before.display !== "none" &&
+     before.visibility === "visible" && Number(before.opacity) > 0 &&
+     parseFloat(before.width) > 0 && parseFloat(before.height) > 0);
+}
+
+function labelProxy(el) {
+  if (!el.matches('input[type="checkbox"],input[type="radio"]') ||
+      (el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) &&
+       getComputedStyle(el).pointerEvents !== "none") || hasVisibleNativeIndicator(el)) return null;
+  return [...(el.labels || [])].find(visibleLabel) || null;
 }
 
 // Styled native checkbox/radio: the transparent input remains the real target,
@@ -198,8 +239,9 @@ function nearestDistance([cx, cy], b) {
 function recordFirstView() {
   firstView = new WeakMap();
   for (const entry of walk(document, "document", 0, 0)) {
+    entry.proxy = labelProxy(entry.el);
     const b = bboxOf(entry);
-    if (!isVisible(entry.el, b)) continue;
+    if (!entry.proxy && !isVisible(entry.el, b)) continue;
     const cx = b.x + b.width / 2 + scrollX;
     const cy = b.y + b.height / 2 + scrollY;
     const inView = cx >= 0 && cx < innerWidth && cy >= 0 && cy < innerHeight;
@@ -211,9 +253,11 @@ function recordFirstView() {
 function observe() {
   observed = [];
   for (const entry of walk(document, "document", 0, 0)) {
+    entry.proxy = labelProxy(entry.el);
     const b = bboxOf(entry);
-    if (isVisible(entry.el, b) && inViewport(b)) {
+    if (b.width > 0 && b.height > 0 && (entry.proxy || isVisible(entry.el, b)) && inViewport(b)) {
       entry.identity = identityOf(entry.el);
+      entry.proxyIdentity = entry.proxy && identityOf(entry.proxy);
       observed.push(entry);
     }
   }
@@ -228,27 +272,34 @@ function observe() {
       landmark: landmarkOf(entry.el),
       label_text: name ? null : labelText(entry.el), // 이름 없는 요소 매칭 지문 (7.2)
       bbox: b,
-      occluded: isOccluded(entry.el, b),
+      occluded: isOccluded(entry, b),
     };
   });
 }
 
-function hitAt(el, b) {
+function hitAt(entry, b) {
   const hit = deepHit(...visibleCenter(b));
-  return hit && !isSelfOrAncestor(el, hit.el) ? hit : null;
+  if (!hit) return undefined;
+  if (isSelfOrAncestor(entry.el, hit.el)) return null;
+  // Only a label's own activation surface is interchangeable with its control.
+  // An embedded link/button is an independent action, never a proxy click.
+  if (entry.proxy && isSelfOrAncestor(entry.proxy, hit.el) &&
+      !hit.el.closest('a[href],button,input,select,textarea,[role=button],[role=link]')) return null;
+  return hit;
 }
 
-const isOccluded = (el, b) => hitAt(el, b) !== null;
+const isOccluded = (entry, b) => hitAt(entry, b) !== null;
 
 // 측정 훅: 마지막 observe()의 el_id 요소 값 (ElementSnapshot).
 function snapshot(elId) {
+  resolveElement(elId);
   const entry = observed[elId - 1];
   if (!entry || !entry.el.isConnected) throw new Error(`stale el_id ${elId}`);
   const { el, context } = entry;
   const bbox = bboxOf(entry);
   const role = roleOf(el);
   const name = nameOf(el);
-  const hit = hitAt(el, bbox);
+  const hit = hitAt(entry, bbox);
   const first = firstView.get(el);
   const center = [bbox.x + bbox.width / 2, bbox.y + bbox.height / 2];
 
@@ -277,12 +328,12 @@ function snapshot(elId) {
     style: styleOf(el),
     bg_chain: bgChain(el),
     occluded: hit !== null,
-    occluder: hit && {
+    occluder: hit ? {
       tag: hit.el.tagName.toLowerCase(),
       role: roleOf(hit.el),
       name: nameOf(hit.el),
       bbox: bboxOf(hit),
-    },
+    } : null,
     in_first_view: first ? first.inView : false,
     first_view_scroll_px: first ? first.scrollPx : null,
     nearby_targets: nearby,
@@ -292,10 +343,28 @@ function snapshot(elId) {
 function resolveElement(elId) {
   if (!Number.isInteger(elId) || elId < 1) throw new Error("invalid el_id");
   const entry = observed[elId - 1];
-  if (!entry || !entry.el.isConnected || identityOf(entry.el) !== entry.identity) {
+  if (!entry || !entry.el.isConnected || identityOf(entry.el) !== entry.identity ||
+      (entry.proxy && (labelProxy(entry.el) !== entry.proxy ||
+       identityOf(entry.proxy) !== entry.proxyIdentity || entry.proxy.control !== entry.el))) {
     throw new Error(`stale el_id ${elId}: observe again`);
   }
   return entry.el;
+}
+
+function clickPoint(elId) {
+  resolveElement(elId);
+  const entry = observed[elId - 1];
+  if (!entry.proxy) return null;
+  const box = bboxOf(entry);
+  if (!inViewport(box) || isOccluded(entry, box)) throw new Error("label target is occluded");
+  const [x, y] = visibleCenter(box);
+  return { x, y };
+}
+
+function scrollTarget(elId) {
+  const el = resolveElement(elId);
+  const r = el.getBoundingClientRect();
+  return r.width > 1 && r.height > 1 ? el : observed[elId - 1].proxy || el;
 }
 
 // 임의 요소의 지문 필드 (observe() 항목과 같은 계산). 사람 데이터 수집(human-study/collect.js)이
@@ -311,4 +380,4 @@ function describe(el) {
   };
 }
 
-globalThis.__stepmeter = { recordFirstView, observe, snapshot, resolveElement, describe };
+globalThis.__stepmeter = { recordFirstView, observe, snapshot, resolveElement, clickPoint, scrollTarget, describe };

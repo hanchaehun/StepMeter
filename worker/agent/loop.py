@@ -12,7 +12,7 @@ from worker.agent.observation import describe, labeled_screenshot, state_hash
 from worker.agent.persistence import Canceled, finish_attempt, log_call, running, save_step
 from worker.agent.safety import SafetyStop, blocked_reason
 from worker.agent.termination import LoopGuard, verify_success
-from worker.collect.collector import observe, record_first_view, resolve_element
+from worker.collect.collector import observe, record_first_view, resolve_element, scroll_target_into_view
 from worker.driver.effects import EffectResult
 from worker.driver.playwright_driver import ActionResult, PlaywrightDriver
 from worker.llm.base import LLMRequest
@@ -105,7 +105,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         }''', uuid.uuid4().hex)
                         # Frames are not claimed as scanned by the W2 axe interface.
                         if await handle.owner_frame() == page.main_frame:
-                            await handle.scroll_into_view_if_needed()
+                            await scroll_target_into_view(page, action.target)
                             axe = await scan_page(page, axe_path, {idx: handle})
                     finally:
                         await handle.dispose()

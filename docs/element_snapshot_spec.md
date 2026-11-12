@@ -41,6 +41,18 @@
   - 로드 때 없던 요소(나중에 뜬 메뉴 등)는 `in_first_view=false`, `first_view_scroll_px=null`이다.
 - **주변 타겟**: 마지막 관찰의 다른 요소 중, 대상 bbox 중심에서 그 요소 bbox의 가장 가까운 점까지 거리가 48px 이하인 요소다. 대상의 조상·자손은 뺀다. 5.4 간격 예외(지름 24px 원 겹침)는 이 목록으로 측정 지표 쪽에서 판정한다.
 
+### W3 label 조작 보완 (ADR 0010 9번)
+
+보이는 label이 숨긴 체크박스·라디오를 조작하면 의미 대상(tag·role·name·style·bg_chain)은
+input이다. input 중심이 label 또는 절대 배치된 `::before`의 조작 영역 안이면 native
+bbox를 유지한다. input의 사각형이 표면을 나타내지 못하면 bbox만 보이는 label의
+조작 사각형을 쓴다(빈 label은 `::before`). 첫 화면·주변 타겟·가림도 이 bbox를 쓴다.
+이 경우 연결된 label/비상호작용 자손이 hit-test되면 가림이 아니고, 별도 링크/버튼이나
+다른 막이 잡히면 가림이다. hit-test 대상이 없는 경우도 `occluded=true`,
+`occluder=null`이다. iframe의 위치가 관찰 후 바뀌면 행동 직전 좌표를 다시 계산한다.
+공용 Pydantic/OpenAPI 필드 추가는 없다. 재생·규칙에서 label bbox와 input CSS가 함께
+올 수 있음을 고려한다. 자세한 사용법과 기하 한계는 `worker/collect/README.md`에 있다.
+
 ## 이번 범위에서 정하지 않은 것
 
 - 값을 실제로 수집하는 주입 JS와 Driver 연결: 주입 JS는 `worker/collect/`에 구현했다(PR #15). Driver 연결은 아직 없다.

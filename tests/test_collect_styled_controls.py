@@ -44,7 +44,7 @@ class StyledControlTests(unittest.IsolatedAsyncioTestCase):
             await handle.dispose()
         self.assertTrue(await self.page.locator('input').is_checked())
 
-    async def test_hidden_or_unrepresented_controls_stay_excluded(self):
+    async def test_label_activation_extends_supported_native_controls(self):
         html = STYLE + control('Visible') + control('Hidden parent', wrapper='opacity:0')
         html += control('Hidden visibility', attrs='style="visibility:hidden"')
         html += control('Hidden display', attrs='style="display:none"')
@@ -53,7 +53,10 @@ class StyledControlTests(unittest.IsolatedAsyncioTestCase):
         html += '<label><span class="control"><input type="checkbox"></span>No indicator</label>'
         html += '<label><span class="control"><input type="text">'+INDICATOR+'</span>Text input</label>'
         await self.page.set_content(html)
-        self.assertEqual([r['name'] for r in await observe(self.page)], ['Visible'])
+        # ADR 0010 §9 supersedes W2 input-CSS exclusion when a visible label
+        # activates the control. Hidden labels/parents and text inputs stay out.
+        self.assertEqual([r['name'] for r in await observe(self.page)],
+                         ['Visible', 'Hidden visibility', 'Hidden display', 'No pointer', 'No indicator'])
 
     async def test_raw_collection_preserves_occluded_styled_target(self):
         await self.page.set_content(STYLE + control('Covered') +
@@ -62,12 +65,14 @@ class StyledControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([r['name'] for r in rows], ['Covered'])
         self.assertTrue(rows[0]['occluded'])
 
-    async def test_radio_supported_but_unrelated_indicator_does_not_qualify(self):
+    async def test_radio_and_label_proxy_with_unrelated_indicator(self):
         radio = control('Choice').replace('type="checkbox"', 'type="radio"')
         outside = control('Unrelated').replace('class="control"', 'class="control" style="width:100px"').replace('<svg ', '<svg style="left:60px" ')
         await self.page.set_content(STYLE + radio + outside)
         rows = await observe(self.page)
-        self.assertEqual([(r['name'], r['role']) for r in rows], [('Choice', 'radio')])
+        # The unrelated SVG no longer excludes an otherwise active label.
+        self.assertEqual([(r['name'], r['role']) for r in rows],
+                         [('Choice', 'radio'), ('Unrelated', 'checkbox')])
 
     async def test_driver_records_styled_native_checked_effect(self):
         from worker.driver.playwright_driver import PlaywrightDriver
