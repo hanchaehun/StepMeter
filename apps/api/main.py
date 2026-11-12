@@ -176,6 +176,11 @@ def create_task(id: int, body: TaskCreate, db: DB, code: Code) -> dict[str, Any]
     return task_out(t)
 
 
+@app.get("/tasks/{id}")
+def get_task(id: int, db: DB, code: Code) -> dict[str, Any]:
+    return task_out(own_task(db, code, id))
+
+
 # --- run ---
 
 

@@ -205,6 +205,24 @@ class ApiTests(unittest.TestCase):
                 self.assertEqual(r.status_code, 422)
                 self.assertEqual(schema_errors(r.json(), "/projects/{id}/tasks", "post", "422"), [])
 
+    def test_get_task(self):
+        pid = self.make_project()["id"]
+        req = {"description": "가입한다", "success_condition": {"url_contains": "/done.html"}}
+        tid = self.call("POST", f"/projects/{pid}/tasks", json=req).json()["id"]
+        r = self.call("GET", f"/tasks/{tid}")
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        self.assertEqual(schema_errors(body, "/tasks/{id}", "get", "200"), [])
+        self.assertEqual(body, {"id": tid, "project_id": pid, **req})
+
+    def test_get_task_404_other_code_or_missing(self):
+        other = self.make_task("code-b")
+        for tid in (other, 9999):
+            with self.subTest(tid=tid):
+                r = self.call("GET", f"/tasks/{tid}")
+                self.assertEqual(r.status_code, 404)
+                self.assertEqual(schema_errors(r.json(), "/tasks/{id}", "get", "404"), [])
+
     # --- run ---
 
     def test_create_run_defaults_and_enqueue(self):
