@@ -5,7 +5,7 @@ import asyncio
 from dataclasses import dataclass
 
 from worker.agent.safety import guard_target
-from worker.collect.collector import resolve_element, snapshot
+from worker.collect.collector import click_point, resolve_element, snapshot, scroll_target_into_view
 from worker.driver.effects import EffectObserver, EffectObservationError, EffectResult
 from worker.schemas import ActionRequest, ElementSnapshot
 
@@ -72,7 +72,7 @@ class PlaywrightDriver:
         if kind in ('click', 'type', 'select'):
             handle = await resolve_element(self.page, action.target)
             try:
-                await handle.scroll_into_view_if_needed()
+                await scroll_target_into_view(self.page, action.target)
                 # Revalidate after preparation: scrolling can recycle virtual rows.
                 validated = await resolve_element(self.page, action.target)
                 try:
@@ -89,7 +89,14 @@ class PlaywrightDriver:
                 if kind == 'select' and not await handle.is_enabled():
                     raise EffectObservationError('Select target is disabled')
                 if kind == 'click':
-                    callback = lambda: handle.click()
+                    async def callback():
+                        point = await click_point(self.page, action.target)
+                        if point is None:
+                            await handle.click()
+                        else:
+                            if not await handle.is_enabled():
+                                raise EffectObservationError('Click target is disabled')
+                            await self.page.mouse.click(point['x'], point['y'])
                 elif kind == 'type':
                     callback = lambda: handle.fill(action.text)
                 else:

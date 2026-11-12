@@ -32,7 +32,27 @@ function hasVisibleNativeIndicator(el) {
   const nonempty = r => r.right>r.left&&r.bottom>r.top;
   const visible = (el, cached=null) => {
     if (!cached && !el?.isConnected) return false;
-    const initial=cached || el.getBoundingClientRect();
+    // ADR 0010 §9: native checked changes are visible through the associated
+    // label, even when the input itself is hidden/transparent/non-hit-testable.
+    if (!cached && el.matches('input[type="checkbox"],input[type="radio"]') &&
+        [...(el.labels || [])].some(label => {
+          const indicator=['::before','::after'].some(pseudo=>{
+            const s=getComputedStyle(label,pseudo);
+            return s.content!=='none' && s.content!=='normal' && s.display!=='none' &&
+              s.visibility==='visible' && Number(s.opacity)>0 &&
+              parseFloat(s.width)>0 && parseFloat(s.height)>0;
+          });
+          return indicator && getComputedStyle(label).pointerEvents!=='none' && visible(label);
+        })) return true;
+    let initial=cached || el.getBoundingClientRect();
+    if (!cached && el.tagName === 'LABEL' && !nonempty(initial)) {
+      const before=getComputedStyle(el,'::before');
+      if (before.position==='absolute' && before.content!=='none' && before.content!=='normal' &&
+          before.visibility==='visible' && before.display!=='none' && Number(before.opacity)>0) {
+        const left=initial.left+parseFloat(before.left), top=initial.top+parseFloat(before.top);
+        initial={left,top,right:left+parseFloat(before.width),bottom:top+parseFloat(before.height)};
+      }
+    }
     let rect={left:initial.left,top:initial.top,right:initial.right,bottom:initial.bottom}, win=el.ownerDocument.defaultView;
     if(!nonempty(rect))return false;
     let node=cached?null:el;

@@ -11,6 +11,12 @@ W2 도구·전환 과업·검증과 남은 작업: [w2.md](w2.md).
 
 W2 앱별 잔여 상태·담당 요청: [w2-readiness.md](w2-readiness.md).
 
+W3 수집 label 회귀: `python -m benchmark.verify_collect_labels`.
+`benchmark.build_variant`로 준비한 SB Admin `baseline`·`small`에서 Remember Me
+번호 클릭·checked 효과·overlay R04를 loopback 환경으로 확인하고 증거를
+`benchmark/evidence/w3-collect-labels/`에 남긴다. 전체 에이전트 벤치마크나
+사람 실험 6페이지 검증을 대신하지 않는다. [수집·특징 추출 기록](../docs/w3-collection-features.md).
+
 ## ADR 0010에 따른 할 일
 
 - `build_variant.py`가 `stepmeter-build.json` 매니페스트에 기록하는 패치 경로는 `as_posix()`로 통일한다 (ADR 0010)

@@ -36,12 +36,31 @@ A transparent native checkbox/radio may still be the actual visible widget's hit
 target. The collector includes it only when it has a visible associated label,
 visible ancestors, pointer events, and a visible sibling SVG/image/canvas indicator
 fully inside its input rectangle. It preserves the native input's role, name,
-geometry and opacity. General transparent inputs, hidden ancestors and controls
-without that indicator pattern remain excluded. This does not implement arbitrary
-visually-hidden input/label-proxy patterns. A Material Kit drawer regression and
-numbered Driver integration tests cover the supported pattern.
+geometry and opacity. A Material Kit drawer regression and numbered Driver
+integration tests cover this pattern.
 
-W3 할 일(수집기·에이전트 담당): `observe()`가 보이는 label로 조작하는 체크박스·라디오(Bootstrap custom-checkbox 등)도 지원한다. 지금은 지원하지 않아 에이전트가 sb-admin-2 로그인 과업(Remember Me 선택)을 끝낼 수 없다 ([ADR 0010](../../docs/adr/0010-w3-integration-decisions.md) 9번).
+W3: 보이는 연결 label로 조작하는 체크박스·라디오도 지원한다
+([ADR 0010](../../docs/adr/0010-w3-integration-decisions.md) 9번).
+`observe()`·`resolve_element()`의 의미 대상은 원래 input이다. 가림은 실제 label
+표면에서 검사하고, 드라이버는 `click_point()`가 검증한 최상위 좌표로 실제 마우스를
+누른다(force 클릭/JS checked 변경 없음). 비활성 컨트롤은 조작하지 않는다.
+label 연결·정체성이 바뀌면 기존 번호는 stale이다. label 안의 독립 링크/버튼은
+체크박스 조작으로 대신 누르지 않는다. 투명 막도 pointer-events가 있으면 가림이다.
+
+input 사각형 중심이 label 또는 절대 배치된 `::before` 안이면 native bbox를
+유지한다(Bootstrap의 16×20px input 포함). input이 display:none/화면 밖 등으로
+표면을 나타내지 못하면 보이는 label의 bbox를 쓴다. 빈 label은 절대 배치된
+`::before` 사각형을 사용한다. 역할·이름·style·bg_chain은 input 기준이다.
+복잡한 transform을 건 pseudo-element의 정밀 기하는 지원하지 않는다.
+체크 상태 효과는 보이는 native/MUI/label pseudo indicator가 있을 때 관찰한다.
+표시가 전혀 없는 투명 input의 checked 속성만 바뀐 경우는 시각 반응으로 세지 않는다.
+
+검증: `tests.test_collect_labels`, `tests.test_collect_styled_controls`,
+`tests.test_effect_native_controls`, `tests.test_agent_core`.
+실제 SB Admin 기준선·small 변이 재현:
+`python -m benchmark.verify_collect_labels` (빌드는 `benchmark.build_variant`로 준비).
+가림 보강·특징 추출·검증과 협업 전달 사항은
+[W3 기록](../../docs/w3-collection-features.md)을 참고한다.
 
 ## ADR 0010에 따른 할 일
 

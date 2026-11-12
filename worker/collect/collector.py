@@ -29,7 +29,7 @@ async def record_first_view(page: Page) -> None:
 async def observe(page: Page) -> list[dict[str, Any]]:
     """뷰포트 안의 보이는 상호작용 요소 (가려진 요소 포함, `occluded`로 표시).
 
-    반환 형식은 임시다. LLM용 목록(가림 제외, 최대 30개, 개발계획서 4.2)은 에이전트 코어가 이 결과를 잘라 만든다.
+    LLM용 목록(가림 표시 포함, 최대 30개, ADR 0010)은 에이전트 코어가 이 결과를 잘라 만든다.
     """
     await _inject(page)
     return await page.evaluate("() => __stepmeter.observe()")
@@ -40,6 +40,34 @@ async def snapshot(page: Page, el_id: int) -> ElementSnapshot:
     await _inject(page)
     raw = await page.evaluate("id => __stepmeter.snapshot(id)", el_id)
     return ElementSnapshot.model_validate(raw)
+
+
+async def click_point(page: Page, el_id: int) -> dict[str, float] | None:
+    """Validated label-proxy activation point in top-level viewport coordinates."""
+    await _inject(page)
+    return await page.evaluate("id => __stepmeter.clickPoint(id)", el_id)
+
+
+async def scroll_target_into_view(page: Page, el_id: int) -> None:
+    """Prepare the actual action surface without changing the semantic target."""
+    await _inject(page)
+    handle = await page.evaluate_handle("id => __stepmeter.scrollTarget(id)", el_id)
+    try:
+        element = handle.as_element()
+        if element is None:
+            raise ValueError("No action surface")
+        # An empty Bootstrap label may paint only ::before and have a zero
+        # border box. Scroll its anchor without Playwright's nonempty-box gate.
+        has_box = await element.evaluate('''el => {
+            const r = el.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) return true;
+            el.scrollIntoView({block: 'center', inline: 'center'});
+            return false;
+        }''')
+        if has_box:
+            await element.scroll_into_view_if_needed()
+    finally:
+        await handle.dispose()
 
 
 
