@@ -1,6 +1,8 @@
 """Threshold/exception expectations from plan 5.4, 5.7 and chapter 6."""
 
 import unittest
+import json
+from pathlib import Path
 
 from tests.test_cursor_distance import snapshot_at
 from worker.rules import r01, r02, r03, r04, r05, r06, r07, r10
@@ -23,6 +25,24 @@ def neighbor(center_x):
 
 
 class RulesW2Tests(unittest.TestCase):
+    def test_r01_wide_neighbor_bbox_and_benchmark_labels(self):
+        labels = json.loads((Path(__file__).resolve().parents[1] /
+                            "benchmark/labels/sb-admin-2.json").read_text())
+        self.assertIn({"rule": "R01", "target": "#customCheck"}, labels["cases"]["small"])
+        self.assertEqual(labels["cases"]["baseline"], [])
+        # Small center (8,10), link starts at y=19.2: distance 9.2 < 12,
+        # even though the 345px-wide link's center is far away.
+        for height in (20, 30):
+            item = target(bbox={"x": 0, "y": 0, "width": 16, "height": 20},
+                          nearby_targets=[{"role": "link", "name": "Forgot Password",
+                                           "bbox": {"x": 0, "y": 19.2, "width": 345, "height": height}}])
+            self.assertEqual(r01.evaluate(item).rule_id, "R01")
+        for distance, fails in ((11.9, True), (12, False), (12.1, False)):
+            item = target(20, nearby_targets=[{"role": "link", "name": "Wide",
+                          "bbox": {"x": 0, "y": 10 + distance, "width": 345, "height": 30}}])
+            self.assertEqual(r01.evaluate(item) is not None, fails)
+        self.assertIsNone(r01.evaluate(target(44)))
+
     def test_r01_spacing_boundaries_inline_and_recommendation(self):
         # Target center (10,10): distance 23 => overlapping radius-12 circles.
         crowded = target(20, nearby_targets=[neighbor(33)])

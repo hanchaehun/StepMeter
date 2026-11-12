@@ -39,7 +39,10 @@ async def scan_page(page: Page, axe_script_path: str | Path,
             """async ({ids, elements}) => {
                 const connected = () => elements.every(el => el.isConnected);
                 if (!connected()) throw new Error('Detached path target');
-                const result = await axe.run(document, {elementRef: true, iframes: false});
+                const result = await axe.run(document, {
+                    elementRef: true, iframes: false,
+                    rules: {'target-size': {enabled: true}}
+                });
                 if (!connected()) throw new Error('Path target changed during axe scan');
                 const within = (element, target) => {
                     for (let node = element; node; node = node.parentNode || node.host) {
