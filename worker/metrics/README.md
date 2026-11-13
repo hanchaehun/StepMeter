@@ -11,15 +11,15 @@
 
 | 파일 | 입력과 결과 |
 |---|---|
-| `cursor_distance.py` | click/type 직전 snapshot 순서 → 뷰포트 중앙부터 bbox 중심까지 거리 합(px) |
+| `cursor_distance.py` | click/type/select 직전 snapshot 순서 → 뷰포트 중앙부터 bbox 중심까지 거리 합(px) |
 | `fitts.py` | 같은 snapshot 순서 → 단계별 방향성 Fitts ID(bit). 면적 0이면 `None`, 이동 0이면 0 |
-| `interactions.py` | 행동명 → click/type/back/step 수, 행동·효과 → 무반응 클릭 수 |
+| `interactions.py` | 행동명 → click/type/select/back/step 수, 행동·효과 → 무반응 클릭 수 |
 | `interactions.py` | 행동·안정된 대상 키 → 연속 반복의 추가 클릭 수(A,A,A는 2) |
 | `interactions.py` | 초기·종료를 포함한 scrollY/URL 목록 → 수직 스크롤 거리/URL 경로 전환 수 |
 | `persistence.py` | `Session`과 계산값 → 기존 metric 행 저장, 성공한 동일 kind 실행의 중앙값 저장 |
 
 `done`은 단계 수에 포함하지 않는다. `type`은 문자 수가 아니라 행동 횟수다.
-스크롤 거리에는 모든 스크롤의 전후 관측값이 필요하다. click/type snapshot만으로
+스크롤 거리에는 모든 스크롤의 전후 관측값이 필요하다. click/type/select snapshot만으로
 중간 스크롤이나 마지막 스크롤을 추정하지 않는다. URL query/hash 변화만으로는
 페이지 전환을 세지 않는다. 반복 클릭 키에 화면마다 재사용되는 `el_id`를 단독으로
 쓰지 않는다. 현재 DB Step에는 모든 행동 전후 scrollY·DOM identity가 없으므로
@@ -82,4 +82,10 @@ SQLite 결과는 PostgreSQL 잠금·동시성 검증을 대신하지 않는다.
 - 문헌값 KLM을 순수 함수로 만든다(예: `klm.py`). 행동별 식과 추가 규칙(화면 첫 행동의 M, type 뒤의 H, 스크롤이 필요했을 때의 S)은 ADR 0011 3번을 따른다. R(시스템 응답)은 넣지 않는다 (ADR 0011 3번)
 - 테스트 기대값은 문헌 상수로 사람이 계산한다. ADR 0011 3번의 예(8.88초 + 3.05초 = 11.93초)를 쓸 수 있다 (ADR 0011 3번)
 - `UNITS`에 `est_task_time`(초)을 더한다. run 값은 지금처럼 성공한 시도의 중앙값이다 (ADR 0011 3번)
-- select를 click처럼 세는 작업(`interactions.py`)을 할 때, select 단계가 Fitts ID·이동 거리 경로에도 들어가게 `worker/agent/loop.py`의 대상 조건(지금 `click`·`type`만)을 같이 바꾼다. 위 표의 "click/type 직전 snapshot" 설명도 맞춘다 (ADR 0011 6번)
+- select를 click처럼 세는 작업(`interactions.py`)을 할 때, select 단계가 Fitts ID·이동 거리 경로에도 들어가게 `worker/agent/loop.py`의 대상 조건(지금 `click`·`type`만)을 같이 바꾼다. 위 표의 "click/type/select 직전 snapshot" 설명도 맞춘다 (ADR 0011 6번)
+
+## W3
+
+`select`는 click_count에 1회로 센다. 무반응·연속 반복 클릭 집계에도 같은
+클릭 계열로 포함한다. `loop.py`도 select snapshot을 이동 거리·Fitts ID 경로에 넣는다.
+선택 열기/고르기의 물리 클릭 두 번을 추정하지 않는다.

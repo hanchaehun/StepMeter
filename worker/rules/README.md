@@ -71,3 +71,12 @@ R01 간격 예외는 [WCAG 2.5.8](https://www.w3.org/WAI/WCAG22/Understanding/ta
 접하기만 하는 12/24px 경계는 통과한다. bbox는 실제 클릭 영역의 직사각형 근사다.
 기존 계획서의 중심 원끼리만 비교하는 설명을 보완한다. scan은 axe 4.10.3에서
 기본 비활성인 target-size를 명시적으로 활성화하며 다른 기본 규칙도 유지한다.
+
+## W3 R08
+
+`r08.evaluate(back_counts)`는 시도별 back 횟수를 받는다. 최소 3개 종료 시도 중
+2/3 이상에서 back이 한 번 이상 있으면 medium 참고 후보를 낸다(계획서 6장).
+3회 반복에서 2회가 기준이며, 추가 반복에서도 2/3 비율을 올림해 쓴다.
+한 시도의 back 여러 번은 한 표다. 성공 여부와 무관하며 replay는 제외한다.
+`loop.py`는 모든 agent 시도가 종료됐을 때 DB 행동을 읽어 한 번 호출하고 run에 저장한다.
+measured는 back이 있었던 시도 수, threshold는 필요한 시도 수다.

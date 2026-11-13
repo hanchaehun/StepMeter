@@ -13,6 +13,6 @@ async def run_axe(page: Page, axe_script_path: str | Path) -> list[dict[str, Any
     axe.run errors propagate to the caller; an error is never a clean result.
     This W1 POC injects into the main frame only.
     """
-    await page.add_script_tag(path=axe_script_path)
+    await page.evaluate(Path(axe_script_path).read_text(encoding="utf-8"))
     results = await page.evaluate("() => axe.run()")
     return results["violations"]

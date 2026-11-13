@@ -125,7 +125,7 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
         self.html = HTML + '<p id="result"></p><script>document.querySelector("input").addEventListener("change",()=>document.querySelector("#result").textContent="Complete")</script>'
         await self.run_replies([action('click', target=1), action('done', reason='goal_reached')])
         with self.factory() as s:
-            self.assertEqual(s.scalar(select(Attempt)).end_reason, 'success')
+            self.assertEqual(s.scalar(select(Attempt)).end_reason, 'success', s.scalar(select(Attempt)).end_detail)
             step = s.scalar(select(Step).where(Step.idx == 0))
             self.assertEqual(step.effect_type, 'dom_mutation')
             snap = s.scalar(select(ElementSnapshot).where(ElementSnapshot.step_id == step.id))
@@ -286,3 +286,34 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(s.get(Run,self.run_id).status,'canceled')
             self.assertEqual(s.scalar(select(func.count()).select_from(Step)),0)
             self.assertEqual(s.scalar(select(func.count()).select_from(LlmCall)),1)
+
+    async def test_select_populates_click_distance_and_step_fitts(self):
+        self.html = '''<html lang="en"><title>Select</title><main><select aria-label="Choice" style="position:absolute;left:100px;top:100px;width:100px;height:40px" onchange="document.querySelector('p').textContent='Complete'"><option>A</option><option>B</option></select><p></p></main></html>'''
+        await self.run_replies([action('select', target=1, option=2), action('done', reason='goal_reached')])
+        with self.factory() as s:
+            self.assertEqual(s.scalar(select(Attempt)).end_reason, 'success', s.scalar(select(Attempt)).end_detail)
+            step = s.scalar(select(Step).where(Step.idx == 0))
+            self.assertIsNotNone(step.fitts_id)
+            metrics = {m.key: m.value for m in s.scalars(select(Metric).where(Metric.attempt_id.is_not(None)))}
+            self.assertEqual(metrics['click_count'], 1)
+            # Desktop center (640,400) -> select center (150,120).
+            self.assertAlmostEqual(metrics['travel_distance'], (490**2 + 280**2)**0.5)
+            self.assertEqual(metrics['fitts_id_sum'], step.fitts_id)
+
+    async def test_r08_is_saved_once_from_two_of_three_attempts(self):
+        from apps.api.db.models import Issue
+        self.html = '<html lang="en"><title>Back</title><main><a href="/next">Next</a><p>Complete</p></main></html>'
+        with self.factory.begin() as s:
+            s.get(Run, self.run_id).repeat_n = 3
+        replies = iter([
+            [action('click', target=1), action('back'), action('done', reason='goal_reached')],
+            [action('click', target=1), action('back'), action('done', reason='goal_reached')],
+            [action('done', reason='goal_reached')],
+        ])
+        await execute_run(self.run_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _: FakeAdapter(next(replies)))
+        with self.factory() as s:
+            issues = list(s.scalars(select(Issue).where(Issue.rule_id == 'R08')))
+            self.assertEqual(len(issues), 1, [(a.end_reason, a.end_detail) for a in s.scalars(select(Attempt))])
+            self.assertEqual((issues[0].measured, issues[0].threshold, issues[0].is_reference), (2, 2, True))
+            self.assertIsNone(issues[0].step_id)

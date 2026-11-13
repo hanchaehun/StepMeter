@@ -16,7 +16,9 @@ def count_interactions(actions: Sequence[str]) -> dict[str, float]:
         if action == "done":
             break
         counts["step_count"] += 1
-        if action in {"click", "type", "back"}:
+        if action == "select":
+            counts["click_count"] += 1
+        elif action in {"click", "type", "back"}:
             counts[f"{action}_count"] += 1
     return counts
 
@@ -30,7 +32,7 @@ def count_no_response_clicks(actions: Sequence[str], effects: Sequence[str]) -> 
             raise ValueError(f"Unknown effect: {effect}")
         if action == "done":
             break
-        count += action == "click" and effect == "no_change"
+        count += action in {"click", "select"} and effect == "no_change"
     return count
 
 
@@ -47,7 +49,7 @@ def count_repeated_clicks(actions: Sequence[str], target_keys: Sequence[str | No
     for action, key in zip(actions, target_keys):
         if action == "done":
             break
-        current = key if action == "click" else None
+        current = key if action in {"click", "select"} else None
         count += current is not None and current == previous
         previous = current
     return count
