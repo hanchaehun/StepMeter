@@ -139,10 +139,11 @@ class DbTests(unittest.TestCase):
             n=repeat_n, s=status, p=progress,
         )[0]
 
-    def add_attempt(self, run_id: int, index: int, steps: int, end_reason: str | None = None) -> None:
+    def add_attempt(self, run_id: int, index: int, steps: int, end_reason: str | None = None,
+                    kind: str = "agent") -> None:
         attempt = self.sql(
-            "INSERT INTO attempt (run_id, index, kind, end_reason) VALUES (:r, :i, 'agent', :e) RETURNING id",
-            r=run_id, i=index, e=end_reason,
+            "INSERT INTO attempt (run_id, index, kind, end_reason) VALUES (:r, :i, :k, :e) RETURNING id",
+            r=run_id, i=index, k=kind, e=end_reason,
         )[0]
         for idx in range(steps):
             self.sql(
@@ -197,6 +198,14 @@ class DbTests(unittest.TestCase):
         self.add_attempt(r, 2, steps=15)
         self.update(r)
         self.assertEqual(self.run_row(r).progress, 50)
+
+    def test_replay_attempts_add_to_planned(self):
+        # ADR 0011 8번: 예정 = repeat_n 3 + 재생 1 = 4. floor(90 × (재생 1 + 에이전트 1) / 4) = 45 (재생을 안 세면 60)
+        r = self.make_run()
+        self.add_attempt(r, 1, steps=8, end_reason="error", kind="replay")
+        self.add_attempt(r, 2, steps=12, end_reason="success")
+        self.update(r)
+        self.assertEqual(self.run_row(r).progress, 45)
 
     def test_finished_sets_100(self):
         r = self.make_run()

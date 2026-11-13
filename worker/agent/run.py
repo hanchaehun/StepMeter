@@ -1,5 +1,6 @@
 """RQ entrypoint. Agent mode only; no implicit benchmark launch or credential setup."""
 import asyncio
+import contextlib
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +20,9 @@ from worker.queue.runs import update_progress
 
 ROOT = Path(__file__).resolve().parents[2]
 VIEWPORTS = {'desktop': {'width': 1280, 'height': 800}, 'mobile': {'width': 390, 'height': 844}}
+MAX_PARALLEL = 3  # 계획서 4.6 "LLM API 호출 한도 안에서 최대 3개를 동시에 실행"
+# #55: LLM 어댑터가 429(호출 한도)면 던지는 예외 이름. execute_attempt가 attempt.end_detail에 예외 이름을 적는다
+RATE_LIMITED = 'LLMRateLimitError'
 
 
 async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=None, axe_path=None, evidence_sink=None):
@@ -44,25 +48,44 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             owned_playwright = await async_playwright().start()
             owned_browser = await owned_playwright.chromium.launch(headless=True)
             browser = owned_browser
-        for index in range(1, config['repeat_n'] + 1):
-            with factory.begin() as session:
-                running(session, run_id)
-                attempt = Attempt(run_id=run_id, index=index, kind='agent')
-                session.add(attempt)
-                session.flush()
-                attempt_id = attempt.id
-            adapter = adapter_factory(config['model'])
-            context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
-                                                device_scale_factor=3 if config['viewport']=='mobile' else 1,
-                                                is_mobile=config['viewport']=='mobile',
-                                                has_touch=config['viewport']=='mobile')
-            try:
-                page = await context.new_page()
-                page.set_default_timeout(10000)
-                page.set_default_navigation_timeout(30000)
-                await execute_attempt(page, factory, config, attempt_id, adapter, axe_path=axe_path, evidence_sink=evidence_sink)
-            finally:
-                await context.close()
+        slots, one_by_one = asyncio.Semaphore(MAX_PARALLEL), asyncio.Lock()
+        rate_limited = False
+
+        async def attempt_once(index):
+            nonlocal rate_limited
+            async with slots:
+                # 계획서 4.6: 호출 한도에 걸린 뒤로 시작하는 attempt는 하나씩
+                async with one_by_one if rate_limited else contextlib.nullcontext():
+                    with factory.begin() as session:
+                        running(session, run_id)
+                        attempt = Attempt(run_id=run_id, index=index, kind='agent')
+                        session.add(attempt)
+                        session.flush()
+                        attempt_id = attempt.id
+                    adapter = adapter_factory(config['model'])
+                    context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
+                                                        device_scale_factor=3 if config['viewport']=='mobile' else 1,
+                                                        is_mobile=config['viewport']=='mobile',
+                                                        has_touch=config['viewport']=='mobile')
+                    try:
+                        page = await context.new_page()
+                        page.set_default_timeout(10000)
+                        page.set_default_navigation_timeout(30000)
+                        await execute_attempt(page, factory, config, attempt_id, adapter, axe_path=axe_path, evidence_sink=evidence_sink)
+                    finally:
+                        await context.close()
+                    with factory() as session:
+                        # 예외에 code가 있으면 loop.py가 'LLMRateLimitError:<code>'로 적는다
+                        if (session.get(Attempt, attempt_id).end_detail or '').startswith(RATE_LIMITED):
+                            rate_limited = True
+
+        # 계획서 4.6: attempt를 최대 MAX_PARALLEL개 동시에. 한 attempt의 예외(취소 포함)는
+        # 동시에 돌던 attempt가 모두 끝난 뒤에 올린다 (취소면 각 attempt가 다음 step에서 스스로 멈춘다)
+        results = await asyncio.gather(*(attempt_once(i) for i in range(1, config['repeat_n'] + 1)),
+                                       return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
         with factory.begin() as session:
             row = running(session, run_id)
             finalize_run_metrics(session, run_id)
