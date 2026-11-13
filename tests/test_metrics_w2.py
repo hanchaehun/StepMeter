@@ -33,7 +33,7 @@ class MetricsW2Tests(unittest.TestCase):
     def test_counts_stop_before_done(self):
         actions = ["click", "type", "type", "scroll", "wait", "back", "select", "done", "click"]
         self.assertEqual(count_interactions(actions), {
-            "click_count": 1, "type_count": 2, "step_count": 7, "back_count": 1,
+            "click_count": 2, "type_count": 2, "step_count": 7, "back_count": 1,
         })
         self.assertEqual(count_interactions([])["step_count"], 0)
         with self.assertRaises(ValueError):

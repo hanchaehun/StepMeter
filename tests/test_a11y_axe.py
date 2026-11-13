@@ -55,3 +55,9 @@ class AxeTests(unittest.IsolatedAsyncioTestCase):
             )
             with self.assertRaisesRegex(Error, "axe POC failure"):
                 await run_axe(self.page, script)
+
+    async def test_strict_csp_injection(self):
+        await self.page.set_content('''<meta http-equiv="Content-Security-Policy"
+            content="script-src 'none'"><button></button>''')
+        violations = await run_axe(self.page, AXE_SCRIPT)
+        self.assertIn('button-name', {v['id'] for v in violations})

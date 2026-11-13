@@ -21,7 +21,7 @@ Playwright와 axe-core 자체는 실행에 필요하며, 아래 설치는 최초
 
 ```text
 호출자가 로드한 Page
-  -> page.add_script_tag(path=로컬 axe.min.js)
+  -> page.evaluate(로컬 axe.min.js의 UTF-8 소스)
   -> page.evaluate("() => axe.run()") (Promise 완료 대기)
   -> results["violations"]: list[dict]
 ```
@@ -107,3 +107,11 @@ DB 저장과 severity는 `worker/rules/`가 맡고 axe 실행 계층에서는 �
 결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
 
 - axe를 `page.add_script_tag` 대신 `page.evaluate`로 주입한다. `script-src` CSP가 있는 페이지에서 `add_script_tag`가 거절돼 시도가 error로 끝난다. `page.evaluate`로 넣으면 같은 CSP에서 `axe.run`까지 된다(2026-11-10 확인) (ADR 0011 6번)
+
+## W3
+
+POC와 scan 모두 로컬 UTF-8 스크립트를 `page.evaluate`로 실행한다.
+script-src CSP로 script 태그 주입이 막힌 페이지도 검사하며 파일·주입·검사 오류는 전파한다.
+행동 대상의 `input.labels`(외부 for 및 감싸는 label, 복수 label)를 같은 경로로 묶는다.
+label 내부 텍스트의 color-contrast도 해당 경로다. 내부의 독립 링크/버튼 이름 문제는
+행동 대상과 동일한 요소가 아니면 참고로 남긴다. iframe 검사 범위는 기존과 같다.

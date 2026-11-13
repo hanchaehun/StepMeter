@@ -73,3 +73,25 @@ class ScanTests(unittest.IsolatedAsyncioTestCase):
     async def test_file_failure_is_not_clean_scan(self):
         with self.assertRaises(FileNotFoundError):
             await scan_page(self.page, AXE_SCRIPT.with_name("missing.js"), {})
+
+    async def test_associated_labels_are_on_path_but_independent_links_are_not(self):
+        await self.page.set_content('''<html lang="en"><title>Labels</title><main>
+            <label for="control" id="caption" style="color:#777;background:white;font:16px Arial">
+              Remember <span id="text">me</span><a id="other" href="#"></a>
+            </label><input type="checkbox" id="control">
+            <label for="unrelated" style="color:#777;background:white;font:16px Arial">Other</label>
+            <input id="unrelated"></main></html>''')
+        result = await scan_page(self.page, AXE_SCRIPT, {7: self.page.locator('#control')})
+        contrast = next(v for v in result['violations'] if v['id'] == 'color-contrast')
+        self.assertTrue(any(n['path_keys'] == [7] for n in contrast['nodes']))
+        self.assertTrue(any(n['is_reference'] for n in contrast['nodes']))
+        links = next(v for v in result['violations'] if v['id'] == 'link-name')
+        self.assertTrue(all(n['is_reference'] for n in links['nodes']))
+        issues = evaluate_axe(result, {7: 12})
+        self.assertTrue(any(c.rule_id == 'R02' and c.step_id == 12 and not c.is_reference for c in issues))
+
+    async def test_strict_csp_allows_evaluate_injection(self):
+        await self.page.set_content('''<meta http-equiv="Content-Security-Policy"
+            content="script-src 'none'"><button></button>''')
+        result = await scan_page(self.page, AXE_SCRIPT, {})
+        self.assertIn('button-name', {v['id'] for v in result['violations']})

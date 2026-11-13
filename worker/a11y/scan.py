@@ -34,10 +34,11 @@ async def scan_page(page: Page, axe_script_path: str | Path,
             handles.append(handle)
             if await handle.owner_frame() != page.main_frame:
                 raise ValueError("W2 axe scan supports main-frame targets only")
-        await page.add_script_tag(path=axe_script_path)
+        await page.evaluate(Path(axe_script_path).read_text(encoding="utf-8"))
         return await page.evaluate(
             """async ({ids, elements}) => {
                 const connected = () => elements.every(el => el.isConnected);
+                const pathSurfaces = elements.map(el => [el, ...Array.from(el.labels || [])]);
                 if (!connected()) throw new Error('Detached path target');
                 const result = await axe.run(document, {
                     elementRef: true, iframes: false,
@@ -54,8 +55,8 @@ async def scan_page(page: Page, axe_script_path: str | Path,
                     for (const rule of result[group]) {
                         for (const node of rule.nodes) {
                             node.path_keys = ids.filter((id, i) => node.element && (
-                                node.element === elements[i] ||
-                                rule.id === 'color-contrast' && within(node.element, elements[i])
+                                pathSurfaces[i].some(surface => node.element === surface ||
+                                    rule.id === 'color-contrast' && within(node.element, surface))
                             ));
                             node.is_reference = node.path_keys.length === 0;
                             const box = node.element?.getBoundingClientRect();

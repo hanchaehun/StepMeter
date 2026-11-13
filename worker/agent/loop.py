@@ -5,6 +5,9 @@ import uuid
 from pathlib import Path
 
 from playwright.async_api import Error as PlaywrightError
+from sqlalchemy import select
+
+from apps.api.db.models import Attempt, Step
 
 from worker.a11y.scan import scan_page
 from worker.agent.action_feedback import failure_code, missing_fields, retry_message
@@ -24,6 +27,7 @@ from worker.metrics.persistence import save_attempt_metrics
 from worker.rules.engine import evaluate_step, evaluate_axe, axe_target_size_result
 from worker.rules.persistence import save_candidates
 from worker.rules.r05 import evaluate as loop_candidate
+from worker.rules.r08 import evaluate as backtracking_candidate
 from worker.rules.r06 import FirstTargetTracker, screen_key
 from worker.schemas import ActionInputError, parse_action_json
 
@@ -122,7 +126,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         stale_retries += 1
                         continue
                 effect = result.effect.as_step_effect()['effect_type']
-                metric_targets = targets + ([result.element] if result.element and action.action in ('click','type') else [])
+                metric_targets = targets + ([result.element] if result.element and action.action in ('click','type','select') else [])
                 fid = calculate_fitts_ids(metric_targets)[-1] if len(metric_targets) > len(targets) else None
                 with factory.begin() as session:
                     step_id, active = save_step(session, config['id'], attempt_id, idx, action,
@@ -201,8 +205,21 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
     if all(v is not None for v in fitts_values):
         values['fitts_id_sum'] = sum(fitts_values)
     with factory.begin() as session:
-        running(session, config['id'])
+        run_row = running(session, config['id'])
         save_attempt_metrics(session, attempt_id, values)
         candidate = loop_candidate(reason)
         if candidate:
             save_candidates(session, config['id'], [candidate], confidence=1.0)
+
+        # Evaluate once all agent attempts have ended; run lock above serializes writers.
+        attempts = list(session.scalars(select(Attempt).where(
+            Attempt.run_id == config['id'], Attempt.kind == 'agent')))
+        if len(attempts) == run_row.repeat_n and all(a.end_reason is not None for a in attempts):
+            back_counts = []
+            for attempt in attempts:
+                recorded = session.scalars(select(Step).where(
+                    Step.attempt_id == attempt.id).order_by(Step.idx))
+                back_counts.append(sum(step.action['action'] == 'back' for step in recorded))
+            candidate = backtracking_candidate(back_counts)
+            if candidate:
+                save_candidates(session, config['id'], [candidate], confidence=1.0)

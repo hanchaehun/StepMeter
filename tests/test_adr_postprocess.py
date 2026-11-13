@@ -1,6 +1,8 @@
 """ADR 0010 contracts with hand-counted paths and explicit live-handle ownership."""
 
 import unittest
+import tempfile
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 from playwright.async_api import ElementHandle, Locator
@@ -85,6 +87,12 @@ class OcclusionTests(unittest.TestCase):
 
 
 class HandleOwnershipTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.script = Path(directory.name) / "axe.js"
+        self.script.write_text("window.axe = {}", encoding="utf-8")
+
     def page(self):
         return Mock(main_frame=object(), add_script_tag=AsyncMock(), evaluate=AsyncMock(return_value={}))
 
@@ -96,7 +104,7 @@ class HandleOwnershipTests(unittest.IsolatedAsyncioTestCase):
         borrowed, owned = self.handle(page.main_frame), self.handle(page.main_frame)
         locator = Mock(spec=Locator, count=AsyncMock(return_value=1),
                        element_handle=AsyncMock(return_value=owned))
-        await scan_page(page, "local-axe.js", {0: borrowed, 1: locator})
+        await scan_page(page, self.script, {0: borrowed, 1: locator})
         self.assertEqual(page.evaluate.call_args.args[1], {"ids": [0, 1], "elements": [borrowed, owned]})
         borrowed.dispose.assert_not_awaited()
         owned.dispose.assert_awaited_once()
@@ -105,7 +113,7 @@ class HandleOwnershipTests(unittest.IsolatedAsyncioTestCase):
         page = self.page()
         borrowed = self.handle(object())
         with self.assertRaisesRegex(ValueError, "main-frame"):
-            await scan_page(page, "local-axe.js", {0: borrowed})
+            await scan_page(page, self.script, {0: borrowed})
         borrowed.dispose.assert_not_awaited()
         page.evaluate.assert_not_awaited()
 
@@ -116,7 +124,7 @@ class HandleOwnershipTests(unittest.IsolatedAsyncioTestCase):
         locator = Mock(spec=Locator, count=AsyncMock(return_value=1),
                        element_handle=AsyncMock(return_value=owned))
         with self.assertRaisesRegex(RuntimeError, "Detached"):
-            await scan_page(page, "local-axe.js", {0: borrowed, 1: locator})
+            await scan_page(page, self.script, {0: borrowed, 1: locator})
         borrowed.dispose.assert_not_awaited()
         owned.dispose.assert_awaited_once()
 
