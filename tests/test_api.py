@@ -529,5 +529,39 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(r.json()["status"], "queued")  # 다른 코드의 run은 그대로
 
 
+    def test_compare_contract_cache_and_measurement_medians(self):
+        from apps.api.db.models import Comparison, Metric
+        from sqlalchemy import select, func
+        task = self.make_task()
+        base, target = self.insert_run(task), self.insert_run(task)
+        for run_id, values in ((base, (90, 100, 110)), (target, (141, 141, 141))):
+            for index, value in enumerate(values, 1):
+                aid = self.add_attempt(run_id, index, success=True, end_reason="success")
+                with self.main.SessionLocal.begin() as db:
+                    db.add(Metric(run_id=run_id, attempt_id=aid, key="travel_distance", value=value, unit="px"))
+        for _ in range(2):
+            response = self.call("GET", f"/compare?base={base}&target={target}")
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertEqual(schema_errors(body, "/compare", "get", "200"), [])
+            self.assertEqual(body["agent"]["metric_changes"][0]["delta"], 41)
+            self.assertEqual(body["agent"]["metric_changes"][0]["verdict"], "worse")
+        with self.main.SessionLocal() as db:
+            self.assertEqual(db.scalar(select(func.count()).select_from(Comparison)), 1)
+
+    def test_compare_authorization_and_incompatible_runs(self):
+        task = self.make_task()
+        base = self.insert_run(task)
+        other_owner = self.insert_run(self.make_task("code-b"))
+        for rid in (other_owner, 999999):
+            self.assertEqual(self.call("GET", f"/compare?base={base}&target={rid}").status_code, 404)
+        for rid in (self.insert_run(self.make_task()), self.insert_run(task, viewport="mobile"),
+                    self.insert_run(task, status="running")):
+            response = self.call("GET", f"/compare?base={base}&target={rid}")
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(schema_errors(response.json(), "/compare", "get", "409"), [])
+        self.assertEqual(self.call("GET", f"/compare?base={base}&target={base}", None).status_code, 401)
+
+
 if __name__ == "__main__":
     unittest.main()

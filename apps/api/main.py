@@ -443,3 +443,16 @@ def cancel(id: int, db: DB, code: Code) -> dict[str, Any]:
     db.commit()
     db.refresh(r)
     return run_out(db, r)
+
+
+@app.get('/compare')
+def compare(base: int, target: int, db: DB, code: Code) -> dict[str, Any]:
+    from worker.compare.service import compare_runs
+
+    previous, current = own_run(db, code, base), own_run(db, code, target)
+    try:
+        result = compare_runs(db, previous, current)
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from None
+    db.commit()
+    return result
