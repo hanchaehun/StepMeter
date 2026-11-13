@@ -1,6 +1,6 @@
 """LLM 스크린샷 베이스라인 (개발계획서 8.3, 담당: LLM·프롬프트).
 
-axe 베이스라인(baseline_axe.py)과 같은 과업 경로를 따라가며 화면 세 장을 찍고, 상용 LLM에
+axe 베이스라인(baseline_axe.py)과 같은 과업 경로를 따라가며 화면 세 장(below-fold는 두 장)을 찍고, 상용 LLM에
 "이 화면들에서 UX 문제를 찾아라"라고만 요청한다. 답을 benchmark/eval.py 예측 형식으로 저장한다.
 
     python -m benchmark.baseline_llm              # .env의 ANTHROPIC_API_KEY 사용, Haiku 5.5
@@ -9,6 +9,9 @@ axe 베이스라인(baseline_axe.py)과 같은 과업 경로를 따라가며 화
 정한 것
 - 화면: 가입 화면, 가입 누른 뒤, 구독 확인 뒤 (axe 베이스라인과 같은 세 화면). 한 케이스의 세 장을 한 번에 보낸다.
   R03(반응 없음)은 앞뒤 화면을 비교해야 알 수 있어서다.
+- below-fold만 가입 시작 화면(entry.html)에서 시작한다(ADR 0009, ADR 0010 7번). 과업은 "가입 시작 링크를 찾아
+  가입 폼을 연다"이고 화면은 두 장이다: 처음 연 모습, 아래로 스크롤해 링크가 보이는 모습.
+  번호표는 뷰포트 안에만 붙으므로 스크롤한 화면이 없으면 링크를 번호로 답할 수 없다(verify_conversion.py도 같은 두 화면을 찍는다).
 - 채점은 정답과 같은 이름표(CSS 선택자)로 해야 하므로, 뷰포트 안 상호작용 요소에 번호표를 그려 보여 주고
   LLM은 번호로 답한다(에이전트 관찰 4.2와 같은 방식). 번호 → 선택자는 axe.utils.getSelector로 만든다.
   번호표가 없는 요소(뷰포트 밖, iframe·shadow DOM 안)는 답할 수 없다.
@@ -38,7 +41,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'conversion'
 OUTPUT = ROOT / 'benchmark/evidence/baseline-llm'
 AXE = ROOT / 'node_modules/axe-core/axe.min.js'
-PROMPT_VERSION = 'baseline_v1'
+PROMPT_VERSION = 'baseline_v2'
 MODEL = 'claude-haiku-5-5'
 MAX_TOKENS = 4096
 RULES = frozenset({'R01', 'R02', 'R03', 'R04', 'R06', 'R10'})
@@ -46,6 +49,11 @@ TASK = '이메일과 비밀번호로 무료 가입한 뒤 Pro 요금제를 골�
 SCREENS = ('가입 화면 (쿠키 안내를 닫은 직후)',
            "이메일·비밀번호를 입력하고 '무료로 가입하기'를 누른 뒤",
            'Pro 요금제를 고르고 구독을 확인한 뒤')
+# 가입 시작 화면(entry.html)에서 시작하는 케이스. verify_conversion.ENTRY_PAGES와 같아야 한다(capture에서 확인).
+ENTRY_CASES = frozenset({'below-fold'})
+ENTRY_TASK = "가입 시작 화면에서 '가입 시작하기' 링크를 찾아 눌러 가입 폼을 연다."
+ENTRY_SCREENS = ('가입 시작 화면을 처음 연 모습 (스크롤 전)',
+                 "아래로 스크롤해 '가입 시작하기' 링크가 보이는 모습")
 
 # 뷰포트 안 상호작용 요소에 번호표를 그리고 번호 → 선택자 표를 돌려준다 (개발계획서 4.2 대상과 같은 요소).
 MARK_JS = """() => {
@@ -129,6 +137,10 @@ async def capture(origin: str) -> dict[str, dict]:
     from playwright.async_api import async_playwright
 
     from benchmark.mutate import apply, load_config
+    from benchmark.verify_conversion import ENTRY_PAGES
+
+    if set(ENTRY_PAGES) != ENTRY_CASES:
+        raise RuntimeError(f'ENTRY_CASES {sorted(ENTRY_CASES)}가 verify_conversion.ENTRY_PAGES와 다르다')
 
     async def shoot(page):
         await page.add_script_tag(path=str(AXE))
@@ -146,6 +158,15 @@ async def capture(origin: str) -> dict[str, dict]:
                 config = load_config(path) if path else None
                 case = config['id'] if config else 'baseline'
                 page = await browser.new_page(viewport={'width': 1280, 'height': 800})
+                if case in ENTRY_CASES:  # 가입 시작 화면에서 시작 (ADR 0009)
+                    await page.goto(f'{origin}/{ENTRY_PAGES[case]}')
+                    await apply(page, config)
+                    shots = [await shoot(page)]  # 1. 처음 연 모습
+                    await page.locator('#signup').scroll_into_view_if_needed()
+                    shots.append(await shoot(page))  # 2. 스크롤해 링크가 보이는 모습
+                    cases[case] = {'images': [s[0] for s in shots], 'marks': [s[1] for s in shots]}
+                    await page.close()
+                    continue
                 await page.goto(origin + '/index.html')
                 await page.frame_locator('iframe').locator('#confirm').wait_for()
                 await page.get_by_role('button', name='필수만 사용').click()
@@ -169,9 +190,10 @@ async def capture(origin: str) -> dict[str, dict]:
     return cases
 
 
-def user_text() -> str:
-    lines = [f'과업: {TASK}', '', '화면 설명:']
-    lines += [f'{i}. {desc}' for i, desc in enumerate(SCREENS, start=1)]
+def user_text(case: str) -> str:
+    task, screens = (ENTRY_TASK, ENTRY_SCREENS) if case in ENTRY_CASES else (TASK, SCREENS)
+    lines = [f'과업: {task}', '', '화면 설명:']
+    lines += [f'{i}. {desc}' for i, desc in enumerate(screens, start=1)]
     return '\n'.join(lines)
 
 
@@ -184,7 +206,7 @@ async def ask_all(cases: dict[str, dict], repeat: int) -> tuple[dict, dict]:
     predictions, raw = {}, {}
     for case, shot in cases.items():
         request = LLMRequest(purpose='baseline', prompt_version=PROMPT_VERSION, system=system,
-                             user_text=user_text(), image_jpeg=shot['images'][0],
+                             user_text=user_text(case), image_jpeg=shot['images'][0],
                              extra_images_jpeg=tuple(shot['images'][1:]))
         runs, answers = [], []
         for _ in range(repeat):
