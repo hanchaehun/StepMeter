@@ -22,6 +22,8 @@ COPY tests tests
 COPY benchmark/baseline_axe.py benchmark/baseline_llm.py benchmark/
 # Evaluation tests import this module; do not copy private holdouts or evidence.
 COPY benchmark/eval.py benchmark/mutate.py benchmark/build_variant.py benchmark/
+COPY benchmark/serve.py benchmark/run_development.py benchmark/score_development.py benchmark/evidence_capture.py benchmark/
+COPY benchmark/regression_versions.py benchmark/verify_versions.py benchmark/tasks.json benchmark/regression_cases.json benchmark/
 # SPA tests use the evaluator and public synthetic labels; never copy holdouts/evidence.
 COPY benchmark/spa_eval.py benchmark/verify_spa.py benchmark/
 COPY benchmark/spa/synthetic.json benchmark/spa/synthetic.json
@@ -36,6 +38,7 @@ COPY human-study human-study
 COPY infra/scripts infra/scripts
 COPY prompts prompts
 COPY apps/api apps/api
+COPY vercel.json ./
 COPY --from=collect /build/worker/collect/dist worker/collect/dist
 COPY --from=collect /build/node_modules/axe-core/axe.min.js node_modules/axe-core/axe.min.js
 RUN mkdir -p /app/data/screenshots && chown -R stepmeter:stepmeter /app/data

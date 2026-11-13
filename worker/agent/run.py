@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 VIEWPORTS = {'desktop': {'width': 1280, 'height': 800}, 'mobile': {'width': 390, 'height': 844}}
 
 
-async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=None, axe_path=None):
+async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=None, axe_path=None, evidence_sink=None):
     """Inject a browser/adapter for synthetic tests; default performs normal agent work."""
     with factory.begin() as session:
         if not start(session, run_id):
@@ -60,7 +60,7 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 page = await context.new_page()
                 page.set_default_timeout(10000)
                 page.set_default_navigation_timeout(30000)
-                await execute_attempt(page, factory, config, attempt_id, adapter, axe_path=axe_path)
+                await execute_attempt(page, factory, config, attempt_id, adapter, axe_path=axe_path, evidence_sink=evidence_sink)
             finally:
                 await context.close()
         with factory.begin() as session:
