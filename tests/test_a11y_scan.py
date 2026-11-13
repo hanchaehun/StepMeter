@@ -10,6 +10,16 @@ from worker.rules.engine import evaluate_axe
 
 
 class ScanTests(unittest.IsolatedAsyncioTestCase):
+    async def test_target_size_is_enabled_without_disabling_other_rules(self):
+        await self.page.set_content('''<button id="tiny" style="position:absolute;
+            left:100px;top:100px;width:16px;height:20px;padding:0;border:0"></button>
+            <a href="#" style="position:absolute;left:100px;top:121px;
+            width:345px;height:30px">Forgot Password</a>''')
+        result = await scan_page(self.page, AXE_SCRIPT, {0: self.page.locator("#tiny")})
+        ids = {rule["id"] for rule in result["violations"]}
+        self.assertIn("target-size", ids)
+        self.assertIn("button-name", ids)
+
     async def asyncSetUp(self):
         pw = await async_playwright().start()
         self.addAsyncCleanup(pw.stop)

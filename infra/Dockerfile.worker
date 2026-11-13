@@ -25,6 +25,8 @@ COPY benchmark/eval.py benchmark/mutate.py benchmark/build_variant.py benchmark/
 # SPA tests use the evaluator and public synthetic labels; never copy holdouts/evidence.
 COPY benchmark/spa_eval.py benchmark/verify_spa.py benchmark/
 COPY benchmark/spa/synthetic.json benchmark/spa/synthetic.json
+# R01 regression tests compare against the public sb-admin-2 labels.
+COPY benchmark/labels/sb-admin-2.json benchmark/labels/sb-admin-2.json
 # Variant build tool tests read the build table, public app pins/patches and verify port defaults.
 COPY benchmark/serve_variants.py benchmark/variants.json benchmark/apps.json benchmark/
 COPY benchmark/verify_sb_admin_2.py benchmark/verify_shadcn_admin.py benchmark/

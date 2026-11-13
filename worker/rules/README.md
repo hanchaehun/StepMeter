@@ -11,7 +11,7 @@ Step/ElementSnapshot/API 스키마를 추가하거나 변경하지 않는다.
 
 | 규칙 | 판정 |
 |---|---|
-| R01 | axe target-size 확정 결과 우선. 미판정이면 24px·중심 간 24px 간격 예외 적용. 인라인 링크 제외, 24~44px 권장 안내 |
+| R01 | axe target-size 확정 결과 우선. 미판정이면 작은 타겟 중심의 반지름 12px 원과 모든 이웃 bbox의 겹침, 작은 이웃의 반지름 12px 원과의 겹침을 함께 검사. 인라인 링크 제외, 24~44px 권장 안내 |
 | R02 | axe `color-contrast` violations. 직접 대비비 추정 없음 |
 | R03 | click + 코어가 노이즈 제외 후 기록한 `no_change` |
 | R04 | snapshot.occluded |
@@ -65,3 +65,9 @@ R08/R09/R11, 휴리스틱 가중치 학습, LLM 설명, KLM은 이번 변경 범
 - 벤치마크 채점은 R01·R02·R03·R04·R06·R10만 한다. 다른 규칙이 기본 목록에 낸 이슈는 건수만 따로 보고한다 (ADR 0011 2번)
 - R08은 구현하는 PR에 `worker/agent/loop.py` 호출까지 넣는다(R07처럼 구현만 되고 호출이 빠지지 않게). R09도 같다(LLM·프롬프트 담당). 에이전트 코어가 리뷰한다 (ADR 0011 6번)
 - axe 규칙(R02·R10) 이슈에서 axe가 짚은 요소의 selector는 지금 `explanation` 끝("대상: …")에만 남고, `element_key`는 행동 대상의 지문이다. 채점 도구가 이 selector를 읽는 방법을 회귀 비교·인프라, LLM·프롬프트 담당과 정한다. 설명 생성이 `explanation`을 바꾼 뒤 같은 후보를 다시 저장하면 `save_candidates`가 새 행을 만든다는 점도 같이 본다 (ADR 0011 6번)
+
+R01 간격 예외는 [WCAG 2.5.8](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)을 따른다.
+중심→이웃 bbox 최단거리 <12px 또는 작은 이웃과 중심거리 <24px이면 실패한다.
+접하기만 하는 12/24px 경계는 통과한다. bbox는 실제 클릭 영역의 직사각형 근사다.
+기존 계획서의 중심 원끼리만 비교하는 설명을 보완한다. scan은 axe 4.10.3에서
+기본 비활성인 target-size를 명시적으로 활성화하며 다른 기본 규칙도 유지한다.

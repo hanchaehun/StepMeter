@@ -1,4 +1,4 @@
-"""Target size: plan 5.4, including the frozen snapshot spacing convention."""
+"""Target size and spacing exception (WCAG 2.5.8)."""
 
 from math import hypot
 
@@ -13,7 +13,11 @@ def evaluate(snapshot: ElementSnapshot, *, mobile: bool = False,
     size = min(snapshot.bbox.width, snapshot.bbox.height)
     x, y = snapshot.bbox.center
     overlapping = any(
-        hypot(x - target.bbox.center[0], y - target.bbox.center[1]) < 24
+        # Every neighboring target contributes its actual rectangular area.
+        hypot(max(target.bbox.x - x, 0, x - target.bbox.x - target.bbox.width),
+              max(target.bbox.y - y, 0, y - target.bbox.y - target.bbox.height)) < 12
+        or (min(target.bbox.width, target.bbox.height) < 24
+            and hypot(x - target.bbox.center[0], y - target.bbox.center[1]) < 24)
         for target in snapshot.nearby_targets
     )
     # None = axe did not decide; use the documented fallback.
