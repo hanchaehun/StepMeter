@@ -3,7 +3,7 @@
 - **담당 역할:** 리포트 UI(수집 스크립트) · 대시보드 UI(동의서·세션 운영)
 - **하는 일:** 사람 데이터 수집 스크립트, 동의서, 과업 목록. 외부 참가자 실험은 IRB 심의 없이 `consent-form.md`의 동의서를 받아 진행한다 (참가자 12~15명, 벤치마크 페이지 6개, [ADR 0001](../docs/adr/0001-no-irb.md)).
 - **참고:** 개발계획서 9.1
-- **문서:** [동의서](consent-form.md) · [6페이지와 과업 문장](pages.md) · [세션 진행 절차](session-procedure.md)
+- **문서:** [동의서](consent-form.md) · [모집 공고](recruitment.md) · [6페이지와 과업 문장](pages.md) · [세션 진행 절차](session-procedure.md) · 세션 직후 검사 `check_sessions.py`
 
 ## 수집 스크립트 (리포트 UI)
 
@@ -46,7 +46,7 @@
    python human-study/session.py --participant P01 --page-id sb-admin-2/login/small \
        --url http://127.0.0.1:8791/login.html --device mouse --hours 6
    ```
-   Chromium 창이 뜨면 참가자에게 과업 문장(`pages.md`)을 읽어 준다.
+   과업 문장(`pages.md`)은 명령을 실행하기 **전에** 참가자에게 읽어 준다. 창이 뜬 뒤에 읽으면 읽어 주는 시간이 과업 시간에 섞인다(`session-procedure.md` C-4).
 4. 참가자가 끝내면 터미널에서 **Enter**, "과업을 끝냈나요? [y/N]"에 답한다. 참가자가 창을 닫으면 그 즉시 `completed=false`로 저장된다.
 5. 파일은 `data/human/human-session-{참가자}-{page_id}-{시각}.json`에 생긴다. 스키마 검증에 실패하면 버리지 않고 `*.invalid.json`으로 남기고 오류를 보여준다. `data/`는 git 제외다. **커밋하지 않는다.**
 6. 파일은 서버에 올리지 않는다(ADR 0011 4번). 진행자가 팀 Notion에서 팀원만 볼 수 있는 페이지에 올려 측정 지표 담당에게 넘긴다. 저장소·이슈·채팅방에는 올리지 않는다.
