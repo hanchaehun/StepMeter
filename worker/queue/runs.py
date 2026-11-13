@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import os
 import uuid
+from functools import cache
 from pathlib import Path
+from typing import Any
 
 from redis import Redis
 from rq import Callback, Queue
@@ -21,6 +23,7 @@ STEPS_PER_ATTEMPT = 30  # 실행 1회 step 상한 (4.5)
 # 큐가 부를 워커 함수. 이름은 에이전트 코어와 맞춘다 (가칭)
 JOB_FUNC = "worker.agent.run.run"
 SCREENSHOT_DIR = Path("data/screenshots")
+SIGNED_URL_SECONDS = 900  # R2 서명 URL 유효 시간 (이슈 #51, PM)
 
 
 def _redis() -> Redis:
@@ -113,19 +116,56 @@ def update_progress(session: Session, run_id: int, finished: bool = False) -> bo
     return row is not None
 
 
+@cache
+def _r2_client(endpoint: str, key_id: str, secret: str) -> Any:
+    import boto3  # R2를 쓸 때만 불러온다
+    from botocore.config import Config
+
+    return boto3.client(
+        "s3", endpoint_url=endpoint, aws_access_key_id=key_id, aws_secret_access_key=secret,
+        region_name="auto", config=Config(signature_version="s3v4"),
+    )
+
+
+def _r2() -> tuple[Any, str] | None:
+    """STEPMETER_R2_ENDPOINT와 STEPMETER_R2_BUCKET이 둘 다 있으면 (R2 client, 버킷), 아니면 None(디스크) (이슈 #51).
+
+    둘이 있는데 키가 없으면 KeyError로 바로 알린다 (설정 실수를 디스크로 조용히 넘기지 않게).
+    """
+    endpoint, bucket = os.environ.get("STEPMETER_R2_ENDPOINT"), os.environ.get("STEPMETER_R2_BUCKET")
+    if not (endpoint and bucket):
+        return None
+    client = _r2_client(endpoint, os.environ["STEPMETER_R2_ACCESS_KEY_ID"], os.environ["STEPMETER_R2_SECRET_ACCESS_KEY"])
+    return client, bucket
+
+
 def save_screenshot(data: bytes) -> str:
     """스크린샷을 저장하고 key를 돌려준다. 워커는 key를 step.screenshot_key에 적는다.
 
     확장자는 파일 앞부분으로 정한다: JPEG(개발계획서 4.2, 품질 70) → .jpg, PNG → .png. 그 밖은 ValueError.
-    ponytail: 로컬 디스크만 (개발계획서 3장 "로컬 개발은 디스크"). R2·서명 URL은 Railway 스테이징을 만들 때
+    R2 설정이 있으면 R2, 없으면 로컬 디스크 (개발계획서 3장 "로컬 개발은 디스크", 이슈 #51).
     """
     if data.startswith(b"\xff\xd8\xff"):
-        ext = "jpg"
+        ext, mime = "jpg", "image/jpeg"
     elif data.startswith(b"\x89PNG\r\n\x1a\n"):
-        ext = "png"
+        ext, mime = "png", "image/png"
     else:
         raise ValueError("스크린샷은 JPEG 또는 PNG여야 합니다")
     key = f"{uuid.uuid4().hex}.{ext}"
+    if r2 := _r2():
+        client, bucket = r2
+        client.put_object(Bucket=bucket, Key=key, Body=data, ContentType=mime)
+        return key
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
     (SCREENSHOT_DIR / key).write_bytes(data)
     return key
+
+
+def screenshot_signed_url(key: str) -> str | None:
+    """R2면 900초짜리 서명 URL (이슈 #51), 디스크면 None (API가 /screenshots/{key}로 내준다)."""
+    if r2 := _r2():
+        client, bucket = r2
+        return client.generate_presigned_url(
+            "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=SIGNED_URL_SECONDS
+        )
+    return None

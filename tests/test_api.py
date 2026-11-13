@@ -454,6 +454,19 @@ class ApiTests(unittest.TestCase):
         self.assertEqual((body[0]["fitts_id"], body[2]["fitts_id"]), (1.5, None))
         self.assertIsNone(body[2]["element_snapshot"])  # done 행동은 스냅샷 없음
 
+    def test_steps_r2_signed_url(self):
+        # 이슈 #51: R2 설정이 있으면 /screenshots 대신 900초 서명 URL
+        from tests.test_queue import R2_ENV
+
+        run = self.make_steps_run()
+        with mock.patch.dict("os.environ", R2_ENV):
+            body = self.call("GET", f"/runs/{run}/attempts/1/steps").json()
+        self.assertEqual(schema_errors(body, "/runs/{id}/attempts/{n}/steps", "get", "200"), [])
+        self.assertTrue(body[0]["screenshot_url"].startswith(R2_ENV["STEPMETER_R2_ENDPOINT"]), body[0]["screenshot_url"])
+        self.assertIn("s0.png", body[0]["screenshot_url"])
+        self.assertIn("X-Amz-Expires=900", body[0]["screenshot_url"])
+        self.assertIsNone(body[1]["screenshot_url"])  # 스크린샷 없는 step은 그대로 null
+
     def test_get_one_step(self):
         run = self.make_steps_run()
         r = self.call("GET", f"/runs/{run}/attempts/1/steps/1")

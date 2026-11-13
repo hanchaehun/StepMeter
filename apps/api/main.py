@@ -21,7 +21,7 @@ from sqlalchemy import case, create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from apps.api.db.models import AccessCode, Attempt, ElementSnapshot, Issue, Metric, Project, Run, Step, Task
-from worker.queue.runs import SCREENSHOT_DIR, cancel_run, enqueue_run
+from worker.queue.runs import SCREENSHOT_DIR, cancel_run, enqueue_run, screenshot_signed_url
 
 SPEC = yaml.safe_load(Path(__file__).with_name("openapi.yaml").read_text(encoding="utf-8"))
 
@@ -30,8 +30,8 @@ SessionLocal = sessionmaker(engine)
 
 app = FastAPI(title=SPEC["info"]["title"], version=SPEC["info"]["version"])
 app.openapi = lambda: SPEC  # type: ignore[method-assign]  # /docs에 합의본을 그대로 보여준다
-# 로컬 스크린샷. 워커가 save_screenshot으로 저장한 파일을 그대로 내준다
-# ponytail: 초대 코드 확인 없이 무작위 key(uuid4)로만 보호. 스테이징은 R2 서명 URL로 바꾼다 (W2 스크린샷 저장)
+# 로컬 스크린샷(R2 설정이 없을 때). 워커가 save_screenshot으로 저장한 파일을 그대로 내준다
+# ponytail: 초대 코드 확인 없이 무작위 key(uuid4)로만 보호. 스테이징·운영은 R2 서명 URL (screenshot_url)
 app.mount("/screenshots", StaticFiles(directory=SCREENSHOT_DIR, check_dir=False), name="screenshots")
 
 
@@ -265,7 +265,9 @@ def own_run(db: Session, code: int, run_id: int) -> Run:
 
 
 def screenshot_url(request: Request, key: str | None) -> str | None:
-    return str(request.url_for("screenshots", path=key)) if key else None
+    if not key:
+        return None
+    return screenshot_signed_url(key) or str(request.url_for("screenshots", path=key))
 
 
 @app.get("/runs/{id}")
