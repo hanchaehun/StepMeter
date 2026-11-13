@@ -46,7 +46,7 @@
    python human-study/session.py --participant P01 --page-id sb-admin-2/login/small \
        --url http://127.0.0.1:8791/login.html --device mouse --hours 6
    ```
-   Chromium 창이 뜨면 참가자에게 과업 문장(`pages.md`)을 읽어 준다.
+   과업 문장(`pages.md`)은 명령을 실행하기 **전에** 참가자에게 읽어 준다. 창이 뜬 뒤에 읽으면 읽어 주는 시간이 과업 시간에 섞인다(`session-procedure.md` C-4).
 4. 참가자가 끝내면 터미널에서 **Enter**, "과업을 끝냈나요? [y/N]"에 답한다. 참가자가 창을 닫으면 그 즉시 `completed=false`로 저장된다.
 5. 파일은 `data/human/human-session-{참가자}-{page_id}-{시각}.json`에 생긴다. 스키마 검증에 실패하면 버리지 않고 `*.invalid.json`으로 남기고 오류를 보여준다. `data/`는 git 제외다. **커밋하지 않는다.**
 6. 파일은 서버에 올리지 않는다(ADR 0011 4번). 진행자가 팀 Notion에서 팀원만 볼 수 있는 페이지에 올려 측정 지표 담당에게 넘긴다. 저장소·이슈·채팅방에는 올리지 않는다.
