@@ -78,3 +78,74 @@ GitHub 저장소 연결은 Vercel GitHub integration 권한 부족으로 거절�
 공식 설정 참고: [Vercel project configuration](https://vercel.com/docs/project-configuration),
 [Railway Dockerfiles](https://docs.railway.com/builds/dockerfiles),
 [Railway config as code](https://docs.railway.com/config-as-code/reference).
+
+## W3 전체 서비스 배포 준비 (2026-11-13 갱신)
+
+#51의 API·워커 실행 정보를 기준으로 다음 순서로 배포한다.
+PR #36 PM 리뷰에서 `/api` 리버스 프록시 사용은 승인됐다.
+아래 설정 파일 추가는 클라우드 배포 완료 기록이 아니다.
+
+1. Railway staging 프로젝트에 PostgreSQL·Redis와 API·worker 두 서비스를 만든다.
+   신규 서비스는 기존 Config as Code에 opt-in할 수 없어 `railway.toml` 경로를 지정하지 않는다.
+   대시보드에서 API·worker의 Builder=DOCKERFILE, Dockerfile path=`/infra/Dockerfile.worker`,
+   시작 명령을 각각 `python -m infra.scripts.start_api`, `python -m infra.scripts.start_worker`로 설정한다.
+   API pre-deploy는 아래 마이그레이션 명령, healthcheck는 `/openapi.json`·120초,
+   두 서비스의 재시도는 3회로 설정한다. worker replica는 1개이며 공개 도메인을 만들지 않는다.
+   기존 TOML 예시는 신규 서비스에서 사용할 수 없어 제거했다.
+   근거: [Railway Config as Code 안내](https://docs.railway.com/config-as-code/reference).
+2. API 변수: `DATABASE_URL`(postgresql+psycopg 형식), `REDIS_URL`, `PORT=8000`,
+   `STEPMETER_ENV=staging`,
+   `STEPMETER_API_COMMAND=uvicorn apps.api.main:app --host 0.0.0.0 --port 8000`.
+   API pre-deploy가 `upgrade head`를 실행한다. API 배포 성공 후 worker를 배포한다.
+3. worker 변수: 같은 DB·Redis 주소, `ANTHROPIC_API_KEY`, `STEPMETER_ENV=staging`.
+   `STEPMETER_LLM`, `STEPMETER_FAKE_REPLIES`는 설정하지 않는다.
+4. R2 저장 코드가 main에 들어온 후 API·worker 양쪽에 PM이 준비한
+   `STEPMETER_R2_ENDPOINT`, `STEPMETER_R2_BUCKET`, `STEPMETER_R2_ACCESS_KEY_ID`,
+   `STEPMETER_R2_SECRET_ACCESS_KEY`를 비공개 변수로 설정한다. 버킷은 비공개,
+   서명 URL 900초. PM은 11/13 추가 지시에서 버킷·토큰 준비 완료와 초대 후 변수 입력을 알렸다.
+   백엔드 R2 저장 코드 반영은 별도로 확인한다(#51).
+   Railway 서비스 간 로컬 디스크를 공유한다고 가정하지 않는다.
+5. 확정된 API HTTPS 주소로 다음 명령을 실행한다. 출력은 검토용이며 원본을 덮어쓰지 않는다.
+   `python -m infra.scripts.prepare_staging --api-url https://실제-API-주소 --output data/staging/vercel.json`
+   검토 후 생성한 내용을 루트 `vercel.json`에 적용하고 Vercel에서 `VITE_API_URL=/api`를 설정한다.
+   rewrite는 SPA fallback보다 앞에 온다. 프론트에는 비밀 변수를 넣지 않는다.
+6. API 셸에서 `python -m apps.api.issue_code "외부테스트-A팀"`으로 팀별 코드를 발급한다.
+   원문은 한 번만 보이며 로그·이슈에 붙이지 않는다.
+7. 실제 브라우저에서 코드 입력 → 운영자가 만든 run → 상태 → 리포트 → 스크린샷을 확인한다.
+   API/RQ/Postgres/실제 모델 연결의 성공·실패, 소스 커밋과 배포 URL을 기록한다.
+   `/openapi.json` 200만으로 전체 측정 성공으로 세지 않는다.
+
+11/17까지 연결되지 않으면 1차 테스트(11/18–11/21)는 운영자 PC Compose로 진행한다.
+1차는 운영자가 측정을 생성하고 팀은 리포트를 본다. 생성·진행 화면은 11/22 기한이다.
+
+
+## 11/13 Railway 실제 구성 기록
+
+- 프로젝트: `stepmeter-staging`, private, 개인 계정. 환경: `staging`.
+- 대시보드: https://railway.com/project/9ddda971-ee27-4ec1-925d-e5cea5040882
+- 현재 Trial: 30일 또는 $5 크레딧. Hobby 결제·카드 등록은 하지 않았다.
+  사용량 화면에 별도 Usage Limits 설정이 없어 $8 hard limit/알림은 아직 설정하지 못했다.
+  Trial 크레딧과 명시적인 $8 사용량 상한을 같은 완료 항목으로 표현하지 않는다.
+- PostgreSQL·Redis는 Online. 템플릿 DB 볼륨은 각각 500 MB다.
+  API/worker에는 볼륨을 만들지 않았다. Postgres 공개 접속은 추가하지 않고 내부 DNS를 확인했다.
+- Postgres 템플릿의 현재 기본 이미지는 `ghcr.io/railwayapp-templates/postgres-ssl:18`이다.
+  로컬 검증 기준 PostgreSQL 16과 다르므로 실배포 전 마이그레이션·API DB 검증이 필요하다.
+  새 DB에는 아직 테이블이 없고, 버전 교체나 볼륨 삭제는 하지 않았다.
+- API·worker를 만들고 위 Dockerfile·시작 명령·API 마이그레이션·healthcheck 설정을 적용했다.
+  worker는 1 replica, 두 서비스 모두 소스 미연결로 Offline이며 배포 성공이 아니다.
+- API 변수 5개: DATABASE_URL, REDIS_URL, STEPMETER_ENV, PORT, STEPMETER_API_COMMAND.
+  worker 변수 3개: DATABASE_URL, REDIS_URL, STEPMETER_ENV.
+  DB 암호를 읽거나 복사하지 않고 같은 프로젝트의 Postgres 변수 참조를 사용했다.
+  REDIS_URL도 같은 프로젝트의 Redis.REDIS_URL 참조로 연결했다.
+- GitHub 소스 연결 창에서 `hanchaehun/StepMeter`를 검색했으나 No repositories found였다.
+  계정의 Railway GitHub App 저장소 접근 설정을 연결해야 한다. 앱 권한은 임의로 확대하지 않았다.
+- 사용자 요청에 따라 PM에게 프로젝트 Can Edit 권한 초대를 발송했고, Invite pending 상태를 확인했다.
+  ANTHROPIC_API_KEY와 R2 변수 입력은 아직 확인되지 않았다.
+- API 공개 주소가 아직 없어 Vercel rewrite에 임의 주소를 넣거나 프론트를 배포하지 않았다.
+- 비용 계획: 12/4까지 약 1만원, 설정 가능해지면 Compute hard limit/알림 $8을 확인한다.
+  worker 1대, DB용 소형 볼륨만 사용한다. 결제 시 영수증 전달은 작성자가 진행하며 아직 영수증은 없다.
+  발표 후 올해 안에 서비스 삭제·Hobby 해지가 필요하다. 자동 삭제나 해지를 예약하지 않았다.
+- 확인 스크린샷: `screenshots/railway-staging/services-2026-11-13.jpg` (git 제외).
+
+완료한 것은 프로젝트·DB 생성과 API/worker 준비 설정이다. 소스 연결, 인증/R2 변수,
+Postgres 18 환경에서의 DB 검증, API/worker 실배포, Vercel 연결, 비용 상한 확인은 남아 있다.
