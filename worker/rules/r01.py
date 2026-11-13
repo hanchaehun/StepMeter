@@ -6,10 +6,22 @@ from worker.rules.candidate import Candidate
 from worker.schemas import ElementSnapshot
 
 
+def _label_operated(snapshot: ElementSnapshot) -> bool:
+    """Transparent native checkbox/radio operated through its label (ADR 0010 §9).
+
+    The snapshot keeps input semantics but the bbox of the surface actually
+    pressed, whereas axe target-size measures the invisible input itself.
+    """
+    return (snapshot.tag == "input" and snapshot.role in ("checkbox", "radio")
+            and snapshot.style.opacity == 0)
+
+
 def evaluate(snapshot: ElementSnapshot, *, mobile: bool = False,
              axe_violation: bool | None = None) -> Candidate | None:
     if snapshot.inline_in_text:
         return None
+    if _label_operated(snapshot):
+        axe_violation = None
     size = min(snapshot.bbox.width, snapshot.bbox.height)
     x, y = snapshot.bbox.center
     overlapping = any(

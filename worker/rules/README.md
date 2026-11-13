@@ -11,7 +11,7 @@ Step/ElementSnapshot/API 스키마를 추가하거나 변경하지 않는다.
 
 | 규칙 | 판정 |
 |---|---|
-| R01 | axe target-size 확정 결과 우선. 미판정이면 작은 타겟 중심의 반지름 12px 원과 모든 이웃 bbox의 겹침, 작은 이웃의 반지름 12px 원과의 겹침을 함께 검사. 인라인 링크 제외, 24~44px 권장 안내 |
+| R01 | axe target-size 확정 결과 우선. 미판정이면 작은 타겟 중심의 반지름 12px 원과 모든 이웃 bbox의 겹침, 작은 이웃의 반지름 12px 원과의 겹침을 함께 검사. 인라인 링크 제외, 24~44px 권장 안내. 투명한(opacity 0) input 체크박스·라디오는 axe가 실제로 누르는 면이 아닌 투명 input을 재므로 axe 결과를 쓰지 않고 간격 계산으로 판정([ADR 0010](../../docs/adr/0010-w3-integration-decisions.md) 9번) |
 | R02 | axe `color-contrast` violations. 직접 대비비 추정 없음 |
 | R03 | click + 코어가 노이즈 제외 후 기록한 `no_change` |
 | R04 | snapshot.occluded |

@@ -7,11 +7,14 @@ import unittest
 
 from playwright.async_api import async_playwright
 
-from worker.collect.collector import observe, record_first_view, resolve_element, snapshot
+from tests.test_a11y_axe import AXE_SCRIPT
+from worker.a11y.scan import scan_page
+from worker.collect.collector import (observe, record_first_view, resolve_element,
+                                      scroll_target_into_view, snapshot)
 from worker.driver.playwright_driver import PlaywrightDriver
 from worker.schemas import BBox, ClickAction
 from worker.agent.observation import describe
-from worker.rules.engine import evaluate_step
+from worker.rules.engine import axe_target_size_result, evaluate_step
 
 HTML = '''<style>
 body {margin:0} .custom {position:relative;margin:40px;padding-left:24px;height:24px}
@@ -19,6 +22,13 @@ input {position:absolute;left:0;top:4px;z-index:-1;width:16px;height:16px;margin
 label {position:relative;display:inline-block;line-height:24px}
 label::before {position:absolute;left:-24px;top:4px;content:"";width:16px;height:16px;background:blue}
 </style><div class="custom"><input type="checkbox" id="check"><label for="check">Remember Me</label></div>'''
+# WCAG 2.5.8 spacing: indicator center (48,52); this 300px-wide link starts at
+# y=61, 9px away (< 12px), like the SB Admin small variant's Forgot Password link.
+BELOW_LINK = ('<a href="#forgot" style="position:absolute;left:40px;top:61px;'
+              'width:300px;height:20px">Forgot Password?</a>')
+# A plain 16×16 button at the indicator's box, with the same link 9px below.
+SMALL_BUTTON = ('<button aria-label="Remember" style="position:absolute;left:40px;top:44px;'
+                'width:16px;height:16px;padding:0;border:0"></button>' + BELOW_LINK)
 
 
 class LabelTests(unittest.IsolatedAsyncioTestCase):
@@ -34,6 +44,49 @@ class LabelTests(unittest.IsolatedAsyncioTestCase):
     async def click(self, number):
         return await self.driver.perform(ClickAction(action='click', target=number,
             thought='Toggle the named checkbox', expectation='Checked state changes'))
+
+    async def agent_r01(self, role):
+        """worker/agent/loop.py order: observe, scroll, axe, click, evaluate_step."""
+        await record_first_view(self.page)
+        number = next(r['el_id'] for r in await observe(self.page) if r['role'] == role)
+        handle = await resolve_element(self.page, number)
+        try:
+            await scroll_target_into_view(self.page, number)
+            axe = await scan_page(self.page, AXE_SCRIPT, {0: handle})
+        finally:
+            await handle.dispose()
+        result = await self.click(number)
+        verdict = axe_target_size_result(axe, 0)
+        r01 = [c for c in evaluate_step(result.element, step_id=1, action='click',
+                                        effect_type=result.effect.effect_type,
+                                        is_first_target=True, axe_target_size=verdict)
+               if c.rule_id == 'R01']
+        return result.element, verdict, r01
+
+    async def test_label_checkbox_r01_uses_spacing_not_axe(self):
+        # axe measures the transparent input, not the surface pressed (ADR 0010 §9).
+        await self.page.set_content(HTML + BELOW_LINK)
+        element, verdict, r01 = await self.agent_r01('checkbox')
+        self.assertEqual((element.role, element.style.opacity), ('checkbox', 0))
+        self.assertFalse(verdict)  # the regression: axe passes the invisible input
+        self.assertEqual([(c.severity, c.measured, c.threshold) for c in r01], [('high', 16, 24)])
+
+    async def test_label_checkbox_without_neighbor_has_no_r01(self):
+        await self.page.set_content(HTML)
+        element, _, r01 = await self.agent_r01('checkbox')
+        self.assertEqual(element.nearby_targets, [])
+        self.assertEqual(r01, [])
+
+    async def test_plain_small_button_keeps_axe_precedence(self):
+        await self.page.set_content(SMALL_BUTTON)
+        element, verdict, r01 = await self.agent_r01('button')
+        self.assertEqual(element.bbox, BBox(x=40, y=44, width=16, height=16))
+        self.assertIsNotNone(verdict)
+        self.assertEqual(bool(r01), verdict)
+        # Same failing geometry, but a definitive axe pass still wins for a visible button.
+        self.assertEqual([c for c in evaluate_step(element, step_id=1, action='click',
+                          effect_type='dom_mutation', is_first_target=True, axe_target_size=False)
+                          if c.rule_id == 'R01'], [])
 
     async def test_bootstrap_native_semantics_geometry_and_effect(self):
         await self.page.set_content(HTML)
