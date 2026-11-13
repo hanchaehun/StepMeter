@@ -1,0 +1,437 @@
+{
+  "version": 1,
+  "split": "development",
+  "cases": [
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "baseline",
+      "variant": "baseline",
+      "label_case": "baseline",
+      "id": "register",
+      "path": "/register.html",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
+      "success_condition": {
+        "url_contains": "login.html"
+      },
+      "check": "location.pathname.endsWith('/login.html')",
+      "milestones": [
+        "document.querySelector('#exampleFirstName')?.value === 'Minsu' && document.querySelector('#exampleLastName')?.value === 'Kim' && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234' && document.querySelector('#exampleRepeatPassword')?.value === 'Study1234'"
+      ]
+    },
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "small",
+      "variant": "small",
+      "label_case": "small",
+      "id": "login",
+      "path": "/login.html",
+      "description": "이메일 study@example.com, 비밀번호 Study1234를 입력하고 Remember Me를 선택해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('#customCheck')?.checked === true && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234'"
+    },
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "contrast",
+      "variant": "contrast",
+      "label_case": "contrast",
+      "id": "register",
+      "path": "/register.html",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
+      "success_condition": {
+        "url_contains": "login.html"
+      },
+      "check": "location.pathname.endsWith('/login.html')",
+      "milestones": [
+        "document.querySelector('#exampleFirstName')?.value === 'Minsu' && document.querySelector('#exampleLastName')?.value === 'Kim' && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234' && document.querySelector('#exampleRepeatPassword')?.value === 'Study1234'"
+      ]
+    },
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "inert",
+      "variant": "inert",
+      "label_case": "inert",
+      "id": "register",
+      "path": "/register.html",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
+      "success_condition": {
+        "url_contains": "login.html"
+      },
+      "check": "location.pathname.endsWith('/login.html')",
+      "milestones": [
+        "document.querySelector('#exampleFirstName')?.value === 'Minsu' && document.querySelector('#exampleLastName')?.value === 'Kim' && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234' && document.querySelector('#exampleRepeatPassword')?.value === 'Study1234'"
+      ]
+    },
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "overlay",
+      "variant": "overlay",
+      "label_case": "overlay",
+      "id": "register",
+      "path": "/register.html",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
+      "success_condition": {
+        "url_contains": "login.html"
+      },
+      "check": "location.pathname.endsWith('/login.html')",
+      "milestones": [
+        "document.querySelector('#exampleFirstName')?.value === 'Minsu' && document.querySelector('#exampleLastName')?.value === 'Kim' && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234' && document.querySelector('#exampleRepeatPassword')?.value === 'Study1234'"
+      ]
+    },
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "below-fold",
+      "variant": "below-fold",
+      "label_case": "below-fold",
+      "id": "register",
+      "path": "/register.html",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
+      "success_condition": {
+        "url_contains": "login.html"
+      },
+      "check": "location.pathname.endsWith('/login.html')",
+      "milestones": [
+        "document.querySelector('#exampleFirstName')?.value === 'Minsu' && document.querySelector('#exampleLastName')?.value === 'Kim' && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234' && document.querySelector('#exampleRepeatPassword')?.value === 'Study1234'"
+      ]
+    },
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "unnamed",
+      "variant": "unnamed",
+      "label_case": "unnamed",
+      "id": "register",
+      "path": "/register.html",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
+      "success_condition": {
+        "url_contains": "login.html"
+      },
+      "check": "location.pathname.endsWith('/login.html')",
+      "milestones": [
+        "document.querySelector('#exampleFirstName')?.value === 'Minsu' && document.querySelector('#exampleLastName')?.value === 'Kim' && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234' && document.querySelector('#exampleRepeatPassword')?.value === 'Study1234'"
+      ]
+    },
+    {
+      "app_id": "sb-admin-2",
+      "case_id": "baseline-login",
+      "variant": "baseline",
+      "label_case": "baseline-login",
+      "id": "login",
+      "path": "/login.html",
+      "description": "이메일 study@example.com, 비밀번호 Study1234를 입력하고 Remember Me를 선택해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('#customCheck')?.checked === true && document.querySelector('#exampleInputEmail')?.value === 'study@example.com' && document.querySelector('#exampleInputPassword')?.value === 'Study1234'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "baseline",
+      "variant": "baseline",
+      "label_case": "baseline",
+      "id": "sign-in",
+      "path": "/sign-in",
+      "description": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('input[name=password]')?.type === 'text' && document.querySelector('input[name=password]')?.value === 'Study1234' && document.querySelector('input[name=email]')?.value === 'study@example.com'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "small",
+      "variant": "small",
+      "label_case": "small",
+      "id": "sign-in",
+      "path": "/sign-in",
+      "description": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('input[name=password]')?.type === 'text' && document.querySelector('input[name=password]')?.value === 'Study1234' && document.querySelector('input[name=email]')?.value === 'study@example.com'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "contrast",
+      "variant": "contrast",
+      "label_case": "contrast",
+      "id": "sign-in",
+      "path": "/sign-in",
+      "description": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('input[name=password]')?.type === 'text' && document.querySelector('input[name=password]')?.value === 'Study1234' && document.querySelector('input[name=email]')?.value === 'study@example.com'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "inert",
+      "variant": "inert",
+      "label_case": "inert",
+      "id": "sign-in",
+      "path": "/sign-in",
+      "description": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('input[name=password]')?.type === 'text' && document.querySelector('input[name=password]')?.value === 'Study1234' && document.querySelector('input[name=email]')?.value === 'study@example.com'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "overlay",
+      "variant": "overlay",
+      "label_case": "overlay",
+      "id": "sign-in",
+      "path": "/sign-in",
+      "description": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('input[name=password]')?.type === 'text' && document.querySelector('input[name=password]')?.value === 'Study1234' && document.querySelector('input[name=email]')?.value === 'study@example.com'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "below-fold",
+      "variant": "below-fold",
+      "label_case": "below-fold",
+      "id": "sign-in",
+      "path": "/sign-in",
+      "description": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('input[name=password]')?.type === 'text' && document.querySelector('input[name=password]')?.value === 'Study1234' && document.querySelector('input[name=email]')?.value === 'study@example.com'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "unnamed",
+      "variant": "unnamed",
+      "label_case": "unnamed",
+      "id": "sign-in",
+      "path": "/sign-in",
+      "description": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('input[name=password]')?.type === 'text' && document.querySelector('input[name=password]')?.value === 'Study1234' && document.querySelector('input[name=email]')?.value === 'study@example.com'"
+    },
+    {
+      "app_id": "material-kit-react",
+      "case_id": "baseline-products",
+      "variant": "baseline",
+      "label_case": "baseline-products",
+      "id": "products",
+      "path": "/products",
+      "description": "정렬을 Price: Low-High로 바꾸고, 필터에서 Category를 Apparel로 골라 주세요.",
+      "success_condition": null,
+      "check": "[...document.querySelectorAll('input[type=radio]')].some(n=>n.checked && n.value==='apparel') && [...document.querySelectorAll('button')].some(n=>n.textContent.includes('Sort By:') && n.textContent.includes('Price: Low-High'))"
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "baseline",
+      "variant": "baseline",
+      "label_case": "baseline",
+      "id": "tasks",
+      "path": "/tasks",
+      "description": "Status가 Todo인 작업만 보이게 한 뒤, TASK-8202 작업의 Edit 화면을 열어 주세요.",
+      "success_condition": {
+        "text_present": "Update Task"
+      },
+      "check": "[...document.querySelectorAll('[role=dialog]')].some(n=>n.textContent.includes('Update Task'))",
+      "milestones": [
+        "document.querySelectorAll('tbody tr').length > 0 && [...document.querySelectorAll('tbody tr')].every(n=>n.textContent.includes('Todo'))",
+        "[...document.querySelectorAll('tbody tr')].some(n=>n.textContent.includes('TASK-8202') && n.querySelector('button[data-state=open]'))"
+      ]
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "small",
+      "variant": "small",
+      "label_case": "small",
+      "id": "users",
+      "path": "/users",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "success_condition": {
+        "text_present": "You submitted the following values:"
+      },
+      "check": "document.body.innerText.includes('You submitted the following values:') && document.body.innerText.includes('study@example.com') && /\"role\"\\s*:\\s*\"admin\"/.test(document.body.innerText)"
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "contrast",
+      "variant": "contrast",
+      "label_case": "contrast",
+      "id": "tasks",
+      "path": "/tasks",
+      "description": "Status가 Todo인 작업만 보이게 한 뒤, TASK-8202 작업의 Edit 화면을 열어 주세요.",
+      "success_condition": {
+        "text_present": "Update Task"
+      },
+      "check": "[...document.querySelectorAll('[role=dialog]')].some(n=>n.textContent.includes('Update Task'))",
+      "milestones": [
+        "document.querySelectorAll('tbody tr').length > 0 && [...document.querySelectorAll('tbody tr')].every(n=>n.textContent.includes('Todo'))",
+        "[...document.querySelectorAll('tbody tr')].some(n=>n.textContent.includes('TASK-8202') && n.querySelector('button[data-state=open]'))"
+      ]
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "inert",
+      "variant": "inert",
+      "label_case": "inert",
+      "id": "users",
+      "path": "/users",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "success_condition": {
+        "text_present": "You submitted the following values:"
+      },
+      "check": "document.body.innerText.includes('You submitted the following values:') && document.body.innerText.includes('study@example.com') && /\"role\"\\s*:\\s*\"admin\"/.test(document.body.innerText)"
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "overlay",
+      "variant": "overlay",
+      "label_case": "overlay",
+      "id": "tasks",
+      "path": "/tasks",
+      "description": "Status가 Todo인 작업만 보이게 한 뒤, TASK-8202 작업의 Edit 화면을 열어 주세요.",
+      "success_condition": {
+        "text_present": "Update Task"
+      },
+      "check": "[...document.querySelectorAll('[role=dialog]')].some(n=>n.textContent.includes('Update Task'))",
+      "milestones": [
+        "document.querySelectorAll('tbody tr').length > 0 && [...document.querySelectorAll('tbody tr')].every(n=>n.textContent.includes('Todo'))",
+        "[...document.querySelectorAll('tbody tr')].some(n=>n.textContent.includes('TASK-8202') && n.querySelector('button[data-state=open]'))"
+      ]
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "below-fold",
+      "variant": "below-fold",
+      "label_case": "below-fold",
+      "id": "users",
+      "path": "/users",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "success_condition": {
+        "text_present": "You submitted the following values:"
+      },
+      "check": "document.body.innerText.includes('You submitted the following values:') && document.body.innerText.includes('study@example.com') && /\"role\"\\s*:\\s*\"admin\"/.test(document.body.innerText)"
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "unnamed",
+      "variant": "unnamed",
+      "label_case": "unnamed",
+      "id": "tasks",
+      "path": "/tasks",
+      "description": "Status가 Todo인 작업만 보이게 한 뒤, TASK-8202 작업의 Edit 화면을 열어 주세요.",
+      "success_condition": {
+        "text_present": "Update Task"
+      },
+      "check": "[...document.querySelectorAll('[role=dialog]')].some(n=>n.textContent.includes('Update Task'))",
+      "milestones": [
+        "document.querySelectorAll('tbody tr').length > 0 && [...document.querySelectorAll('tbody tr')].every(n=>n.textContent.includes('Todo'))",
+        "[...document.querySelectorAll('tbody tr')].some(n=>n.textContent.includes('TASK-8202') && n.querySelector('button[data-state=open]'))"
+      ]
+    },
+    {
+      "app_id": "shadcn-admin",
+      "case_id": "baseline-users",
+      "variant": "baseline",
+      "label_case": "baseline",
+      "id": "users",
+      "path": "/users",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "success_condition": {
+        "text_present": "You submitted the following values:"
+      },
+      "check": "document.body.innerText.includes('You submitted the following values:') && document.body.innerText.includes('study@example.com') && /\"role\"\\s*:\\s*\"admin\"/.test(document.body.innerText)"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "baseline",
+      "variant": "baseline",
+      "label_case": "baseline",
+      "id": "products",
+      "path": "/",
+      "description": "Broccoli를 검색하고 수량을 2개로 바꾼 뒤 장바구니에 추가해 주세요.",
+      "success_condition": {
+        "text_present": "2 Nos."
+      },
+      "check": "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>(n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli')) && n.textContent.includes('2 Nos.'))"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "small",
+      "variant": "small",
+      "label_case": "small",
+      "id": "products",
+      "path": "/",
+      "description": "Broccoli를 검색하고 수량을 2개로 바꾼 뒤 장바구니에 추가해 주세요.",
+      "success_condition": {
+        "text_present": "2 Nos."
+      },
+      "check": "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>(n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli')) && n.textContent.includes('2 Nos.'))"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "contrast",
+      "variant": "contrast",
+      "label_case": "contrast",
+      "id": "products",
+      "path": "/",
+      "description": "Broccoli를 검색하고 수량을 2개로 바꾼 뒤 장바구니에 추가해 주세요.",
+      "success_condition": {
+        "text_present": "2 Nos."
+      },
+      "check": "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>(n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli')) && n.textContent.includes('2 Nos.'))"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "inert",
+      "variant": "inert",
+      "label_case": "inert",
+      "id": "products",
+      "path": "/",
+      "description": "Broccoli를 검색하고 수량을 2개로 바꾼 뒤 장바구니에 추가해 주세요.",
+      "success_condition": {
+        "text_present": "2 Nos."
+      },
+      "check": "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>(n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli')) && n.textContent.includes('2 Nos.'))"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "overlay",
+      "variant": "overlay",
+      "label_case": "overlay",
+      "id": "products",
+      "path": "/",
+      "description": "Broccoli를 검색하고 수량을 2개로 바꾼 뒤 장바구니에 추가해 주세요.",
+      "success_condition": {
+        "text_present": "2 Nos."
+      },
+      "check": "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>(n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli')) && n.textContent.includes('2 Nos.'))"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "below-fold",
+      "variant": "below-fold",
+      "label_case": "below-fold",
+      "id": "products",
+      "path": "/",
+      "description": "Broccoli를 검색하고 수량을 2개로 바꾼 뒤 장바구니에 추가해 주세요.",
+      "success_condition": {
+        "text_present": "2 Nos."
+      },
+      "check": "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>(n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli')) && n.textContent.includes('2 Nos.'))"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "unnamed",
+      "variant": "unnamed",
+      "label_case": "unnamed",
+      "id": "products",
+      "path": "/",
+      "description": "Broccoli를 검색하고 수량을 2개로 바꾼 뒤 장바구니에 추가해 주세요.",
+      "success_condition": {
+        "text_present": "2 Nos."
+      },
+      "check": "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>(n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli')) && n.textContent.includes('2 Nos.'))"
+    },
+    {
+      "app_id": "react-shopping-cart",
+      "case_id": "baseline-remove",
+      "variant": "baseline",
+      "label_case": "baseline-remove",
+      "id": "remove",
+      "path": "/",
+      "description": "Broccoli를 검색해 장바구니에 추가하고, 장바구니를 연 뒤 추가한 Broccoli를 삭제해 주세요.",
+      "success_condition": null,
+      "check": "document.querySelector('.cart-preview.active') !== null && document.querySelectorAll('.cart-preview .cart-item').length === 0",
+      "milestones": [
+        "[...document.querySelectorAll('.cart-preview .cart-item')].some(n=>n.textContent.includes('Brocolli') || n.textContent.includes('Broccoli'))"
+      ]
+    }
+  ]
+}

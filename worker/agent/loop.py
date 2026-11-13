@@ -30,7 +30,7 @@ from worker.schemas import ActionInputError, parse_action_json
 PROMPT = Path(__file__).resolve().parents[2] / 'prompts/action_v1.md'
 
 
-async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_path, max_steps=30, max_seconds=300):
+async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_path, max_steps=30, max_seconds=300, evidence_sink=None):
     driver = PlaywrightDriver(page)
     guard, first = LoopGuard(), FirstTargetTracker()
     actions, effects, identities, targets, history = [], [], [], [], []
@@ -109,6 +109,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             axe = await scan_page(page, axe_path, {idx: handle})
                     finally:
                         await handle.dispose()
+                evidence = await evidence_sink.capture(page, action, axe, url, attempt_id) if evidence_sink else None
                 if action.action in ('done', 'fail'):
                     result = ActionResult(None, EffectResult('no_change'),
                         await page.screenshot(type='jpeg', quality=70, caret='initial'))
@@ -133,7 +134,9 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             axe_target_size=axe_target_size_result(axe, idx) if axe else None)
                         if axe:
                             candidates += evaluate_axe(axe, {idx: step_id}, {step_id: result.element})
-                        save_candidates(session, config['id'], candidates, confidence=1.0)
+                        saved = save_candidates(session, config['id'], candidates, confidence=1.0)
+                        if evidence_sink:
+                            evidence_sink.record(attempt_id, step_id, idx, action, result.element, saved, evidence)
                 if not active:
                     raise Canceled()
                 actions.append(action.action)

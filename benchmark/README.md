@@ -33,3 +33,6 @@ W3 수집 label 회귀: `python -m benchmark.verify_collect_labels`.
 - axe 단독·LLM 스크린샷 베이스라인도 같은 단위와 같은 일치 기준으로 채점한다 (ADR 0011 2번)
 - 실행 도구는 비밀번호 칸 화면이 아닌 케이스(shadcn-admin, react-shopping-cart)로 먼저 만든다. sb-admin-2와 material-kit-react는 선행 수정(비밀번호 칸 규칙, label 방식 체크박스, axe 주입, 연결된 label 경로)이 들어오는 대로 돌린다 (ADR 0011 6번)
 - axe 규칙 이슈의 일치 판정에는 axe가 짚은 요소가 필요하다. 지금 그 selector는 `Issue.explanation` 끝에만 있고 `element_key`는 행동 대상의 지문이다. 읽는 방법을 측정 지표·규칙, LLM·프롬프트 담당과 정해 일치 확인 방법 문서에 같이 적는다 (ADR 0011 6번)
+
+W3 과업 고정·직접 워커 실행·요소 일치 규약·특징 추출 연결과 회귀/문구 변경 버전:
+[w3.md](w3.md). 현재 구현·실행 의존성은 [W3 현황](../docs/w3-infra-status.md)에 있다.

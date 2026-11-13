@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "register-submit",
+      "app_id": "sb-admin-2",
+      "path": "/register.html",
+      "selector": "form.user a.btn-primary",
+      "text": "Complete account registration"
+    },
+    {
+      "id": "login-submit",
+      "app_id": "sb-admin-2",
+      "path": "/login.html",
+      "selector": "form.user a.btn-primary",
+      "text": "Sign in to your account"
+    },
+    {
+      "id": "forgot-password",
+      "app_id": "sb-admin-2",
+      "path": "/login.html",
+      "selector": "a[href='forgot-password.html']",
+      "text": "Reset your password"
+    },
+    {
+      "id": "login-register",
+      "app_id": "sb-admin-2",
+      "path": "/login.html",
+      "selector": "a[href='register.html']",
+      "text": "Create a new account"
+    },
+    {
+      "id": "register-login",
+      "app_id": "sb-admin-2",
+      "path": "/register.html",
+      "selector": "a.small[href=\"login.html\"]",
+      "text": "Already registered? Sign in"
+    },
+    {
+      "id": "shopping-add",
+      "app_id": "react-shopping-cart",
+      "path": "/",
+      "selector": ".product:first-child .product-action button",
+      "text": "Add this item to cart"
+    },
+    {
+      "id": "mui-password",
+      "app_id": "material-kit-react",
+      "path": "/sign-in",
+      "selector": ".MuiInputBase-root:has(input[name=password]) button:first-of-type",
+      "text": "Show or hide password"
+    },
+    {
+      "id": "task-status",
+      "app_id": "shadcn-admin",
+      "path": "/tasks",
+      "selector": "button[data-slot=popover-trigger]:first-of-type",
+      "text": "Filter by status"
+    },
+    {
+      "id": "task-menu",
+      "app_id": "shadcn-admin",
+      "path": "/tasks",
+      "selector": "tbody tr:first-child button[data-slot=dropdown-menu-trigger]",
+      "text": "Open task actions"
+    },
+    {
+      "id": "invite-user",
+      "app_id": "shadcn-admin",
+      "path": "/users",
+      "selector": "main button:has(svg.lucide-mail-plus)",
+      "text": "Invite a new user"
+    }
+  ]
+}
