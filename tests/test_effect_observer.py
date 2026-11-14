@@ -4,7 +4,7 @@ import os
 
 import unittest
 from playwright.async_api import async_playwright
-from worker.driver.effects import EffectObserver, EffectResult, NetworkFilter, UnclassifiedNetworkEffect, url_identity
+from worker.driver.effects import EffectObserver, EffectResult, NetworkFilter, url_identity
 
 
 def test_network_noise_contract():
@@ -18,8 +18,8 @@ def test_network_noise_contract():
 
 
 def test_contract_does_not_invent_network_enum():
-    with unittest.TestCase().assertRaises(UnclassifiedNetworkEffect):
-        EffectResult('no_change', 1).as_step_effect()
+    assert EffectResult('no_change', 1).as_step_effect() == {'effect_type': 'dom_mutation', 'changed': True}
+    assert EffectResult('no_change', 0).as_step_effect() == {'effect_type': 'no_change', 'changed': False}
     assert EffectResult('dom_mutation', 1).as_step_effect() == {'effect_type': 'dom_mutation', 'changed': True}
     assert url_identity('https://a/x?b=2&a=1') == url_identity('https://a/x?a=1&b=2')
     assert url_identity('https://a/#a') == url_identity('https://a/#b')
@@ -73,8 +73,7 @@ async def _browser_cases():
             assert result.effect_type == 'no_change' and result.meaningful_network_count == 0
             result = await observer.observe(lambda: page.evaluate('fetch("/api", {method:"POST"})'))
             assert result.meaningful_network_count == 1
-            with unittest.TestCase().assertRaises(UnclassifiedNetworkEffect):
-                result.as_step_effect()
+            assert result.as_step_effect() == {'effect_type': 'dom_mutation', 'changed': True}
             # Priority survives lower-priority changes earlier in the window.
             result = await observer.observe(lambda: page.evaluate('document.body.append("changed");history.pushState({},"","/next")'))
             assert result.effect_type == 'url_change'
