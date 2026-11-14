@@ -13,10 +13,6 @@ class EffectObservationError(RuntimeError):
     """An unsuccessful observation must never be persisted as no_change."""
 
 
-class UnclassifiedNetworkEffect(EffectObservationError):
-    """Meaningful network-only effects have no representation in frozen Step."""
-
-
 @dataclass(frozen=True)
 class EffectResult:
     effect_type: str
@@ -24,7 +20,7 @@ class EffectResult:
 
     def as_step_effect(self) -> dict:
         if self.effect_type == 'no_change' and self.meaningful_network_count:
-            raise UnclassifiedNetworkEffect('Network-only effect requires a schema/policy decision')
+            return {'effect_type': 'dom_mutation', 'changed': True}
         return {'effect_type': self.effect_type, 'changed': self.effect_type != 'no_change'}
 
 

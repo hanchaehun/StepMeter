@@ -19,5 +19,5 @@
 
 결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
 
-- 행동 뒤 화면 변화는 없고 유효한 서버 응답만 확인되면 `UnclassifiedNetworkEffect`를 던지지 않고 `effect_type=dom_mutation`, `changed=true`로 돌려준다. `EFFECTS.md`의 해당 설명도 고친다 (ADR 0011 5번)
+- 행동 뒤 화면 변화는 없고 유효한 서버 응답만 확인되면 `effect_type=dom_mutation`, `changed=true`로 저장한다 (ADR 0011 5번).
 - `guard_target`이 비밀번호 칸 규칙을 따르도록 과업 문장과 입력값을 받는다 (ADR 0011 1번)
