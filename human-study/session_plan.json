@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "description": "진행 프로그램(human-study/app)의 진행 계획. 문장은 session-procedure.md에서 글자 그대로 옮겼다. 주소는 benchmark/variants.json에서 page_id로 찾는다",
+  "procedure_version": "self_guided_v1",
+  "device": "mouse",
+  "page_limit_seconds": 180,
+  "min_screen_avail_height": 950,
+  "panel_width": 420,
+  "practice_code": "P00",
+  "facilitators": [
+    {"github": "bomink1215", "first": "P01", "last": "P04"},
+    {"github": "hanchaehun", "first": "P05", "last": "P07"},
+    {"github": "doithyun", "first": "P08", "last": "P09"},
+    {"github": "leewonjunlee-eng", "first": "P10", "last": "P11"},
+    {"github": "bshyuunn", "first": "P12", "last": "P13"},
+    {"github": "msterk11", "first": "P14", "last": "P14"}
+  ],
+  "c1": {
+    "say": "시작하기 전에 하나만 여쭤볼게요. 관리자 대시보드나 로그인 화면 같은 웹 화면 몇 개를 쓰실 텐데, 혹시 SB Admin, Material Kit, shadcn admin 같은 관리자 템플릿 화면을 전에 써 보신 적 있으세요?",
+    "guide": "\"있다\"면 그 자리에서 끝내고 데이터를 받지 않는다:",
+    "reject_say": "이번 연구는 처음 보시는 분의 기록이 필요해서요. 시간 내 주셔서 감사합니다."
+  },
+  "c2": {
+    "guide": [
+      "동의서를 건네고 읽을 시간을 준다. 3·4절(기록하는 것, 기록하지 않는 것)을 짚어 준다:",
+      "질문을 받고 서명을 받는다. 서명하지 않으면 진행하지 않는다.",
+      "동의서에는 코드를 적는다. 이름과 코드를 잇는 표는 만들지 않는다. 이름·연락처를 어디에도 적지 않는다."
+    ],
+    "say": "입력하신 글자는 저장하지 않고, 키를 누른 시각만 남습니다."
+  },
+  "handover": {
+    "say": "이제부터는 노트북 화면에 나오는 안내대로 혼자 해 주시면 됩니다. 마우스를 써 주세요. 과업마다 브라우저 창이 새로 열리는데, 그 창은 닫지 말아 주세요. 과업을 마치면 오른쪽의 [다 했어요]를, 그만하고 싶으면 [그만할게요]를 눌러 주세요.",
+    "guide": "노트북을 건넨 뒤에는 옆에서 보기만 한다. 참가자가 물으면 이렇게만 답한다:",
+    "answer_say": "화면에 있는 문장대로 해 주세요."
+  },
+  "participant": {
+    "intro": "웹 페이지 6개에서 간단한 일을 하나씩 해 주세요. 빨리 하거나 잘할 필요는 없습니다. 막히면 끝내지 못하셔도 괜찮습니다. 입력 칸에는 화면에 나온 가짜 값만 넣어 주세요.",
+    "hours_question": "평소에 컴퓨터를 하루 몇 시간쯤 쓰세요? 대략이면 됩니다(0~24, 숫자만).",
+    "intro_button": "시작하기",
+    "task_heading": "과업 {n} / {total}",
+    "values_label": "입력할 값",
+    "task_prompt": "읽으셨으면 [시작]을 눌러 주세요.",
+    "start_button": "시작",
+    "panel_note": "브라우저 창은 닫지 말아 주세요.",
+    "done_button": "다 했어요",
+    "give_up_button": "그만할게요",
+    "give_up_confirm": "이 과업을 그만하고 다음으로 넘어갈까요?",
+    "time_up": "여기까지 하셔도 됩니다.",
+    "window_closed": "브라우저 창이 닫혔습니다. 다음 과업으로 넘어갈게요.",
+    "next_button": "다음",
+    "finished": "수고하셨습니다. 노트북을 진행자에게 돌려주세요.",
+    "returned_button": "돌려줬어요"
+  },
+  "c5": {
+    "say": "끝났습니다. 참가자 코드는 {code}입니다. 나중에 기록을 지우고 싶으시면 이 코드를 알려 주시면 됩니다.",
+    "guide": "코드를 종이에 적어 드린다(동의서 6절)."
+  },
+  "pages": [
+    {
+      "order": 1,
+      "task_no": 1,
+      "title": "회원가입",
+      "page_id": "sb-admin-2/register/baseline",
+      "preface_say": null,
+      "task_say": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "show_values": ["Minsu Kim", "study@example.com", "Study1234"],
+      "done_when": "로그인 화면으로 이동",
+      "facilitator_note": null
+    },
+    {
+      "order": 2,
+      "task_no": 3,
+      "title": "로그인 후 비밀번호 표시",
+      "page_id": "material-kit-react/sign-in/baseline",
+      "preface_say": null,
+      "task_say": "이메일을 study@example.com, 비밀번호를 Study1234로 바꿔 입력하고, 비밀번호가 보이게 해 주세요.",
+      "show_values": [],
+      "done_when": "비밀번호가 보이게 바뀜",
+      "facilitator_note": "칸에 기본값이 들어 있어서 지우고 새로 입력해야 한다. 이 부분은 안내하지 않는다."
+    },
+    {
+      "order": 3,
+      "task_no": 5,
+      "title": "Tasks 필터 후 Edit 열기",
+      "page_id": "shadcn-admin/tasks/contrast",
+      "preface_say": null,
+      "task_say": "Status가 Todo인 작업만 보이게 한 뒤, TASK-8202 작업의 Edit 화면을 열어 주세요.",
+      "show_values": [],
+      "done_when": "TASK-8202의 수정 화면이 열림. 다른 작업의 Edit을 열었으면 아직 끝난 것이 아니다.",
+      "facilitator_note": null
+    },
+    {
+      "order": 4,
+      "task_no": 2,
+      "title": "제품 정렬·필터",
+      "page_id": "material-kit-react/products/baseline",
+      "preface_say": "이 페이지는 데모라 정렬이나 필터를 바꿔도 목록은 바뀌지 않습니다.",
+      "task_say": "정렬을 Price: Low-High로 바꾸고, 필터에서 Category를 Apparel로 골라 주세요.",
+      "show_values": [],
+      "done_when": "Category에서 Apparel이 선택됨(목록은 바뀌지 않는다)",
+      "facilitator_note": null
+    },
+    {
+      "order": 5,
+      "task_no": 4,
+      "title": "로그인 후 Remember Me",
+      "page_id": "sb-admin-2/login/small",
+      "preface_say": null,
+      "task_say": "이메일 study@example.com, 비밀번호 Study1234를 입력하고 Remember Me를 선택해 주세요.",
+      "show_values": [],
+      "done_when": "Remember Me 체크박스가 선택됨",
+      "facilitator_note": null
+    },
+    {
+      "order": 6,
+      "task_no": 6,
+      "title": "사용자 초대",
+      "page_id": "shadcn-admin/users/below-fold",
+      "preface_say": null,
+      "task_say": "Invite User 창을 열고 이메일 study@example.com, Role은 Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "show_values": [],
+      "done_when": "\"You submitted the following values:\" 알림이 뜸",
+      "facilitator_note": null
+    }
+  ]
+}

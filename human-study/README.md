@@ -33,7 +33,16 @@
 - 이름·연락처는 받지 않는다. 참가자 코드(`--participant`)만 쓴다. 코드와 사람을 잇는 표는 만들지 않는다(동의서 운영 메모).
 - `t_ms`는 세션 시작(명령을 친 시각)부터 경과 ms. 첫 이벤트는 `stable`이라 생각 시간(M) 표본 계산이 선다(9.1).
 
-### 진행자 절차
+### 진행 프로그램
+
+Windows: exe 더블클릭 / Mac: `app/run_mac.command` 더블클릭(처음 한 번 10~15분 준비). 진행자가 조건 확인·동의서를 한 뒤
+노트북을 건네면 참가자가 화면 안내대로 직접 과업을 하고, 진행자는 돌려받은 뒤 페이지별 완료를 확정하고 진행 이상을 메모한다
+(`session-procedure.md`, `procedure_version` `self_guided_v1`). 수집 형식은 아래 명령 방식과 같다(`session.py`를 그대로 불러 쓴다).
+빌드·실행·형식은 [app/README.md](app/README.md).
+
+### 진행자 절차 (명령 방식, 개발·확인용)
+
+본 세션은 진행 프로그램으로 한다(`session-procedure.md`). 아래는 수집 스크립트를 직접 확인할 때의 방식이다.
 
 사전 준비(한 번): 저장소 루트에서 `infra/README.md` "W1 실행 환경"대로 Python 3.12 가상환경과 `npm ci`, `npm run build:collect`, `python -m playwright install chromium`.
 
@@ -46,7 +55,7 @@
    python human-study/session.py --participant P01 --page-id sb-admin-2/login/small \
        --url http://127.0.0.1:8791/login.html --device mouse --hours 6
    ```
-   과업 문장(`pages.md`)은 명령을 실행하기 **전에** 참가자에게 읽어 준다. 창이 뜬 뒤에 읽으면 읽어 주는 시간이 과업 시간에 섞인다(`session-procedure.md` C-4).
+   과업 문장(`pages.md`)은 명령을 실행하기 **전에** 보여 준다. 창이 뜬 뒤에 읽으면 읽는 시간이 과업 시간에 섞인다.
 4. 참가자가 끝내면 터미널에서 **Enter**, "과업을 끝냈나요? [y/N]"에 답한다. 참가자가 창을 닫으면 그 즉시 `completed=false`로 저장된다.
 5. 파일은 `data/human/human-session-{참가자}-{page_id}-{시각}.json`에 생긴다. 스키마 검증에 실패하면 버리지 않고 `*.invalid.json`으로 남기고 오류를 보여준다. `data/`는 git 제외다. **커밋하지 않는다.**
 6. 파일은 서버에 올리지 않는다(ADR 0011 4번). 진행자가 팀 Notion에서 팀원만 볼 수 있는 페이지에 올려 측정 지표 담당에게 넘긴다. 저장소·이슈·채팅방에는 올리지 않는다.
