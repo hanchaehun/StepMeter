@@ -13,7 +13,8 @@ from typing import Literal, Protocol
 #   action   : 다음 행동 고르기 (4.3, 4.4)
 #   explain  : 문제 설명 문장 쓰기 (6.1)
 #   baseline : 베이스라인 실험 (8.3)
-Purpose = Literal["action", "explain", "baseline"]
+#   judge    : R09 기대 불일치 판단 (6장)
+Purpose = Literal["action", "explain", "baseline", "judge"]
 
 
 @dataclass(frozen=True)

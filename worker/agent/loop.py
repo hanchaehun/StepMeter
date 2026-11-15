@@ -30,6 +30,7 @@ from worker.rules.persistence import save_candidates
 from worker.rules.r05 import evaluate as loop_candidate
 from worker.rules.r07 import evaluate as target_difficulty_candidates
 from worker.rules.r08 import evaluate as backtracking_candidate
+from worker.rules.r09 import PROMPT_VERSION as JUDGE_VERSION, StepRecord, judge as judge_expectations
 from worker.rules.r06 import FirstTargetTracker, screen_key
 from worker.schemas import ActionInputError, parse_action_json
 
@@ -41,6 +42,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
     guard, first = LoopGuard(), FirstTargetTracker()
     actions, effects, identities, targets, history = [], [], [], [], []
     target_step_ids = []
+    records = []  # R09 판단용: 실제로 실행·저장된 step만 (시도가 끝난 뒤 한 번 묻는다)
     urls, scrolls = [], []
     navigation = {'changed': False}
     def navigated(frame):
@@ -153,6 +155,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 if len(metric_targets) > len(target_step_ids):
                     target_step_ids.append(step_id)
                 history.append({'action': action.model_dump(), 'effect': effect})
+                records.append(StepRecord(step_id, idx, action.action, result.element.name if result.element else None,
+                                          action.expectation, effect, url, page.url))
                 idx += 1
                 stale_retries = 0
                 urls.append(page.url)
@@ -177,6 +181,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                     break
                 await page.wait_for_load_state('domcontentloaded', timeout=4500)
                 await asyncio.sleep(0.5)
+                records[-1] = replace(records[-1], url_after=page.url)  # 이동이 끝난 뒤 주소
                 current_document = await page.evaluate('globalThis.__stepmeterDocumentId || null')
                 if current_document != document_id or screen_key(page.url) != screen_key(url):
                     await record_first_view(page)
@@ -209,6 +214,18 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                   page_transition_count=count_page_transitions(urls),
                   scroll_distance=calculate_scroll_distance(scrolls),
                   travel_distance=calculate_cursor_distance(targets))
+    judged = []
+    # R09는 참고 규칙이라 판단이 실패해도 시도 결과를 바꾸지 않는다.
+    # 가짜 어댑터와 이름 없는 시험용 어댑터는 판단할 수 없어 묻지 않는다.
+    if records and getattr(adapter, 'name', 'fake') != 'fake':
+        try:
+            response, judged = await judge_expectations(adapter, records, run_id=config['id'])
+            if response is not None:
+                log_call(factory, config['id'], response, purpose='judge', prompt_version=JUDGE_VERSION)
+        except Canceled:
+            raise
+        except Exception:
+            judged = []
     fitts_values = calculate_fitts_ids(targets)
     if all(v is not None for v in fitts_values):
         values['fitts_id_sum'] = sum(fitts_values)
@@ -224,6 +241,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                       if candidate is not None]
         if difficulty:
             save_candidates(session, config['id'], difficulty, confidence=1.0)
+        if judged:
+            save_candidates(session, config['id'], judged, confidence=1.0)
 
         # Evaluate once all agent attempts have ended; run lock above serializes writers.
         attempts = list(session.scalars(select(Attempt).where(
