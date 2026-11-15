@@ -24,14 +24,14 @@ def start(session, run_id):
     ).returning(Run.id)).scalar_one_or_none() is not None
 
 
-def log_call(factory, run_id, result):
+def log_call(factory, run_id, result, *, purpose='action', prompt_version='action_v2'):
     with factory.begin() as session:
         # Preserve charged-call evidence even if cancellation arrived during ask.
         row = session.scalar(select(Run).where(Run.id == run_id).with_for_update())
         if row is None:
             raise Canceled()
-        session.add(LlmCall(run_id=run_id, purpose='action', model=result.model,
-                           prompt_version='action_v2', input_tokens=result.input_tokens,
+        session.add(LlmCall(run_id=run_id, purpose=purpose, model=result.model,
+                           prompt_version=prompt_version, input_tokens=result.input_tokens,
                            output_tokens=result.output_tokens, cost_usd=result.cost_usd,
                            latency_ms=result.latency_ms))
         if result.cost_usd is not None:
