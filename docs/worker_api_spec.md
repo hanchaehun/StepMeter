@@ -32,9 +32,9 @@
 | 상태 기록 조건 | `running`은 `WHERE status='queued'`, `completed`·`failed`는 `WHERE status='running'`일 때만 바꾼다 (취소와 동시에 일어나도 덮어쓰지 않게) |
 
 - 30 = 실행 1회의 step 상한 (4.5)
-- 끝난 attempt = `attempt.end_reason`이 있는 행. 예정 attempt 수 = `run.repeat_n`
+- 끝난 attempt = `attempt.end_reason`이 있는 행 (재생·에이전트 모두)
 - 진행 중 attempt의 step은 30개까지만 센다. 실행 중 진행률은 최대 90
-- 예정 attempt 수: auto 모드에서 재생이 끊기면 재생 시도 수에 `run.repeat_n`을 더한다 ([ADR 0011](adr/0011-w3-plan-gaps.md) 8번)
+- 예정 attempt 수: agent는 `run.repeat_n`, replay_only는 재생 attempt 수다. auto 재생 중에는 부분 재생에 대비해 재생 attempt 수 + `run.repeat_n`을 예약한다. 부분 재생이면 이 분모를 유지하고, 완전 재생이 확정되면 재생 attempt 수만 센다 ([ADR 0011](adr/0011-w3-plan-gaps.md) 8번). 후처리까지 끝나면 100으로 올린다.
 - 에이전트가 과업에 실패하거나 사이트가 막은 경우는 `completed`, 사유는 `attempt.end_reason` (openapi.yaml RunStatus)
 
 ## 3. DB 쓰기 경계 (2.2, 10장)

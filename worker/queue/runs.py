@@ -79,7 +79,9 @@ def cancel_run(session: Session, run_id: int) -> bool:
 def update_progress(session: Session, run_id: int, finished: bool = False) -> bool:
     """step 행을 모아 run.progress를 한 문장으로 다시 계산한다. run이 running이면 True.
 
-    floor(90 × (끝난 attempt 수 + Σ 진행 중 attempt의 step 수 ÷ 30) ÷ repeat_n),
+    floor(90 × (끝난 attempt 수 + Σ 진행 중 attempt의 step 수 ÷ 30) ÷ 예정 attempt 수),
+    예정 attempt 수 = 재생 중이거나 partial이면 재생 수 + repeat_n,
+    full 재생 또는 replay_only이면 재생 수, agent이면 repeat_n (ADR 0011 8번),
     finished=True(후처리까지 끝남)면 100. 이전 값보다 작아지지 않는다.
     워커는 step 행을 추가한 같은 트랜잭션에서 부르고, False면 멈춘다(취소됨).
     같이 그 run의 모든 attempt.steps_count를 실제 step 행 수로 다시 센다 (run 상태와 상관없이).
@@ -105,7 +107,13 @@ def update_progress(session: Session, run_id: int, finished: bool = False) -> bo
                         SELECT count(s.id) AS n FROM attempt a JOIN step s ON s.attempt_id = a.id
                         WHERE a.run_id = run.id AND a.end_reason IS NULL GROUP BY a.id
                       ) open_steps) / CAST(:cap AS numeric)
-                ) / run.repeat_n
+                ) / GREATEST(1,
+                    (CASE WHEN run.mode = 'replay_only' OR
+                        (run.mode = 'auto' AND EXISTS (
+                            SELECT 1 FROM attempt a WHERE a.run_id = run.id
+                            AND a.kind = 'replay' AND a.replay_status = 'full'
+                        )) THEN 0 ELSE run.repeat_n END)
+                    + (SELECT count(*) FROM attempt a WHERE a.run_id = run.id AND a.kind = 'replay'))
             )) END)
             WHERE id = :id AND status = 'running'
             RETURNING id
