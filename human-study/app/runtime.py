@@ -9,7 +9,7 @@ from typing import Any, TextIO
 
 from .controller import Controller, Deps
 from .plan import load_plan
-from .resources import Resources, data_dirs, detect, run_mode, settings_dir
+from .resources import Resources, data_dirs, detect, legacy_data_dir, legacy_data_problem, run_mode, settings_dir
 from .sites import Check, SiteServers, screen_avail_size
 
 
@@ -34,6 +34,7 @@ def build(res: Resources | None = None) -> tuple[Controller, SiteServers | None,
     plan = load_plan(res.plan_path)
     session = res.load("session")
     check = res.load("check_sessions")
+    real, practice = data_dirs()
     sites: SiteServers | None = None
     server_error: str | None = None
     try:
@@ -59,10 +60,12 @@ def build(res: Resources | None = None) -> tuple[Controller, SiteServers | None,
         hint = " (저장소 루트에서 npm run build:collect)" if res.mode == "source" else ""
         checks.append(Check("수집 번들", not missing,
                             "collect.js 2개 있음" if not missing else "없음: " + ", ".join(str(p) for p in missing) + hint))
+        legacy = legacy_data_problem(legacy_data_dir(), real)
+        if legacy:
+            checks.append(Check("예전 저장 위치", False, legacy))
         return checks
 
     info = res.build_info()
-    real, practice = data_dirs()
     session_info: dict[str, Any] = {
         "app_version": info.get("version"),
         "repo_commit": info.get("commit"),
@@ -77,3 +80,15 @@ def build(res: Resources | None = None) -> tuple[Controller, SiteServers | None,
         env_checks=env_checks, screen_size=screen_avail_size, session_info=session_info,
     )
     return Controller(deps), sites, server_error
+
+
+def startup_message(err: BaseException, exe: bool, log_path: Path | None) -> str:
+    """프로그램을 시작하지 못했을 때 진행자에게 보여 줄 글. 창 모드 exe는 오류가 화면에 나오지 않으므로 알림 창으로 띄운다."""
+    detail = (str(err) or type(err).__name__).strip()[:300]
+    if exe:
+        fix = ("zip을 새 폴더에 처음부터 다시 풀고, 그 폴더 안의 StepMeter-human.exe를 실행하세요. "
+               "exe만 다른 곳으로 옮기거나 압축 파일 안에서 바로 실행하면 이렇게 됩니다.")
+    else:
+        fix = "저장소 루트에서 git pull origin main 후 다시 실행하세요."
+    where = f"\n\n그래도 안 되면 이 로그 파일을 세션 운영 담당에게 보내 주세요:\n{log_path}" if log_path else ""
+    return f"프로그램을 시작하지 못했습니다.\n\n{detail}\n\n{fix}{where}"

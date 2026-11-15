@@ -140,7 +140,8 @@ class PlanMatchesProcedureTests(unittest.TestCase):
 
     def test_participant_lines_match_procedure(self):
         c4 = block(PROCEDURE, "### C-4.").split("\n---\n")[0]
-        keys = ["intro", "hours_question", "task_prompt", "panel_note", "time_up", "window_closed", "finished"]
+        keys = ["intro", "hours_question", "task_prompt", "panel_note", "time_up", "window_closed", "browser_error",
+                "finished"]
         self.assertEqual(quotes(c4), [PLAN.p(k) for k in keys])
         for key in ("start_button", "done_button", "give_up_button", "next_button", "returned_button"):
             self.assertIn(f"[{PLAN.p(key)}]", c4)
@@ -222,11 +223,17 @@ class ResourcesTests(unittest.TestCase):
         self.assertEqual(window_title("20261114-3ef3886"), "StepMeter 사람 실험 20261114-3ef3886")
         self.assertEqual(version_line("20261114-3ef3886", "exe-windows"), "버전 20261114-3ef3886 · 실행 방식 exe")
         self.assertEqual(version_line("20261115-3ef3886-dirty", "source-mac"), "버전 20261115-3ef3886-dirty · 실행 방식 소스")
+        self.assertEqual(source_version(None, False, date(2026, 11, 15)), "20261115-nogit")
         # 지금 저장소: 실행 시점의 HEAD, 작업 트리에 변경이 있으면 -dirty
+        # Docker 테스트 이미지에는 .git이 없다(.dockerignore). 그때는 commit 없음 + -nogit
         head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+        info = RES.build_info()
+        if not head:
+            self.assertIsNone(info["commit"])
+            self.assertTrue(info["version"].endswith("-nogit"), info["version"])
+            return
         dirty = bool(subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain"], capture_output=True,
                                     text=True).stdout.strip())
-        info = RES.build_info()
         self.assertEqual(info["commit"], head)
         self.assertTrue(info["version"].endswith(head[:7] + ("-dirty" if dirty else "")), info["version"])
 
@@ -810,6 +817,170 @@ class NotesTests(ControllerBase):
         self.assertIn("덮어쓰지", err)
         with self.assertRaises(ValueError):
             self.ctrl.save_before_app_notes(folder, "P03", "bomink1215", {})
+
+
+# ---------------------------------------------------------------- 저장 위치 · 시작 실패 · 철회 · 확인표 순서
+
+class DataLocationTests(unittest.TestCase):
+    """기준: 참가자 기록은 동기화되는 문서 폴더가 아니라 홈 폴더에 둔다(절차서 D-1·D-2)."""
+
+    def test_data_dirs_are_under_home_not_documents(self):
+        from unittest import mock
+
+        from app import resources
+        with mock.patch.dict("os.environ", {resources.HOME_ENV: ""}):
+            self.assertEqual(resources.data_root(), Path.home())
+            self.assertEqual(resources.data_dirs(), (Path.home() / "StepMeter-human",
+                                                     Path.home() / "StepMeter-human-practice"))
+            self.assertEqual(resources.legacy_data_dir(), resources.documents_dir() / "StepMeter-human")
+        with mock.patch.dict("os.environ", {resources.HOME_ENV: "/tmp/x"}):
+            self.assertEqual(resources.data_root(), Path("/tmp/x"))
+            self.assertIsNone(resources.legacy_data_dir())  # 위치를 직접 주면 예전 위치를 보지 않는다
+
+    def test_legacy_location_with_records_blocks_preflight(self):
+        from app.resources import legacy_data_problem
+        with tempfile.TemporaryDirectory() as tmp:
+            legacy, current = Path(tmp) / "docs" / "StepMeter-human", Path(tmp) / "home" / "StepMeter-human"
+            self.assertIsNone(legacy_data_problem(None, current))
+            self.assertIsNone(legacy_data_problem(legacy, current))  # 폴더 없음
+            legacy.mkdir(parents=True)
+            (legacy / "desktop.ini").write_text("", encoding="utf-8")
+            self.assertIsNone(legacy_data_problem(legacy, current))  # 기록이 아닌 파일만
+            (legacy / "human-session-P05-x-20261116-010000.json").write_text("{}", encoding="utf-8")
+            (legacy / "notes-P05.json").write_text("{}", encoding="utf-8")
+            msg = legacy_data_problem(legacy, current)
+            self.assertIsNotNone(msg)
+            self.assertIn(str(legacy), msg or "")
+            self.assertIn(str(current), msg or "")
+            self.assertIn("2개", msg or "")
+            self.assertIsNone(legacy_data_problem(legacy, legacy))  # 같은 폴더면 문제 아님
+
+
+class StartupMessageTests(unittest.TestCase):
+    def test_exe_message_says_unzip_again_and_log(self):
+        from app.runtime import startup_message
+        log = Path("C:/x/app.log")
+        text = startup_message(FileNotFoundError("session_plan.json 없음"), True, log)
+        self.assertIn("session_plan.json 없음", text)
+        self.assertIn("zip을 새 폴더에", text)
+        self.assertIn(str(log), text)
+        self.assertIn("git pull", startup_message(RuntimeError("x"), False, None))
+        self.assertNotIn("로그 파일", startup_message(RuntimeError("x"), False, None))
+
+
+class WithdrawTests(ControllerBase):
+    """기준: 동의서 6절 "그만두시면 그때까지의 기록을 지웁니다", 절차서 C-8(코드는 다시 주지 않는다)."""
+
+    def test_withdraw_mid_session_removes_records_and_retires_code(self):
+        c = self.ctrl
+        self.assertEqual(c.suggest_code("hanchaehun"), "P05")
+        self.to_first_task(c)
+        self.run_page(c, "done")
+        self.assertEqual(c.step, Step.P_TASK)
+        self.assertTrue(list(self.data.glob("human-session-P05-*.json")))
+        (self.data / "check-P05.txt").write_text("x", encoding="utf-8")
+        (self.data / "upload-P05.zip").write_bytes(b"x")
+        (self.data / ".partial-P05-material-kit-react-sign-in-baseline-20261116-010000.jsonl").write_text(
+            json.dumps(STABLE[0]) + "\n", encoding="utf-8")
+        other = self.save_fake(self.data, "P06", PLAN.pages[0].page_id, True)  # 다른 참가자 것은 남는다
+        removed = c.withdraw()
+        self.assertEqual(c.step, Step.WITHDRAWN)
+        self.assertIn("notes-P05.json", removed)
+        self.assertEqual(sorted(f.name for f in self.data.iterdir()), sorted(["withdrawn-P05.txt", other.name]))
+        marker = (self.data / "withdrawn-P05.txt").read_text(encoding="utf-8")
+        self.assertNotIn("hanchaehun", marker)  # 날짜만, 사람 정보 없음
+        c.back_to_setup()
+        self.assertEqual(c.suggest_code("hanchaehun"), "P07")  # P05 철회, P06 사용 중
+        self.assertIsNotNone(c.inspect_code("hanchaehun", "P05", False).error)
+        self.assertEqual(c.choose("hanchaehun", "P05", False).error, c.inspect_code("hanchaehun", "P05", False).error)
+        self.assertEqual(c.step, Step.SETUP)
+
+    def test_withdraw_after_session_from_preflight(self):
+        for i, p in enumerate(PLAN.pages):
+            self.save_fake(self.data, "P06", p.page_id, True, i)
+        c = self.ctrl
+        c.choose("hanchaehun", "P06", False)
+        self.assertTrue(c.info and c.info.attempted)
+        self.assertEqual(len(c.withdraw()), 6)
+        self.assertEqual([f.name for f in self.data.iterdir()], ["withdrawn-P06.txt"])
+
+    def test_cannot_withdraw_while_page_runs_or_before_consent(self):
+        c = self.ctrl
+        with self.assertRaises(RuntimeError):
+            c.withdraw()  # SETUP
+        c.choose("hanchaehun", "P05", False)
+        c.run_preflight(True)
+        c.start()
+        self.assertEqual(c.step, Step.C1)
+        with self.assertRaises(RuntimeError):
+            c.withdraw()  # C-1·C-2는 [중단]
+        c.step = Step.P_RUNNING
+        with self.assertRaises(RuntimeError):
+            c.withdraw()
+
+    def test_reset_practice_clears_practice_withdrawal(self):
+        c = self.ctrl
+        c.choose("hanchaehun", "", True)
+        c.withdraw()
+        self.assertTrue((self.practice / "withdrawn-P00.txt").exists())
+        self.assertIsNotNone(c.inspect_code("hanchaehun", "", True).error)
+        c.back_to_setup()
+        self.assertIn("withdrawn-P00.txt", c.reset_practice())
+        self.assertIsNone(c.inspect_code("hanchaehun", "", True).error)
+
+
+class ReviewOrderAndReportTests(ControllerBase):
+    def to_review(self, code: str, pages) -> Controller:
+        for i, p in enumerate(pages):
+            self.save_fake(self.data, code, p.page_id, True, i)
+        c = self.make()
+        c.choose("hanchaehun", code, False)
+        c.run_preflight(True)
+        c.start()
+        if c.step == Step.RESUME:
+            c.resume_continue()
+        if c.step == Step.HANDOVER:  # 남은 페이지가 있으면 오류로 건너뛴 것으로 남긴다
+            c.handed_over()
+            c.participant_begin(None)
+            c.step = Step.P_ERROR
+            c.skip_page()
+            c.returned()
+        self.assertEqual(c.step, Step.REVIEW)
+        return c
+
+    def test_crash_during_review_save_keeps_confirmed_value(self):
+        from unittest import mock
+        c = self.to_review("P05", PLAN.pages)
+        first = PLAN.pages[0].page_id
+        entries = {r.page.page_id: (r.confirmed, [], "") for r in c.review_rows()}
+        entries[first] = (False, [], "")
+        with mock.patch.object(SESSION, "save_session", side_effect=OSError("디스크 오류")):
+            with self.assertRaises(OSError):
+                c.submit_review(entries)
+        # 다시 열면(새 controller) 확인표 기본값이 진행자가 고른 값이다
+        c2 = self.to_review("P05", [])
+        self.assertFalse(c2.review_rows()[0].confirmed)
+        self.assertEqual(c2.submit_review({r.page.page_id: (r.confirmed, [], "") for r in c2.review_rows()}), {})
+        f = sorted(self.data.glob("human-session-P05-sb-admin-2-register-*.json"))[0]
+        self.assertFalse(json.loads(f.read_text(encoding="utf-8"))["completed"])
+
+    def test_report_lists_pages_without_session_file(self):
+        c = self.to_review("P05", PLAN.pages[:5])
+        self.assertEqual(c.submit_review({r.page.page_id: (r.confirmed, r.issue_codes, r.note)
+                                          for r in c.review_rows()}), {})
+        rep = c.finish_session()
+        self.assertEqual(rep.unsaved, [PLAN.pages[5].page_id])
+        self.assertFalse(rep.ok)  # check_sessions는 빠진 페이지를 오류로 본다(절차서 C-7: 이 경우는 예상된 오류)
+
+
+class BrowserErrorScreenTests(ControllerBase):
+    def test_crash_shows_browser_error_line(self):
+        from app.controller import PageResult
+        c = self.ctrl
+        c.step = Step.P_BETWEEN
+        for reported, key in (("crashed", "browser_error"), ("closed", "window_closed"), ("timeout", "time_up")):
+            c.result = PageResult(PLAN.pages[0], False, reported, path=Path("x"))
+            self.assertIn(PLAN.p(key), participant_screen(c).all_text())
 
 
 if __name__ == "__main__":

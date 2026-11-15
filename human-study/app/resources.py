@@ -149,10 +149,7 @@ def run_mode(res: Resources) -> str:
 # ---------------------------------------------------------------- 이 PC의 폴더
 
 def documents_dir() -> Path:
-    """문서 폴더. Windows는 OneDrive로 옮겨진 경우도 따른다."""
-    override = os.environ.get(HOME_ENV)
-    if override:
-        return Path(override)
+    """문서 폴더(OneDrive로 옮겨진 경우 포함). 예전 저장 위치를 찾을 때만 쓴다(legacy_data_dir)."""
     if os.name == "nt":
         try:
             from ctypes import wintypes
@@ -175,10 +172,46 @@ def documents_dir() -> Path:
     return Path.home() / "Documents"
 
 
-def data_dirs() -> tuple[Path, Path]:
+def data_root() -> Path:
+    """데이터 폴더의 부모: 사용자 홈 폴더(Windows C:\\Users\\<이름>, Mac /Users/<이름>).
+
+    문서·바탕 화면은 OneDrive(Windows)·iCloud(Mac)로 동기화되는 경우가 많아 쓰지 않는다. 동기화되면 참가자 기록이
+    개인 클라우드에 복사되어 진행자 PC·Notion만 지우는 삭제 절차(session-procedure.md D-4)로 다 지워지지 않는다.
+    홈 폴더 자체는 두 서비스 모두 기본으로 동기화하지 않는다.
+    """
+    override = os.environ.get(HOME_ENV)
+    return Path(override) if override else Path.home()
+
+
+def data_dirs(root: Path | None = None) -> tuple[Path, Path]:
     """(본 데이터, 연습 데이터). exe 폴더에는 쓰지 않는다."""
-    docs = documents_dir()
-    return docs / "StepMeter-human", docs / "StepMeter-human-practice"
+    base = root if root is not None else data_root()
+    return base / "StepMeter-human", base / "StepMeter-human-practice"
+
+
+def legacy_data_dir() -> Path | None:
+    """20261115-4f0376d 판까지의 본 데이터 위치(문서 폴더). 다른 위치를 주었으면(STEPMETER_HUMAN_HOME) 보지 않는다."""
+    if os.environ.get(HOME_ENV):
+        return None
+    return documents_dir() / "StepMeter-human"
+
+
+def legacy_data_problem(legacy: Path | None, current: Path) -> str | None:
+    """예전 위치에 세션 기록이 남아 있으면 점검 실패 이유. 그대로 두면 이어 하기·코드 제안이 그 기록을 보지 못한다."""
+    if legacy is None or not legacy.is_dir():
+        return None
+    try:
+        if legacy.resolve() == current.resolve():
+            return None
+        found = sorted(f.name for f in legacy.iterdir()
+                       if f.is_file() and f.name.startswith(("human-session-", ".partial-", "notes-", "withdrawn-")))
+    except OSError:
+        return None
+    if not found:
+        return None
+    return (f"예전 저장 위치 {legacy}에 기록 {len(found)}개가 남아 있습니다. 동기화되는 문서 폴더라 저장 위치를 "
+            f"{current}로 바꿨습니다. 그 폴더 안의 파일을 모두 {current}로 옮기고, OneDrive·iCloud 휴지통에서도 "
+            "지운 뒤 [다시 점검]을 누르세요")
 
 
 def settings_dir() -> Path:

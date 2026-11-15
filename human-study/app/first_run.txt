@@ -9,7 +9,8 @@ StepMeter 사람 실험 진행 프로그램
 3. 방화벽 창이 뜨면 '취소'를 눌러도 됩니다. 사이트는 이 PC 안(127.0.0.1)에서만 열립니다.
 
 4. 창에 나온 문장을 읽고 버튼만 누르면 됩니다.
-   - 데이터는 문서\StepMeter-human\ 에 저장됩니다(연습은 문서\StepMeter-human-practice\).
+   - 데이터는 C:\Users\<이름>\StepMeter-human\ 에 저장됩니다(연습은 StepMeter-human-practice\).
+     이 폴더를 OneDrive로 동기화되는 문서·바탕 화면으로 옮기지 마세요.
    - 끝나면 upload-<코드>.zip이 있는 폴더가 열립니다.
      팀원 전용 Notion 페이지에 올리세요(저장소·카톡 금지).
 

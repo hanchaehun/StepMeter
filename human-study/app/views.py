@@ -66,7 +66,8 @@ def participant_screen(c: Controller) -> Screen:
         return s
     if step == Step.P_BETWEEN:
         r = c.result
-        text = plan.p("time_up") if r is not None and r.reported == "timeout" else plan.p("window_closed")
+        reported = r.reported if r is not None else None
+        text = plan.p({"timeout": "time_up", "crashed": "browser_error"}.get(reported or "", "window_closed"))
         return Screen("", [("alert", text)], [("next", plan.p("next_button"))])
     if step == Step.P_FINISHED:
         return Screen("", [("big", plan.p("finished"))], [("returned", plan.p("returned_button"))])

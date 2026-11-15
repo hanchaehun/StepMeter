@@ -28,8 +28,10 @@
   `completed`만 고쳐 같은 파일 이름으로 다시 저장한다(다른 칸은 그대로). 원래 값과 바꾼 사실은 notes에 남는다.
 - 같은 코드로 이미 한 페이지는 다시 하지 않는다. 프로그램이 중간에 꺼지면 다시 열어 같은 코드로 이어 한다. 진행 중에 꺼진
   페이지(`.partial`만 남음)는 다시 하지 않고 확인표에 "기술 문제"로 미리 체크된다.
-- 데이터: `문서\StepMeter-human\` (연습은 `문서\StepMeter-human-practice\`). exe 폴더에는 쓰지 않는다. 진행자 선택·로그는 `%APPDATA%\StepMeter-human\`(Mac `~/Library/Application Support/StepMeter-human/`).
+- 데이터: 홈 폴더의 `StepMeter-human\` (Windows `C:\Users\<이름>\StepMeter-human\`, Mac `/Users/<이름>/StepMeter-human/`, 연습은 `StepMeter-human-practice`). 문서·바탕 화면은 OneDrive·iCloud로 동기화되는 경우가 많아 쓰지 않는다(개인 클라우드에 사본이 남으면 절차서 D-4 삭제로 다 지워지지 않는다). 20261115-4f0376d 판은 문서 폴더에 저장했다. 그 폴더에 기록이 남아 있으면 시작 전 점검의 "예전 저장 위치"가 실패하고 옮기라고 안내한다. exe 폴더에는 쓰지 않는다. 진행자 선택·로그는 `%APPDATA%\StepMeter-human\`(Mac `~/Library/Application Support/StepMeter-human/`).
 - 이름·연락처를 받는 칸은 없다. 진행자는 GitHub 아이디, 참가자는 코드만 쓴다. 메모 칸 옆에 "이름·연락처는 적지 않기"를 표시한다.
+- **참가 철회**(동의서 6절, 절차서 C-8): 진행자 화면(시작 전 점검·이어 하기·건네기·오류·확인표·마지막 안내·검사)의 [참가 철회 — 기록 지우기]. 그 코드의 세션 json·`.partial`·notes·검사 결과·zip을 지우고 `withdrawn-<코드>.txt`(날짜만)를 남긴다. 표시가 있는 코드는 제안·입력에서 막는다(동의서에 이미 적힌 코드라 다른 사람에게 주지 않는다). 진행 중 페이지는 먼저 끝낸다.
+- 시작하다 실패하면(내장 파일이 없는 등) 창 모드 exe라도 알림 창에 이유·로그 위치가 나온다. 버튼 처리 중 오류도 알림 창으로 보인다.
 - **[이미 끝난 세션 메모 입력]**: 프로그램 전에(진행자가 읽어 주는 방식으로) 진행한 세션의 폴더와 코드를 고르면, 세션 파일은
   읽기만 하고 페이지별 메모만 받아 `notes-<코드>.json`을 만든다(`app_version` 등은 `before-app`, `procedure_version`은 `read_aloud`).
 

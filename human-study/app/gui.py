@@ -12,6 +12,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import traceback
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable
@@ -331,7 +332,7 @@ class App:
         if self.ctrl.step == Step.P_RUNNING:
             messagebox.showwarning("진행 중", "과업 진행 중입니다. 먼저 [다 했어요]나 [그만할게요]를 누르세요.", parent=self.root)
             return
-        if self.ctrl.step not in (Step.SETUP, Step.PREFLIGHT, Step.DONE, Step.ABORTED):
+        if self.ctrl.step not in (Step.SETUP, Step.PREFLIGHT, Step.DONE, Step.ABORTED, Step.WITHDRAWN):
             if not messagebox.askyesno("닫기", "세션 도중입니다. 닫아도 저장된 페이지는 남고, 다시 열면 남은 차례부터 "
                                        "이어 할 수 있습니다. 닫을까요?", parent=self.root):
                 return
@@ -527,9 +528,12 @@ class App:
             self.checks_view(c.checks)
             if not c.preflight_ok:
                 self.label("통과하지 못한 항목을 고친 뒤 [다시 점검]을 누르세요.", BODY_FONT, BAD_FG)
-        btns = self.buttons([("다시 점검" if c.checks else "점검하기", self.run_preflight, "primary"),
-                             ("시작", c.start, "ok"),
-                             ("처음으로", c.back_to_setup, "plain")])
+        specs: list[tuple[str, Callable[[], Any], str]] = [
+            ("다시 점검" if c.checks else "점검하기", self.run_preflight, "primary"), ("시작", c.start, "ok"),
+            ("처음으로", c.back_to_setup, "plain")]
+        if c.info is not None and c.info.attempted:  # 이미 기록이 있는 코드: 세션 뒤 철회 요청도 여기서 받는다(C-8)
+            specs.append(self.withdraw_spec())
+        btns = self.buttons(specs)
         if self.preflight_running:
             btns[0].configure(state="disabled")
         if not c.preflight_ok or self.preflight_running:
@@ -563,6 +567,24 @@ class App:
     def confirm_abort(self) -> None:
         if messagebox.askyesno("중단", "중단하면 데이터 없이 끝나고 참가자 코드도 쓰지 않습니다. 중단할까요?", parent=self.root):
             self.ctrl.abort()
+
+    def withdraw_spec(self) -> tuple[str, Callable[[], Any], str]:
+        return ("참가 철회 — 기록 지우기", self.confirm_withdraw, "bad")
+
+    def confirm_withdraw(self) -> None:
+        c = self.ctrl
+        if messagebox.askyesno(
+                "참가 철회",
+                f"{c.code}의 기록(세션 파일·메모·검사 결과·zip)을 모두 지웁니다. 되돌릴 수 없습니다.\n"
+                f"{c.code}는 다른 참가자에게 다시 주지 않습니다. 지울까요?", icon="warning", parent=self.root):
+            c.withdraw()
+
+    def render_withdrawn(self) -> None:
+        c = self.ctrl
+        self.title("참가 철회 — 기록을 지웠습니다")
+        self.label(f"{c.code}의 파일 {len(c.withdrawn_removed)}개를 지웠습니다. {c.code}는 다시 쓰지 않습니다.", BODY_FONT)
+        self.label("Notion에 이미 올렸으면 거기서도 지우고 Notion 휴지통에서도 지웁니다(절차서 D-4).", BODY_FONT, MUTED)
+        self.buttons([("처음으로", c.back_to_setup, "primary")])
 
     def render_aborted(self) -> None:
         c = self.ctrl
@@ -599,7 +621,7 @@ class App:
                 state, color = "남음", "#000"
             self.label(f"{p.label}: {state}", BODY_FONT, color, pady=1)
         nxt = "노트북 건네기" if c.remaining_pages() else "확인표로"
-        self.buttons([(f"이어 하기 — {nxt}", c.resume_continue, "primary")])
+        self.buttons([(f"이어 하기 — {nxt}", c.resume_continue, "primary"), self.withdraw_spec()])
 
     def render_handover(self) -> None:
         c, p = self.ctrl, self.ctrl.plan
@@ -609,7 +631,7 @@ class App:
         self.label(f"“{p.text('handover', 'answer_say')}”", BODY_FONT, MUTED, inset=True)
         self.label("어느 페이지에 결함이 있는지 말하지 않습니다. 창을 대신 닫거나 버튼을 대신 누르지 않습니다.",
                    BODY_FONT, MUTED)
-        self.buttons([("건넸어요", c.handed_over, "primary")])
+        self.buttons([("건넸어요", c.handed_over, "primary"), self.withdraw_spec()])
 
     # ------------------------------------------------------------ 오류 (참가자 → 진행자)
 
@@ -625,6 +647,7 @@ class App:
         else:
             self.label("참가자가 이미 페이지를 봤으므로 같은 페이지를 다시 하지 않습니다.", BODY_FONT, MUTED)
         specs.append(("이 페이지 건너뛰기 (기술 문제로 메모)", c.skip_page, "plain"))
+        specs.append(self.withdraw_spec())
         self.buttons(specs)
 
     # ------------------------------------------------------------ 진행자: 확인표
@@ -674,7 +697,7 @@ class App:
             if r.page.page_id in self.review_errors:
                 tk.Label(box, text=self.review_errors[r.page.page_id], font=SMALL_FONT, fg=BAD_FG, bg="#f6f6f6",
                          anchor="w").pack(fill="x", padx=10)
-        self.buttons([("확인 저장 — 마지막 안내로", self.submit_review, "primary")])
+        self.buttons([("확인 저장 — 마지막 안내로", self.submit_review, "primary"), self.withdraw_spec()])
 
     def review_entries(self) -> dict[str, tuple[bool | None, list[int], str]]:
         out = {}
@@ -701,7 +724,7 @@ class App:
         tk.Label(self.body.inner, text=c.code or "", font=(FAMILY, 96, "bold"), fg="#1a5fb4", bg=BG).pack(pady=8)
         self.label(c.plan.text("c5", "guide"), BODY_FONT, MUTED)
         self.label("참가자가 간 뒤 아래 버튼으로 바로 검사합니다.", BODY_FONT, MUTED)
-        self.buttons([("검사하고 zip 만들기", c.finish_session, "primary")])
+        self.buttons([("검사하고 zip 만들기", c.finish_session, "primary"), self.withdraw_spec()])
 
     def render_done(self) -> None:
         c = self.ctrl
@@ -714,11 +737,16 @@ class App:
         txt.insert("1.0", rep.text)
         txt.configure(state="disabled")
         txt.pack(fill="x", padx=24, pady=6)
+        if rep.unsaved:
+            labels = ", ".join(p.label for p in c.plan.pages if p.page_id in rep.unsaved)
+            self.label(f"세션 파일이 없는 페이지: {labels}. 오류로 건너뛰었거나 프로그램이 중간에 꺼진 페이지라 위 검사에서 "
+                       "'빠짐' 오류로 나옵니다. 확인표에 기술 문제로 남았으면 예상된 오류이니 그대로 올리세요. "
+                       "그 밖의 오류만 담당에게 알립니다.", BODY_FONT, MUTED)
         self.label(f"검사 결과: {rep.check_path}", SMALL_FONT, MUTED)
         self.label(f"올릴 파일: {rep.zip_path}  ({len(rep.zipped)}개 파일)", BODY_FONT)
         self.label("팀원 전용 Notion 페이지에 올리세요(저장소·카톡 금지).", TITLE_FONT, BAD_FG)
         self.buttons([("폴더 열기", lambda: open_folder(rep.zip_path.parent), "primary"),
-                      ("새 참가자", c.back_to_setup, "plain"), ("끝내기", self.on_close, "plain")])
+                      ("새 참가자", c.back_to_setup, "plain"), ("끝내기", self.on_close, "plain"), self.withdraw_spec()])
         if self.opened_for is not rep and self.auto is None:
             self.opened_for = rep
             open_folder(rep.zip_path.parent)
@@ -801,11 +829,47 @@ class App:
         self.screen_mode = "flow"
 
 
+def _log_exception() -> None:
+    try:
+        traceback.print_exc()
+        if sys.stderr is not None:
+            sys.stderr.flush()
+    except Exception:  # noqa: BLE001  로그를 못 남겨도 알림 창은 띄운다
+        pass
+
+
+def show_startup_error(text: str) -> None:
+    try:
+        r = tk.Tk()
+        r.withdraw()
+        messagebox.showerror("StepMeter 사람 실험", text, parent=r)
+        r.destroy()
+    except Exception:  # noqa: BLE001  화면이 없으면(소스 방식 터미널) 위에 찍은 오류로 충분하다
+        print(text, file=sys.stderr)
+
+
+def install_error_dialog(root: tk.Tk, log_path: Path | None) -> None:
+    """버튼 처리 중 오류가 나면 아무 반응 없이 지나가지 않게 알림 창을 띄운다(로그에도 남긴다)."""
+    def report(exc: type[BaseException], value: BaseException, tb: Any) -> None:
+        try:
+            traceback.print_exception(exc, value, tb)
+        except Exception:  # noqa: BLE001
+            pass
+        where = f"\n\n로그: {log_path}" if log_path else ""
+        try:
+            messagebox.showerror("오류", f"오류가 났습니다.\n\n{(str(value) or exc.__name__)[:300]}\n\n"
+                                 f"저장된 페이지는 그대로 남아 있습니다. 같은 일이 되풀이되면 세션 운영 담당에게 알려 주세요.{where}",
+                                 parent=root)
+        except Exception:  # noqa: BLE001
+            pass
+    root.report_callback_exception = report  # type: ignore[method-assign]
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
     from .resources import detect
-    from .runtime import build, prepare_process
+    from .runtime import build, prepare_process, startup_message
 
     parser = argparse.ArgumentParser(description="StepMeter 사람 실험 진행 프로그램")
     parser.add_argument("--auto", action="store_true", help="개발자 확인용: 연습 모드(P00)로 버튼을 자동으로 누른다")
@@ -814,23 +878,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--auto-done", type=Path, default=None, help="--auto가 끝나면 결과를 쓸 파일")
     args = parser.parse_args(argv)
 
-    res = detect()
-    prepare_process(res)
-    if sys.platform == "win32":
-        try:
-            import ctypes
-            getattr(ctypes, "windll").shcore.SetProcessDpiAwareness(1)
-        except (OSError, AttributeError):
-            pass
-    ctrl, sites, server_error = build(res)
-    root = tk.Tk()
-    auto = None
-    if args.auto:
-        from .autodrive import AutoDriver
-        if args.auto_limit:
-            ctrl.limit_s = args.auto_limit
-        auto = AutoDriver(timeout_page=args.auto_timeout_page, done_path=args.auto_done)
-    App(root, ctrl, sites, server_error, auto=auto)
+    log_path: Path | None = None
+    sites = None
+    try:
+        res = detect()
+        log_path = prepare_process(res)
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                getattr(ctypes, "windll").shcore.SetProcessDpiAwareness(1)
+            except (OSError, AttributeError):
+                pass
+        ctrl, sites, server_error = build(res)
+        root = tk.Tk()
+        auto = None
+        if args.auto:
+            from .autodrive import AutoDriver
+            if args.auto_limit:
+                ctrl.limit_s = args.auto_limit
+            auto = AutoDriver(timeout_page=args.auto_timeout_page, done_path=args.auto_done)
+        install_error_dialog(root, log_path)
+        App(root, ctrl, sites, server_error, auto=auto)
+    except Exception as e:  # noqa: BLE001  창 모드 exe는 오류가 화면에 안 나온다. 알림 창으로 보여 준다
+        _log_exception()
+        if sites is not None:
+            sites.stop()
+        show_startup_error(startup_message(e, bool(getattr(sys, "frozen", False)), log_path))
+        return 1
     try:
         root.mainloop()
     finally:

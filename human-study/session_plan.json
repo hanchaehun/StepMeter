@@ -47,6 +47,7 @@
     "give_up_confirm": "이 과업을 그만하고 다음으로 넘어갈까요?",
     "time_up": "여기까지 하셔도 됩니다.",
     "window_closed": "브라우저 창이 닫혔습니다. 다음 과업으로 넘어갈게요.",
+    "browser_error": "브라우저에 문제가 생겼습니다. 다음 과업으로 넘어갈게요.",
     "next_button": "다음",
     "finished": "수고하셨습니다. 노트북을 진행자에게 돌려주세요.",
     "returned_button": "돌려줬어요"
@@ -62,7 +63,7 @@
       "title": "회원가입",
       "page_id": "sb-admin-2/register/baseline",
       "preface_say": null,
-      "task_say": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "task_say": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
       "show_values": ["Minsu Kim", "study@example.com", "Study1234"],
       "done_when": "로그인 화면으로 이동",
       "facilitator_note": null
@@ -117,7 +118,7 @@
       "title": "사용자 초대",
       "page_id": "shadcn-admin/users/below-fold",
       "preface_say": null,
-      "task_say": "Invite User 창을 열고 이메일 study@example.com, Role은 Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "task_say": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
       "show_values": [],
       "done_when": "\"You submitted the following values:\" 알림이 뜸",
       "facilitator_note": null

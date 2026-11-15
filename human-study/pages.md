@@ -44,16 +44,16 @@
 ## 참가자에게 주는 과업 문장
 
 입력값은 아래 가짜 값을 쓴다. 실제 이메일이나 비밀번호를 넣지 않게 하기 위해서다.
-문장은 진행자가 실제로 읽어 주는 [session-procedure.md](session-procedure.md) C-4의 문장과 같다(표시용 굵게·코드 표시만 다르다). 에이전트 과업(`benchmark/tasks.json`)과 진행 프로그램(`session_plan.json`)도 같은 문장을 쓴다([ADR 0011](../docs/adr/0011-w3-plan-gaps.md) 1번). `tests/test_human_app.py`가 네 곳이 같은지 확인한다.
+**이 표가 과업 문장의 기준이다**([ADR 0011](../docs/adr/0011-w3-plan-gaps.md) 1번). 에이전트 과업(`benchmark/tasks.json`), 참가자 화면(`session_plan.json`), [session-procedure.md](session-procedure.md) C-4는 이 문장을 글자 그대로 쓴다(표시용 굵게·코드 표시만 다르다). 문장을 바꿔야 하면 이 표를 먼저 고치고 에이전트 과업 담당과 맞춘다. `tests/test_human_app.py`가 네 곳이 같은지 확인한다.
 
 | # | 과업 문장 | 끝난 것으로 보는 시점 |
 |---|---|---|
-| 1 | 이름 `Minsu Kim`, 이메일 `study@example.com`, 비밀번호 `Study1234`, 확인 칸에도 같은 값을 입력하고 **Register Account**를 눌러 주세요. | 로그인 화면으로 이동 |
+| 1 | 이름 `Minsu Kim`, 이메일 `study@example.com`, 비밀번호 `Study1234`(확인 칸에도 같은 값)를 입력하고 **Register Account**를 눌러 주세요. | 로그인 화면으로 이동 |
 | 2 | 정렬을 **Price: Low-High**로 바꾸고, 필터에서 Category를 **Apparel**로 골라 주세요. | Category 선택 (목록은 바뀌지 않음) |
 | 3 | 이메일을 `study@example.com`, 비밀번호를 `Study1234`로 바꿔 입력하고, 비밀번호가 보이게 해 주세요. | 비밀번호 표시로 전환 |
 | 4 | 이메일 `study@example.com`, 비밀번호 `Study1234`를 입력하고 **Remember Me**를 선택해 주세요. | 체크박스 선택 |
 | 5 | Status가 **Todo**인 작업만 보이게 한 뒤, **TASK-8202** 작업의 **Edit** 화면을 열어 주세요. | `TASK-8202`의 수정 화면 열림 |
-| 6 | **Invite User** 창을 열고 이메일 `study@example.com`, Role은 **Admin**을 입력한 뒤 **Invite**를 눌러 주세요. | "You submitted the following values:" 알림 표시 |
+| 6 | **Invite User** 창을 열고 이메일 `study@example.com`, Role **Admin**을 입력한 뒤 **Invite**를 눌러 주세요. | "You submitted the following values:" 알림 표시 |
 
 6번 과업은 처음에 "창을 열었다가 Cancel로 닫기"였으나, #35에서 `apps.json` 과업이 "사용자 초대 제출"로 바뀌어 맞췄다. 취소는 화면에 끝난 표시가 남지 않아 에이전트의 성공 조건을 정할 수 없기 때문이다. 기준선 패치에서 알림이 사라지지 않게 해 두었다.
 

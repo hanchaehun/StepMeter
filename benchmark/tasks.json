@@ -9,7 +9,7 @@
       "label_case": "baseline",
       "id": "register",
       "path": "/register.html",
-      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
       "success_condition": {
         "url_contains": "login.html"
       },
@@ -36,7 +36,7 @@
       "label_case": "contrast",
       "id": "register",
       "path": "/register.html",
-      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
       "success_condition": {
         "url_contains": "login.html"
       },
@@ -52,7 +52,7 @@
       "label_case": "inert",
       "id": "register",
       "path": "/register.html",
-      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
       "success_condition": {
         "url_contains": "login.html"
       },
@@ -68,7 +68,7 @@
       "label_case": "overlay",
       "id": "register",
       "path": "/register.html",
-      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
       "success_condition": {
         "url_contains": "login.html"
       },
@@ -84,7 +84,7 @@
       "label_case": "below-fold",
       "id": "register",
       "path": "/register.html",
-      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
       "success_condition": {
         "url_contains": "login.html"
       },
@@ -100,7 +100,7 @@
       "label_case": "unnamed",
       "id": "register",
       "path": "/register.html",
-      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234, 확인 칸에도 같은 값을 입력하고 Register Account를 눌러 주세요.",
+      "description": "이름 Minsu Kim, 이메일 study@example.com, 비밀번호 Study1234(확인 칸에도 같은 값)를 입력하고 Register Account를 눌러 주세요.",
       "success_condition": {
         "url_contains": "login.html"
       },
@@ -232,7 +232,7 @@
       "label_case": "small",
       "id": "users",
       "path": "/users",
-      "description": "Invite User 창을 열고 이메일 study@example.com, Role은 Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
       "success_condition": {
         "text_present": "You submitted the following values:"
       },
@@ -262,7 +262,7 @@
       "label_case": "inert",
       "id": "users",
       "path": "/users",
-      "description": "Invite User 창을 열고 이메일 study@example.com, Role은 Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
       "success_condition": {
         "text_present": "You submitted the following values:"
       },
@@ -292,7 +292,7 @@
       "label_case": "below-fold",
       "id": "users",
       "path": "/users",
-      "description": "Invite User 창을 열고 이메일 study@example.com, Role은 Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
       "success_condition": {
         "text_present": "You submitted the following values:"
       },
@@ -322,7 +322,7 @@
       "label_case": "baseline",
       "id": "users",
       "path": "/users",
-      "description": "Invite User 창을 열고 이메일 study@example.com, Role은 Admin을 입력한 뒤 Invite를 눌러 주세요.",
+      "description": "Invite User 창을 열고 이메일 study@example.com, Role Admin을 입력한 뒤 Invite를 눌러 주세요.",
       "success_condition": {
         "text_present": "You submitted the following values:"
       },

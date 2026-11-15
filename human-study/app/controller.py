@@ -54,9 +54,18 @@ class Step(str, Enum):
     C5 = "c5"
     DONE = "done"
     ABORTED = "aborted"
+    WITHDRAWN = "withdrawn"
 
 
 PARTICIPANT_STEPS = (Step.P_INTRO, Step.P_TASK, Step.P_RUNNING, Step.P_BETWEEN, Step.P_FINISHED)
+# 참가 철회(동의서 6절)를 받을 수 있는 단계. C-1·C-2는 [중단](데이터 없음), 진행 중 페이지는 먼저 끝낸다
+WITHDRAW_STEPS = (Step.PREFLIGHT, Step.RESUME, Step.HANDOVER, Step.P_INTRO, Step.P_TASK, Step.P_BETWEEN,
+                  Step.P_ERROR, Step.P_FINISHED, Step.REVIEW, Step.C5, Step.DONE)
+
+
+def withdrawn_path(folder: Path, code: str) -> Path:
+    """철회 표시 파일. 기록은 지우고 이 파일만 남겨 같은 코드를 다른 참가자에게 다시 주지 않게 한다(내용: 날짜뿐)."""
+    return folder / f"withdrawn-{code}.txt"
 
 
 @dataclass
@@ -108,6 +117,7 @@ class Report:
     check_path: Path
     zip_path: Path
     zipped: list[str]
+    unsaved: list[str] = field(default_factory=list)  # 세션 파일이 없는 page_id (오류로 건너뜀·중간에 꺼짐)
 
 
 @dataclass
@@ -161,6 +171,7 @@ class Controller:
         self.retry_allowed = False
         self.report: Report | None = None
         self.aborted_at: Step | None = None
+        self.withdrawn_removed: list[str] = []
         self._run_started: float | None = None
         self._decide: Callable[[str], None] | None = None
         self._pending_reason: str | None = None
@@ -247,12 +258,12 @@ class Controller:
         return set(saved) | interrupted | {x for x in noted if isinstance(x, str)}
 
     def suggest_code(self, github: str | None) -> str | None:
-        """그 진행자 범위에서 아직 아무 페이지도 없는 가장 작은 번호."""
+        """그 진행자 범위에서 아직 아무 페이지도 없고 철회되지 않은 가장 작은 번호."""
         f = self.plan.facilitator(github or "")
         if f is None:
             return None
         for c in f.codes():
-            if not self.attempted(c):
+            if not self.attempted(c) and not withdrawn_path(self.d.data_dir, c).exists():
                 return c
         return None
 
@@ -268,6 +279,10 @@ class Controller:
             return info
         if not practice and code == self.plan.practice_code:
             info.error = f"{code}은 연습 전용입니다. 연습이면 '연습 모드'를 켜세요"
+            return info
+        if withdrawn_path(self.d.practice_dir if practice else self.d.data_dir, code).exists():
+            info.error = (f"{code}는 참가 철회로 기록을 지운 코드입니다. 다른 참가자에게 다시 주지 않습니다"
+                          + (". '연습 기록 지우기'로 지운 뒤 쓰세요" if practice else ". 다음 번호를 쓰세요"))
             return info
         if not practice:
             f = self.plan.facilitator(github)
@@ -303,12 +318,36 @@ class Controller:
         code = self.plan.practice_code
         folder = self.d.practice_dir
         removed = []
-        patterns = (f"human-session-{code}-*.json", f".partial-{code}-*.jsonl", f"notes-{code}.json",
-                    f"check-{code}.txt", f"upload-{code}.zip")
-        for pattern in patterns:
-            for f in folder.glob(pattern):
+        for f in self._code_files(folder, code) + [withdrawn_path(folder, code)]:
+            if f.exists():
                 f.unlink()
                 removed.append(f.name)
+        return removed
+
+    def _code_files(self, folder: Path, code: str) -> list[Path]:
+        """그 코드의 모든 기록: 세션 json(검증 실패 포함)·.partial·notes·검사 결과·zip과 쓰다 남은 .tmp."""
+        safe = self.d.session._safe(code)
+        patterns = (f"human-session-{code}-*.json", f".partial-{safe}-*.jsonl", f"notes-{code}.json",
+                    f"notes-{code}.json.tmp", f"check-{code}.txt", f"upload-{code}.zip", f"upload-{code}.zip.tmp")
+        return sorted({f for pattern in patterns for f in folder.glob(pattern) if f.is_file()})
+
+    def withdraw(self) -> list[str]:
+        """참가 철회(동의서 6절 "그만두시면 그때까지의 기록을 지웁니다"): 이 코드의 기록을 모두 지우고
+        철회 표시만 남긴다. 표시가 있으면 코드 제안·입력에서 이 코드를 다시 쓰지 않는다. 지운 파일 이름을 돌려준다."""
+        if self.step not in WITHDRAW_STEPS:
+            raise RuntimeError(f"{self.step.value}에서는 철회를 받을 수 없다 (진행 중이면 먼저 [그만할게요])")
+        code, folder = self.code or "", self.out_dir
+        code_number(code)
+        removed = []
+        for f in self._code_files(folder, code):
+            f.unlink()
+            removed.append(f.name)
+        folder.mkdir(parents=True, exist_ok=True)
+        withdrawn_path(folder, code).write_text(
+            f"참가 철회로 이 코드의 기록을 지웠다 ({datetime.now(timezone.utc):%Y-%m-%d}). 이 코드는 다시 쓰지 않는다.\n",
+            encoding="utf-8")
+        self.withdrawn_removed = removed
+        self._go(Step.WITHDRAWN)
         return removed
 
     def back_to_setup(self) -> None:
@@ -703,19 +742,24 @@ class Controller:
         if errors:
             return errors
         data = self._notes()
+        rewrites: list[tuple[Path, bool]] = []
         for r in rows:
             confirmed, codes, note = entries.get(r.page.page_id, (r.confirmed, [], ""))
             if r.locked:
                 confirmed = r.confirmed
             if r.path is not None and not r.invalid and confirmed is not None:
-                self._rewrite_completed(r.path, confirmed)
+                rewrites.append((r.path, confirmed))
             changed = None if confirmed is None or r.completed is None else confirmed != r.completed
             entry = notes_mod.page_entry(data, r.page.page_id) or {
                 "order": r.page.order, "page_id": r.page.page_id, "participant_reported": r.reported,
                 "completed": r.completed, "auto_stopped_3min": r.reported == "timeout" if r.reported else None}
             entry = {**entry, "completed_confirmed": confirmed, "confirmation_changed": changed}
             notes_mod.upsert_page(data, notes_mod.apply_note(entry, codes, note))
+        # notes(확정값)를 먼저 저장한 뒤 세션 파일을 고친다. 사이에 프로그램이 꺼져도 다시 열면 확인표 기본값이
+        # notes의 확정값이라, 저장하면 세션 파일이 그 값으로 맞춰진다(반대 순서면 기본값이 원래 값으로 돌아간다)
         notes_mod.save(self.out_dir, self.code or "", data)
+        for path, value in rewrites:
+            self._rewrite_completed(path, value)
         self._go(Step.C5)
         return {}
 
@@ -742,7 +786,10 @@ class Controller:
         tmp.replace(zip_path)
         with zipfile.ZipFile(zip_path) as z:
             names = z.namelist()
-        self.report = Report(text=text, ok=rc == 0, check_path=check_path, zip_path=zip_path, zipped=names)
+        saved, _ = self._scan(folder, code)
+        unsaved = [p.page_id for p in self.plan.pages if p.page_id not in saved]
+        self.report = Report(text=text, ok=rc == 0, check_path=check_path, zip_path=zip_path, zipped=names,
+                             unsaved=unsaved)
         self._go(Step.DONE)
         return self.report
 
