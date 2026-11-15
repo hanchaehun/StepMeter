@@ -34,7 +34,7 @@
 - 30 = 실행 1회의 step 상한 (4.5)
 - 끝난 attempt = `attempt.end_reason`이 있는 행 (재생·에이전트 모두)
 - 진행 중 attempt의 step은 30개까지만 센다. 실행 중 진행률은 최대 90
-- 예정 attempt 수 = `run.repeat_n` + 재생 attempt(`kind=replay`) 행 수. auto 모드에서 재생이 끊기면 재생 시도 수에 `run.repeat_n`을 더한다 ([ADR 0011](adr/0011-w3-plan-gaps.md) 8번). 재생 중(끊길지 모를 때)에도 미리 더한다: 끊긴 뒤 진행률이 90%에서 멈추지 않게. 재생이 끝까지 성공하면 후처리 뒤 100으로 오른다. 재생은 시작할 때 attempt 행을 만들고 step마다 `update_progress`를 부른다 (#55)
+- 예정 attempt 수(진행률 분모)는 `update_progress` 한 곳에서만 계산한다: agent는 `run.repeat_n`, replay_only는 재생 attempt 수. auto 재생 중에는 끊길 경우에 대비해 재생 attempt 수 + `run.repeat_n`을 미리 잡는다(끊긴 뒤 90%에서 멈추지 않게). 재생이 끊기면(`replay_status=partial`) 이 분모를 유지하고, 끝까지 재생되면(`full`) 재생 attempt 수만 센다 ([ADR 0011](adr/0011-w3-plan-gaps.md) 8번). 재생은 시작할 때 attempt 행을 만들고 step마다 `update_progress`를 부른다. 에이전트 attempt는 재생이 끝난 뒤 시작하며 병렬로 돈다(4.6, #55). 후처리까지 끝나면 100으로 올린다.
 - 에이전트가 과업에 실패하거나 사이트가 막은 경우는 `completed`, 사유는 `attempt.end_reason` (openapi.yaml RunStatus)
 
 ## 3. DB 쓰기 경계 (2.2, 10장)

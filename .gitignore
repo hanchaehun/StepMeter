@@ -42,3 +42,8 @@ benchmark/evidence/
 benchmark/holdout/
 
 benchmark/builds/
+
+# 사람 실험 진행 프로그램 exe 빌드 결과 (human-study/app/build_exe.py). 소스·빌드 스크립트만 커밋한다
+/build/
+/dist/
+/*.zip

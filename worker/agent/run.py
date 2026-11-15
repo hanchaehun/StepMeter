@@ -1,4 +1,4 @@
-"""RQ entrypoint. Agent mode only; no implicit benchmark launch or credential setup."""
+"""RQ entrypoint for agent and replay runs; no implicit benchmark or credential setup."""
 import asyncio
 import contextlib
 import os
@@ -17,6 +17,7 @@ from worker.llm.select import make_adapter
 from worker.metrics.persistence import save_run_medians
 from worker.metrics.postprocess import finalize_run_metrics
 from worker.queue.runs import update_progress
+from worker.replay.runner import execute_replay
 
 ROOT = Path(__file__).resolve().parents[2]
 VIEWPORTS = {'desktop': {'width': 1280, 'height': 800}, 'mobile': {'width': 390, 'height': 844}}
@@ -36,8 +37,16 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             row = running(session, run_id)
             task = session.get(Task, row.task_id)
             project = session.get(Project, task.project_id)
-            if row.mode == 'replay_only' or (row.mode == 'auto' and row.base_run_id is not None):
-                raise ValueError('Replay dispatch is not implemented by the agent entrypoint')
+            replay = row.mode == 'replay_only' or (row.mode == 'auto' and row.base_run_id is not None)
+            base_attempt_id = None
+            if replay:
+                base = session.get(Run, row.base_run_id) if row.base_run_id else None
+                if (base is None or base.status != 'completed' or base.task_id != row.task_id
+                        or base.viewport != row.viewport or base.representative_attempt_id is None):
+                    raise ValueError('Replay requires a completed matching base with a representative path')
+                base_attempt_id = base.representative_attempt_id
+            if row.mode == 'replay_only':
+                row.prompt_version = None
             config = dict(id=run_id, model=row.model, viewport=row.viewport,
                           repeat_n=row.repeat_n, base_url=project.base_url,
                           description=task.description, success_condition=task.success_condition)
@@ -48,6 +57,27 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             owned_playwright = await async_playwright().start()
             owned_browser = await owned_playwright.chromium.launch(headless=True)
             browser = owned_browser
+        replay_full = False
+        if replay:
+            with factory.begin() as session:
+                running(session, run_id)
+                attempt = Attempt(run_id=run_id, index=1, kind='replay')
+                session.add(attempt)
+                session.flush()
+                replay_attempt_id = attempt.id
+            context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
+                                                device_scale_factor=3 if config['viewport']=='mobile' else 1,
+                                                is_mobile=config['viewport']=='mobile',
+                                                has_touch=config['viewport']=='mobile')
+            try:
+                page = await context.new_page()
+                page.set_default_timeout(10000)
+                page.set_default_navigation_timeout(30000)
+                replay_full = await execute_replay(page, factory, config, replay_attempt_id,
+                                                   base_attempt_id, axe_path=axe_path)
+            finally:
+                await context.close()
+        agent_needed = row.mode == 'agent' or (row.mode == 'auto' and (not replay or not replay_full))
         slots, one_by_one = asyncio.Semaphore(MAX_PARALLEL), asyncio.Lock()
         rate_limited = False
 
@@ -58,7 +88,7 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 async with one_by_one if rate_limited else contextlib.nullcontext():
                     with factory.begin() as session:
                         running(session, run_id)
-                        attempt = Attempt(run_id=run_id, index=index, kind='agent')
+                        attempt = Attempt(run_id=run_id, index=index + (1 if replay else 0), kind='agent')
                         session.add(attempt)
                         session.flush()
                         attempt_id = attempt.id
@@ -79,17 +109,19 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                         if (session.get(Attempt, attempt_id).end_detail or '').startswith(RATE_LIMITED):
                             rate_limited = True
 
-        # 계획서 4.6: attempt를 최대 MAX_PARALLEL개 동시에. 한 attempt의 예외(취소 포함)는
-        # 동시에 돌던 attempt가 모두 끝난 뒤에 올린다 (취소면 각 attempt가 다음 step에서 스스로 멈춘다)
-        results = await asyncio.gather(*(attempt_once(i) for i in range(1, config['repeat_n'] + 1)),
+        # 계획서 4.6: attempt를 최대 MAX_PARALLEL개 동시에. 재생이 끝난 뒤에 시작한다 (ADR 0011 8번).
+        # 한 attempt의 예외(취소 포함)는 동시에 돌던 attempt가 모두 끝난 뒤에 올린다 (취소면 각 attempt가 다음 step에서 스스로 멈춘다)
+        planned = range(1, config['repeat_n'] + 1) if agent_needed else ()
+        results = await asyncio.gather(*(attempt_once(i) for i in planned),
                                        return_exceptions=True)
         for result in results:
             if isinstance(result, BaseException):
                 raise result
         with factory.begin() as session:
             row = running(session, run_id)
-            finalize_run_metrics(session, run_id)
-            save_run_medians(session, run_id)
+            kind = 'agent' if agent_needed else 'replay'
+            finalize_run_metrics(session, run_id, kind=kind)
+            save_run_medians(session, run_id, kind=kind)
             attempts = list(session.scalars(select(Attempt).where(Attempt.run_id == run_id)))
             counts = dict(session.execute(select(Metric.attempt_id, Metric.value).where(
                 Metric.run_id == run_id, Metric.attempt_id.is_not(None), Metric.key == 'step_count')).all())

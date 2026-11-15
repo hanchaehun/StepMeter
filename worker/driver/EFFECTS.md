@@ -45,13 +45,10 @@ Policy decisions, deliberately explicit:
   (2xx/3xx) fetch/xhr/document responses for requests started inside the window
   count. Failed/cancelled requests and beacon/ping do not count. Repeated same-origin,
   same-path GET in the preceding 3 seconds is polling; query changes do not reset it.
-- **Network-only effects cannot be encoded by the frozen four-value enum.** The
-  result retains `meaningful_network_count`, but `as_step_effect()` raises
-  `UnclassifiedNetworkEffect` for network-only results. Caller must report/review
-  this condition rather than create a false R03. No schema or rule changes made.
-- This supplies the driver measurement component, not the missing agent-loop
-  persistence implementation. Integration must preserve observation failures as
-  errors and call `as_step_effect()`; it must not directly store raw result fields.
+- A successful network response with no visible effect maps to `dom_mutation`
+  with `changed=true` when `as_step_effect()` is called (ADR 0011). This avoids
+  a false R03 without changing the frozen schema. Callers must use this method
+  for persistence and rule evaluation.
 
 Tests: `python -m unittest discover -s tests -p 'test_effect*.py' -v`.
 Browser test uses normal Playwright Chromium, optionally a locally installed

@@ -1,0 +1,2 @@
+# exe 빌드에만 쓴다 (human-study/app/build_exe.py). 진행자 PC에는 필요 없다.
+pyinstaller==6.16.0

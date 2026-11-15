@@ -16,6 +16,8 @@ benchmark/eval.py의 예측 형식으로 저장한다. 채점은 PM이 정답을
 - 규칙 번호로 바꿀 수 없는 axe 위반은 예측에 넣지 않고 보고서의 unmapped에만 남긴다.
 - 과업 경로: 쿠키 안내 닫기 → (결함 적용) → 가입 화면 → 가입 누른 뒤 → 구독 확인 뒤. 세 화면의 결과를 합친다.
   쿠키 안내가 떠 있는 첫 화면은 결함을 적용하기 전이라 넣지 않는다 (verify_conversion.py와 같은 순서).
+- below-fold만 가입 시작 화면(entry.html)에서 시작한다(ADR 0009, ADR 0010 7번). 과업이 "가입 시작 링크를 찾아
+  가입 폼을 연다"라서, 결함을 적용한 가입 시작 화면 한 곳에서만 axe를 돌린다. 시작 화면은 verify_conversion.ENTRY_PAGES를 쓴다.
 """
 from __future__ import annotations
 
@@ -78,6 +80,7 @@ async def collect(origin: str) -> dict[str, list[dict]]:
     from playwright.async_api import async_playwright
 
     from benchmark.mutate import apply, load_config
+    from benchmark.verify_conversion import ENTRY_PAGES
 
     paths = [None, *sorted((ROOT / f'benchmark/mutations/{APP}').glob('*.yaml'))]
     violations_by_case: dict[str, list[dict]] = {}
@@ -88,6 +91,12 @@ async def collect(origin: str) -> dict[str, list[dict]]:
                 config = load_config(path) if path else None
                 case = config['id'] if config else 'baseline'
                 page = await browser.new_page(viewport={'width': 1280, 'height': 800})
+                if case in ENTRY_PAGES:  # 가입 시작 화면에서 시작하는 케이스 (ADR 0009)
+                    await page.goto(f'{origin}/{ENTRY_PAGES[case]}')
+                    await apply(page, config)
+                    violations_by_case[case] = await run_axe(page)
+                    await page.close()
+                    continue
                 await page.goto(origin + '/index.html')
                 await page.frame_locator('iframe').locator('#confirm').wait_for()
                 await page.get_by_role('button', name='필수만 사용').click()

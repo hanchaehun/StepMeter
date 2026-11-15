@@ -41,6 +41,15 @@ class LLMResult:
     latency_ms: int  # 보내고 답 받을 때까지 걸린 시간
 
 
+class LLMRateLimitError(Exception):
+    """LLM 호출 한도(HTTP 429)에 걸렸다.
+
+    병렬 attempt를 순차로 바꾸는 쪽(worker/agent/run.py, #55·#58)이 attempt.end_detail에
+    적힌 예외 이름으로 알아본다. 그래서 이름을 바꾸지 않는다.
+    code 속성을 두지 않는다. loop.py가 code가 있으면 이름 뒤에 글자로 이어 붙인다.
+    """
+
+
 class LLMAdapter(Protocol):
     """모든 어댑터(가짜, Claude, Gemini)가 지켜야 하는 모양."""
 

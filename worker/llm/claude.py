@@ -14,7 +14,7 @@ import time
 from typing import Any
 
 from worker.llm.action_tool import ACTION_TOOL, ACTION_TOOL_NAME
-from worker.llm.base import LLMRequest, LLMResult
+from worker.llm.base import LLMRateLimitError, LLMRequest, LLMResult
 from worker.llm.pricing import cost_usd
 
 DEFAULT_MODEL = "claude-haiku-5-5"  # 개발 중 기본 모델 (PM 결정, 16장 "소형 모델")
@@ -81,7 +81,14 @@ class ClaudeAdapter:
     async def ask(self, request: LLMRequest) -> LLMResult:
         params = self.build_params(request)
         started = time.perf_counter()
-        response = await self.client.messages.create(**params)  # 2단계: 보내기
+        try:
+            response = await self.client.messages.create(**params)  # 2단계: 보내기
+        except Exception as error:
+            # SDK가 429를 몇 번 다시 보내고도 실패하면 여기로 온다. 호출 한도만 따로 알린다 (#55).
+            # 오류 종류는 SDK 클래스 대신 status_code로 본다. 테스트는 anthropic을 불러오지 않는다.
+            if getattr(error, "status_code", None) == 429:
+                raise LLMRateLimitError("Claude 호출 한도(429)") from error
+            raise
         latency_ms = int((time.perf_counter() - started) * 1000)
 
         text = extract_text(response, request.purpose)  # 3단계: 답 꺼내기

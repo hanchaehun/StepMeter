@@ -62,8 +62,8 @@ class ParallelAttemptTests(unittest.IsolatedAsyncioTestCase):
         # 후처리는 이 테스트의 관심 밖이라 비운다 (진행률은 running이면 True)
         for target, fake in (
             ("update_progress", lambda session, run_id, finished=False: session.get(Run, run_id).status == "running"),
-            ("finalize_run_metrics", lambda session, run_id: None),
-            ("save_run_medians", lambda session, run_id: []),
+            ("finalize_run_metrics", lambda session, run_id, kind="agent": None),
+            ("save_run_medians", lambda session, run_id, kind="agent": []),
             ("execute_attempt", self.fake_attempt),
         ):
             p = patch.object(run_module, target, fake)

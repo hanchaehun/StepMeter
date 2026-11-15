@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 from jsonschema import Draft202012Validator
 
-from worker.llm import LLMRequest
+from worker.llm import LLMRateLimitError, LLMRequest
 from worker.llm.action_tool import ACTION_TOOL
 from worker.llm.claude import ClaudeAdapter
 from worker.llm.pricing import cost_usd
@@ -33,6 +33,26 @@ def fake_client(content, input_tokens=1000, output_tokens=100, cache_write=0, ca
         cache_read_input_tokens=cache_read,
     )
     return SimpleNamespace(messages=FakeMessages(SimpleNamespace(content=content, usage=usage)))
+
+
+class FailingMessages:
+    def __init__(self, error):
+        self.error = error
+
+    async def create(self, **params):
+        raise self.error
+
+
+class FakeStatusError(Exception):
+    """anthropic.APIStatusError처럼 status_code만 가진 가짜 오류."""
+
+    def __init__(self, status_code):
+        super().__init__(f"status {status_code}")
+        self.status_code = status_code
+
+
+def failing_client(error):
+    return SimpleNamespace(messages=FailingMessages(error))
 
 
 def tool_block(**fields):
@@ -152,6 +172,29 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.assertEqual(result.input_tokens, 3000)  # 1000 + 2000 + 0
         self.assertEqual(result.output_tokens, 100)
         self.assertAlmostEqual(result.cost_usd, 0.0004)
+
+
+class RateLimitTests(unittest.TestCase):
+    def test_429_becomes_rate_limit_error(self):
+        original = FakeStatusError(429)
+        adapter = ClaudeAdapter(client=failing_client(original))
+        with self.assertRaises(LLMRateLimitError) as caught:
+            asyncio.run(adapter.ask(make_request()))
+        self.assertIs(caught.exception.__cause__, original)
+
+    def test_name_matches_what_run_py_looks_for(self):
+        # run.py(#58)는 attempt.end_detail이 이 글자로 시작하는지 본다.
+        # loop.py는 code 속성이 있으면 이름 뒤에 붙이므로 code를 두지 않는다.
+        self.assertEqual(LLMRateLimitError.__name__, "LLMRateLimitError")
+        self.assertFalse(hasattr(LLMRateLimitError("x"), "code"))
+
+    def test_other_errors_pass_through_unchanged(self):
+        for error in (FakeStatusError(500), FakeStatusError(400), TimeoutError("느림")):
+            with self.subTest(error=error):
+                adapter = ClaudeAdapter(client=failing_client(error))
+                with self.assertRaises(type(error)) as caught:
+                    asyncio.run(adapter.ask(make_request()))
+                self.assertIs(caught.exception, error)
 
 
 class PricingTests(unittest.TestCase):
