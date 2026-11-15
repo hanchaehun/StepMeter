@@ -19,6 +19,7 @@
 | 실패 | 워커 함수가 예외로 끝나거나 제한 시간을 넘기면 RQ 실패 콜백이 `running`인 run을 `failed`, `finished_at`으로 바꾼다 |
 | 워커 함수 | 큐가 부르는 함수 `run(run_id)`. 경로는 에이전트 코어가 정한다 (지금 가칭 `worker.agent.run.run`) |
 | Redis 주소 | 환경 변수 `REDIS_URL` (기본 `redis://localhost:6379/0`) |
+| 동시 attempt 수 | 에이전트 attempt를 최대 3개 동시에 돌린다 (4.6). 환경 변수 `STEPMETER_MAX_PARALLEL_ATTEMPTS`(1~3, 기본 3)로 줄일 수 있다(스테이징 메모리). 호출 한도(`LLMRateLimitError`)로 끝난 attempt가 나오면 실행 중인 attempt가 모두 끝난 뒤 남은 attempt를 하나씩 돌린다. 한도로 끝난 attempt는 다시 재지 않는다 |
 
 ## 2. 진행률 갱신 방식 (2.1, 2.2, F02: 대시보드 2초 폴링)
 
