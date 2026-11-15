@@ -14,7 +14,7 @@ from worker.a11y.scan import scan_page
 from worker.agent.action_feedback import failure_code, missing_fields, retry_message
 from worker.agent.observation import describe, labeled_screenshot, state_hash
 from worker.agent.persistence import Canceled, finish_attempt, log_call, running, save_step
-from worker.agent.safety import SafetyStop, blocked_reason
+from worker.agent.safety import LoginWall, SafetyStop, blocked_reason
 from worker.agent.termination import LoopGuard, verify_success
 from worker.collect.collector import observe, record_first_view, resolve_element, scroll_target_into_view
 from worker.driver.effects import EffectResult
@@ -25,9 +25,10 @@ from worker.metrics.fitts import calculate_fitts_ids
 from worker.metrics.interactions import (calculate_scroll_distance, count_interactions,
     count_no_response_clicks, count_page_transitions, count_repeated_clicks)
 from worker.metrics.persistence import save_attempt_metrics
-from worker.rules.engine import evaluate_step, evaluate_axe, axe_target_size_result
+from worker.rules.engine import evaluate_step, evaluate_axe, axe_target_size_result, element_key
 from worker.rules.persistence import save_candidates
 from worker.rules.r05 import evaluate as loop_candidate
+from worker.rules.r07 import evaluate as target_difficulty_candidates
 from worker.rules.r08 import evaluate as backtracking_candidate
 from worker.rules.r09 import PROMPT_VERSION as JUDGE_VERSION, StepRecord, judge as judge_expectations
 from worker.rules.r06 import FirstTargetTracker, screen_key
@@ -37,10 +38,11 @@ PROMPT = Path(__file__).resolve().parents[2] / 'prompts/action_v2.md'
 
 
 async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_path, max_steps=30, max_seconds=300, evidence_sink=None):
-    driver = PlaywrightDriver(page)
+    driver = PlaywrightDriver(page, task_description=config['description'])
     guard, first = LoopGuard(), FirstTargetTracker()
     actions, effects, identities, targets, history = [], [], [], [], []
-    records = []  # R09 판단용 (시도가 끝난 뒤 한 번 묻는다)
+    target_step_ids = []
+    records = []  # R09 판단용: 실제로 실행·저장된 step만 (시도가 끝난 뒤 한 번 묻는다)
     urls, scrolls = [], []
     navigation = {'changed': False}
     def navigated(frame):
@@ -82,6 +84,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         running(session, config['id'])
                     try:
                         action = parse_action_json(response.text)
+                        if hasattr(action, 'target') and action.target not in {r['el_id'] for r in rows}:
+                            raise ActionInputError('invalid_target')
                         break
                     except ActionInputError as error:
                         # Only field names are derived from the reply; never its values or text.
@@ -90,8 +94,6 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         if retry == 2:
                             raise ActionInputError(failure_code(error.code, missing)) from None
                         context['invalid_action'] = retry_message(error.code, name, missing)
-                if hasattr(action, 'target') and action.target not in {r['el_id'] for r in rows}:
-                    raise ValueError('Target is outside the advertised observation')
                 repeated = guard.repeated(state, action)
                 axe = None
                 identity = None
@@ -150,6 +152,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 effects.append(effect)
                 identities.append(identity)
                 targets = metric_targets
+                if len(metric_targets) > len(target_step_ids):
+                    target_step_ids.append(step_id)
                 history.append({'action': action.model_dump(), 'effect': effect})
                 records.append(StepRecord(step_id, idx, action.action, result.element.name if result.element else None,
                                           action.expectation, effect, url, page.url))
@@ -187,6 +191,9 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
     except TimeoutError:
         reason = 'budget_exceeded' if budget.expired() else 'error'
         detail = f'{max_seconds} second attempt budget exceeded' if budget.expired() else 'TimeoutError'
+        finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
+    except LoginWall:
+        reason, detail = 'blocked', 'login_wall'
         finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
     except SafetyStop:
         reason = 'safety_stop'
@@ -228,6 +235,12 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
         candidate = loop_candidate(reason)
         if candidate:
             save_candidates(session, config['id'], [candidate], confidence=1.0)
+        difficulty = [replace(candidate, step_id=step_id, element_key=element_key(snapshot))
+                      for snapshot, step_id, candidate in zip(
+                          targets, target_step_ids, target_difficulty_candidates(targets, fitts_values))
+                      if candidate is not None]
+        if difficulty:
+            save_candidates(session, config['id'], difficulty, confidence=1.0)
         if judged:
             save_candidates(session, config['id'], judged, confidence=1.0)
 

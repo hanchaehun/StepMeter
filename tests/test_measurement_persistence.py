@@ -16,7 +16,7 @@ from apps.api.db.models import AccessCode, Attempt, Base, Issue, Metric, Project
 from worker.metrics.persistence import save_attempt_metrics, save_run_medians
 from worker.metrics.postprocess import finalize_run_metrics
 from worker.rules.candidate import Candidate
-from worker.rules.persistence import save_candidates
+from worker.rules.persistence import save_candidates, update_explanation
 
 
 @compiles(JSONB, "sqlite")
@@ -161,3 +161,60 @@ class PersistenceTests(unittest.TestCase):
                 Candidate("R03", "high", "wrong run", step_id=self.step.id),
             ], confidence=0.7)
         self.assertEqual(self.session.scalar(select(func.count()).select_from(Issue)), self.initial_issues)
+
+    def test_axe_rewrite_retains_target_identity_and_caller_rollback(self):
+        from apps.api.db.models import IssueLabel
+        from worker.rules.axe_target import read_target
+        from dataclasses import replace
+        suffix = ' 대상: [ "#label-one" ]'
+        candidate = Candidate("R02", "medium", "Original" + suffix, step_id=self.step.id)
+        row = save_candidates(self.session, self.run.id, [candidate], confidence=.7)[0]
+        original_id = row.id
+        self.session.add(IssueLabel(issue_id=row.id, label="real", labeler="synthetic", source="review"))
+        update_explanation(self.session, self.run.id, row.id, "New prose")
+        self.assertEqual(row.explanation, "New prose" + suffix)
+        again = save_candidates(self.session, self.run.id, [candidate], confidence=.8)[0]
+        self.assertEqual(again.id, original_id)
+        self.assertEqual(again.explanation, "New prose" + suffix)
+        self.assertEqual(read_target(again.explanation), ["#label-one"])
+        # Distinct axe nodes on the same step stay distinct, including references.
+        other = replace(candidate, explanation='Original 대상: ["#other"]')
+        self.assertNotEqual(save_candidates(self.session, self.run.id, [other], confidence=.7)[0].id, original_id)
+        self.assertEqual(self.session.scalar(select(func.count()).select_from(IssueLabel).where(IssueLabel.issue_id == original_id)), 1)
+        self.session.rollback()
+        self.assertEqual(self.session.scalar(select(func.count()).select_from(Issue)), self.initial_issues)
+
+    def test_explanation_rejects_wrong_run_missing_target_and_invented_target(self):
+        candidate = Candidate("R10", "medium", 'Unnamed 대상: ["#button"]', step_id=self.step.id)
+        row = save_candidates(self.session, self.run.id, [candidate], confidence=.7)[0]
+        original = row.explanation
+        for generated in ('', '   ', 'New 대상: ["#invented"]'):
+            with self.assertRaises(ValueError):
+                update_explanation(self.session, self.run.id, row.id, generated)
+            self.assertEqual(row.explanation, original)
+        with self.assertRaises(ValueError):
+            update_explanation(self.session, self.run.id, row.id + 99999, "New")
+        other = Run(task_id=self.run.task_id, viewport="desktop", mode="agent", repeat_n=1, model="fake")
+        self.session.add(other)
+        self.session.flush()
+        with self.assertRaises(ValueError):
+            update_explanation(self.session, other.id, row.id, "New")
+        missing = save_candidates(self.session, self.run.id, [Candidate("R02", "medium", "No target")], confidence=.7)[0]
+        with self.assertRaises(ValueError):
+            update_explanation(self.session, self.run.id, missing.id, "New")
+
+    def test_reference_r10_distinct_targets_and_non_axe_rewrite(self):
+        from dataclasses import replace
+        first = Candidate("R10", "medium", 'Original 대상: ["#unnamed-a"]', is_reference=True)
+        second = replace(first, explanation='Original 대상: ["#unnamed-b"]')
+        rows = save_candidates(self.session, self.run.id, [first, second], confidence=.7)
+        self.assertNotEqual(rows[0].id, rows[1].id)
+        update_explanation(self.session, self.run.id, rows[0].id, "Generated")
+        respaced = replace(first, explanation='Original 대상: [ "#unnamed-a" ]')
+        again = save_candidates(self.session, self.run.id, [respaced], confidence=.7)[0]
+        self.assertEqual(again.id, rows[0].id)
+        self.assertEqual(again.explanation, 'Generated 대상: ["#unnamed-a"]')
+        self.assertTrue(again.is_reference)
+        ordinary = save_candidates(self.session, self.run.id, [Candidate("R03", "high", "Original")], confidence=.7)[0]
+        update_explanation(self.session, self.run.id, ordinary.id, "Generated prose")
+        self.assertEqual(ordinary.explanation, "Generated prose")

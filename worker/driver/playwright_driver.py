@@ -34,11 +34,13 @@ class PlaywrightDriver:
     """Use after observe(); never reinterpret an old number after another observe.
 
     Caller owns page/attempt lifecycle, goal checks, cancellation and Step storage.
-    Call effect.as_step_effect() before storage: network-only evidence may raise.
+    Call effect.as_step_effect() before storage so network-only evidence maps
+    to the ADR 0011 persisted effect.
     Terminal done/fail actions are agent decisions, not browser actions.
     """
-    def __init__(self, page, **effect_options):
+    def __init__(self, page, *, task_description='', **effect_options):
         self.page = page
+        self.task_description = task_description
         self.effects = EffectObserver(page, **effect_options)
         self._busy = False
         self._select_options = {}
@@ -109,7 +111,8 @@ class PlaywrightDriver:
                         raise EffectObservationError('Native select options changed since observation')
                     native_index = options[index]['index']
                     callback = lambda: handle.select_option(index=native_index)
-                await guard_target(handle, kind)
+                await guard_target(handle, kind, task_description=self.task_description,
+                                   text=action.text if kind == 'type' else None)
                 async def checked_action():
                     current = await resolve_element(self.page, action.target)
                     try:
@@ -119,7 +122,8 @@ class PlaywrightDriver:
                         await current.dispose()
                     if kind == 'select' and await enabled_select_options(handle) != options:
                         raise EffectObservationError('Native select options changed during preparation')
-                    await guard_target(handle, kind)
+                    await guard_target(handle, kind, task_description=self.task_description,
+                                       text=action.text if kind == 'type' else None)
                     await callback()
                 return ActionResult(element, await self.effects.observe(checked_action, target=handle), screenshot)
             finally:

@@ -16,6 +16,7 @@ from worker.agent import run as agent_run
 from worker.agent.action_feedback import missing_fields, retry_message
 from worker.agent.run import execute_run
 from worker.agent.observation import state_hash
+from worker.agent.safety import _literal_in_task
 from worker.agent.termination import LoopGuard, representative
 from worker.llm.fake import FakeAdapter
 from worker.schemas import parse_action_json
@@ -67,6 +68,66 @@ class PureTests(unittest.TestCase):
         rows = [Attempt(id=1,index=2,success=True), Attempt(id=2,index=1,success=True),
                 Attempt(id=3,index=3,success=False)]
         self.assertEqual(representative(rows,{1:1,2:3,3:2}),2)
+
+
+BENCHMARK_PASSWORD = 'Study1234'
+
+
+def benchmark_password_descriptions():
+    # Read the real task sentences so the tests follow benchmark/tasks.json if the wording changes.
+    path = Path(__file__).resolve().parents[1] / 'benchmark' / 'tasks.json'
+    cases = json.loads(path.read_text(encoding='utf-8'))['cases']
+    return sorted({c['description'] for c in cases if BENCHMARK_PASSWORD in c['description']})
+
+
+class PasswordLiteralTests(unittest.TestCase):
+    # Rule (ADR 0011 #1 + PM decision): the value must equal one task token exactly, case-sensitive.
+    # Token boundaries: whitespace, non-ASCII, ( ) [ ] { } " ' `; trailing . , ; : may be dropped.
+    def test_benchmark_password_sentences_accept_password(self):
+        descriptions = benchmark_password_descriptions()
+        self.assertEqual(len(descriptions), 3)
+        for d in descriptions:
+            with self.subTest(d):
+                self.assertTrue(_literal_in_task(d, BENCHMARK_PASSWORD))
+
+    def test_benchmark_password_sentences_reject_other_values(self):
+        for d in benchmark_password_descriptions():
+            for value in ('Pass1234', 'Study123', 'tudy1234', 'study1234', 'STUDY1234', '', ' ', '\t'):
+                with self.subTest(d=d, value=value):
+                    self.assertFalse(_literal_in_task(d, value))
+
+    def test_accepted_surroundings(self):
+        cases = [
+            'abc123',                       # whole sentence
+            'abc123 is the password',       # sentence start
+            'The password is abc123',       # sentence end
+            'Enter abc123.',                # trailing period
+            'Enter abc123, then log in',
+            'Enter abc123; then log in',
+            'password: abc123: done',
+            'Enter "abc123" here', "Enter 'abc123' here", 'Enter `abc123` here',
+            'Enter (abc123) here', 'Enter [abc123] here', 'Enter {abc123} here',
+            '비밀번호 abc123를 입력', '비밀번호를 abc123로 바꿔', '비밀번호 abc123(확인 칸에도)',
+            '비밀번호는abc123입니다',
+        ]
+        for d in cases:
+            with self.subTest(d):
+                self.assertTrue(_literal_in_task(d, 'abc123'))
+
+    def test_rejected_surroundings(self):
+        cases = [
+            'Enter abc123! in the password field',   # ! stays part of the token
+            'Enter abc123? now', 'Enter abc123@x now', 'Enter #abc123 now',
+            'Enter abc1234 in the field', 'Enter xabc123 in the field',
+            'Enter abc123-4 now', 'password=abc123', 'Enter ABC123 now', 'No password here',
+        ]
+        for d in cases:
+            with self.subTest(d):
+                self.assertFalse(_literal_in_task(d, 'abc123'))
+
+    def test_symbol_password_is_accepted_whole(self):
+        self.assertTrue(_literal_in_task('Enter abc123! in the password field', 'abc123!'))
+        self.assertTrue(_literal_in_task('Enter abc123!.', 'abc123!'))
 
 
 class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
@@ -151,12 +212,95 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
         with self.factory() as s:
             a=s.scalar(select(Attempt));self.assertEqual((a.end_reason,a.steps_count),('safety_stop',0))
 
-    async def test_login_is_blocked_without_call(self):
+    async def test_visible_password_field_does_not_block_attempt(self):
         self.html='<html><body><input type="password"></body></html>'
-        await self.run_replies([action('done',reason='goal_reached')])
+        await self.run_replies([action('fail')])
         with self.factory() as s:
-            self.assertEqual(s.scalar(select(Attempt)).end_reason,'blocked')
-            self.assertEqual(s.scalar(select(func.count()).select_from(LlmCall)),0)
+            self.assertEqual(s.scalar(select(Attempt)).end_reason,'gave_up')
+            self.assertEqual(s.scalar(select(func.count()).select_from(LlmCall)),1)
+
+    async def test_literal_task_password_can_be_typed(self):
+        self.html='<html><body><input type="password"><button onclick="document.body.textContent=document.querySelector(\'input\').value===\'abc123\'?\'Complete\':\'Wrong\'">Login</button></body></html>'
+        with self.factory.begin() as s:
+            s.get(Task,self.task_id).description='Enter abc123 in the password field and log in'
+        await self.run_replies([action('type',target=1,text='abc123'),action('click',target=2),action('done',reason='goal_reached')])
+        with self.factory() as s:
+            self.assertEqual(s.scalar(select(Attempt)).end_reason,'success')
+            self.assertEqual(s.scalar(select(func.count()).select_from(Step)),3)
+
+    async def test_password_absent_from_task_blocks_before_typing(self):
+        self.html='<html><body><input type="password" value="original"></body></html>'
+        await self.run_replies([action('type',target=1,text='invented')])
+        with self.factory() as s:
+            a=s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason,a.end_detail,a.steps_count),('blocked','login_wall',0))
+
+    async def test_password_value_must_be_complete_nonempty_literal(self):
+        self.html='<html><body><input type="password"></body></html>'
+        with self.factory.begin() as s:
+            s.get(Task,self.task_id).description='Enter abc1234 in the password field'
+        await self.run_replies([action('type',target=1,text='abc123')])
+        with self.factory() as s:
+            self.assertEqual((s.scalar(select(Attempt)).end_reason,
+                              s.scalar(select(Attempt)).end_detail),('blocked','login_wall'))
+
+    async def test_password_prefix_before_punctuation_is_not_full_value(self):
+        self.html='<html><body><input type="password"></body></html>'
+        with self.factory.begin() as s:
+            s.get(Task,self.task_id).description='Enter abc123! in the password field'
+        await self.run_replies([action('type',target=1,text='abc123')])
+        with self.factory() as s:
+            a=s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason,a.end_detail,a.steps_count),('blocked','login_wall',0))
+
+    async def test_full_punctuated_password_literal_is_allowed(self):
+        self.html='<html><body><input type="password"></body></html>'
+        with self.factory.begin() as s:
+            s.get(Task,self.task_id).description='Enter abc123! in the password field'
+        await self.run_replies([action('type',target=1,text='abc123!'),action('fail')])
+        with self.factory() as s:
+            a=s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason,a.steps_count),('gave_up',2))
+
+    async def test_benchmark_login_password_with_korean_particle_proceeds(self):
+        # sb-admin-2 login-like page; task sentence is the real one ("비밀번호 Study1234를 ...").
+        description = next(d for d in benchmark_password_descriptions() if 'Remember Me' in d)
+        self.html = ('<html><body><form class="user">'
+                     '<input type="email" id="exampleInputEmail" aria-label="Email">'
+                     '<input type="password" id="exampleInputPassword" aria-label="Password">'
+                     '<button type="button" onclick="document.body.textContent='
+                     '(document.querySelector(\'#exampleInputEmail\').value===\'study@example.com\'&&'
+                     'document.querySelector(\'#exampleInputPassword\').value===\'Study1234\')?\'Complete\':\'Wrong\'">'
+                     'Login</button></form></body></html>')
+        with self.factory.begin() as s:
+            s.get(Task, self.task_id).description = description
+        await self.run_replies([action('type', target=1, text='study@example.com'),
+                                action('type', target=2, text=BENCHMARK_PASSWORD),
+                                action('click', target=3), action('done', reason='goal_reached')])
+        with self.factory() as s:
+            a = s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason, a.end_detail, a.steps_count), ('success', None, 4))
+
+    async def test_password_field_click_is_allowed(self):
+        self.html='<html><body><input type="password"></body></html>'
+        await self.run_replies([action('click',target=1),action('fail')])
+        with self.factory() as s:
+            self.assertEqual(s.scalar(select(Attempt)).end_reason,'gave_up')
+            self.assertEqual(s.scalar(select(func.count()).select_from(Step)),2)
+
+    async def test_payment_card_field_remains_safety_stop(self):
+        self.html='<html><body><input autocomplete="cc-number"></body></html>'
+        await self.run_replies([action('type',target=1,text='0000')])
+        with self.factory() as s:
+            self.assertEqual((s.scalar(select(Attempt)).end_reason,
+                              s.scalar(select(Attempt)).steps_count),('safety_stop',0))
+
+    async def test_sectioned_password_autocomplete_requires_literal_value(self):
+        self.html='<html><body><input type="text" autocomplete="section-login current-password"></body></html>'
+        await self.run_replies([action('type',target=1,text='invented')])
+        with self.factory() as s:
+            a=s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason,a.end_detail,a.steps_count),('blocked','login_wall',0))
 
     async def test_null_condition_is_estimated_and_repeat_adapters_reset(self):
         with self.factory.begin() as s:
@@ -197,6 +341,46 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(json.loads(adapter.received[1].user_text)['invalid_action'],
                          'The previous action was invalid (invalid_fields): missing target for click. '
                          'Include every required field for the chosen action.')
+
+    async def test_out_of_list_target_retries_without_executing_it(self):
+        adapter=FakeAdapter([action('click',target=99),action('click',target=1),
+                             action('done',reason='goal_reached')])
+        await execute_run(self.run_id,self.factory,browser=self.browser,
+                          adapter_factory=lambda _:adapter)
+        with self.factory() as s:
+            self.assertEqual(s.scalar(select(Attempt)).end_reason,'success')
+            self.assertEqual(s.scalar(select(func.count()).select_from(Step)),2)
+            self.assertEqual(s.scalar(select(func.count()).select_from(LlmCall)),3)
+        self.assertIn('invalid_target',json.loads(adapter.received[1].user_text)['invalid_action'])
+
+    async def test_out_of_list_target_exhaustion_is_input_error(self):
+        await self.run_replies([action('click',target=99)])
+        with self.factory() as s:
+            a=s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason,a.end_detail,a.steps_count),
+                             ('error','ActionInputError:invalid_target',0))
+
+    async def test_r07_is_attached_to_small_clicked_target(self):
+        from apps.api.db.models import Issue
+        self.html='<html><body><button style="position:absolute;left:100px;top:100px;width:20px;height:20px" onclick="document.body.textContent=\'Complete\'">Go</button></body></html>'
+        await self.run_replies([action('click',target=1),action('done',reason='goal_reached')])
+        with self.factory() as s:
+            step=s.scalar(select(Step).where(Step.idx==0))
+            issue=s.scalar(select(Issue).where(Issue.rule_id=='R07'))
+            self.assertIsNotNone(issue)
+            self.assertEqual(issue.step_id,step.id)
+            self.assertIsNotNone(issue.element_key)
+            self.assertAlmostEqual(issue.measured,step.fitts_id)
+
+    async def test_r07_includes_small_select_target(self):
+        from apps.api.db.models import Issue
+        self.html='''<html><body><select style="position:absolute;left:100px;top:100px;width:20px;height:20px" onchange="document.querySelector('p').textContent='Complete'"><option>A</option><option>B</option></select><p></p></body></html>'''
+        await self.run_replies([action('select',target=1,option=2),action('done',reason='goal_reached')])
+        with self.factory() as s:
+            step=s.scalar(select(Step).where(Step.idx==0))
+            issue=s.scalar(select(Issue).where(Issue.rule_id=='R07'))
+            self.assertIsNotNone(issue)
+            self.assertEqual(issue.step_id,step.id)
 
     async def test_done_without_reason_three_times_names_field_not_reply(self):
         marker='UNIQUE-REPLY-TEXT-7f3a'

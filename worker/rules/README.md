@@ -80,3 +80,23 @@ R01 간격 예외는 [WCAG 2.5.8](https://www.w3.org/WAI/WCAG22/Understanding/ta
 한 시도의 back 여러 번은 한 표다. 성공 여부와 무관하며 replay는 제외한다.
 `loop.py`는 모든 agent 시도가 종료됐을 때 DB 행동을 읽어 한 번 호출하고 run에 저장한다.
 measured는 back이 있었던 시도 수, threshold는 필요한 시도 수다.
+
+## axe selector 보존 계약 (#62, ADR 0011 6번 16행)
+
+스키마를 추가하지 않는 1번 방식으로 준비했다. R02·R10의 설명 끝
+` 대상: <axe target JSON>`을 원본 그대로 보존한다. 설명 생성 모델에는 앞 문장만
+요청하고 suffix를 재작성시키지 않는다. selector JSON은 문자열·중첩 배열을 유지한다.
+
+- 읽기: `worker.rules.axe_target.read_target(issue.explanation)`.
+- 분리: `split_explanation()` → 앞 문장과 원문 suffix. selector가 없으면 None,
+  JSON이 손상됐으면 ValueError다. 설명만 보고 대상을 지어내지 않는다.
+- 저장: 후보 저장이 끝난 뒤 생성한 문장을
+  `update_explanation(session, run_id, issue_id, generated)`로 기존 행에 쓴다.
+  R02/R10의 원본 selector가 없거나, 모델 문장에 대상 메타데이터가 있으면 거절한다.
+- 후보 재저장: R02/R10은 run·rule·step·element_key와 selector로 같은 행을 찾는다.
+  설명 문장이 바뀌어도 같은 ID·생성된 문장·검토 라벨을 보존한다.
+  서로 다른 selector는 별도 행이며, 기존 중복 행이 여러 개면 임의 선택하지 않고 오류다.
+
+update_explanation은 run 소속을 검사하고 commit하지 않는다. 호출자가 run 권한·취소를
+검사하며 기존 트랜잭션에서 완료한다. LLM 호출은 DB 잠금 밖에서 한다.
+설명 생성 모델 호출과 run 후처리 연결은 LLM·에이전트 담당 작업으로 남아 있다.
