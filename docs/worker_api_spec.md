@@ -19,6 +19,7 @@
 | 실패 | 워커 함수가 예외로 끝나거나 제한 시간을 넘기면 RQ 실패 콜백이 `running`인 run을 `failed`, `finished_at`으로 바꾼다 |
 | 워커 함수 | 큐가 부르는 함수 `run(run_id)`. 경로는 에이전트 코어가 정한다 (지금 가칭 `worker.agent.run.run`) |
 | Redis 주소 | 환경 변수 `REDIS_URL` (기본 `redis://localhost:6379/0`) |
+| 동시 attempt 수 | 에이전트 attempt를 최대 3개 동시에 돌린다 (4.6). 환경 변수 `STEPMETER_MAX_PARALLEL_ATTEMPTS`(1~3, 기본 3)로 줄일 수 있다(스테이징 메모리). 호출 한도(`LLMRateLimitError`)로 끝난 attempt가 나오면 실행 중인 attempt가 모두 끝난 뒤 남은 attempt를 하나씩 돌린다. 한도로 끝난 attempt는 다시 재지 않는다 |
 
 ## 2. 진행률 갱신 방식 (2.1, 2.2, F02: 대시보드 2초 폴링)
 
@@ -34,7 +35,7 @@
 - 30 = 실행 1회의 step 상한 (4.5)
 - 끝난 attempt = `attempt.end_reason`이 있는 행 (재생·에이전트 모두)
 - 진행 중 attempt의 step은 30개까지만 센다. 실행 중 진행률은 최대 90
-- 예정 attempt 수: agent는 `run.repeat_n`, replay_only는 재생 attempt 수다. auto 재생 중에는 부분 재생에 대비해 재생 attempt 수 + `run.repeat_n`을 예약한다. 부분 재생이면 이 분모를 유지하고, 완전 재생이 확정되면 재생 attempt 수만 센다 ([ADR 0011](adr/0011-w3-plan-gaps.md) 8번). 후처리까지 끝나면 100으로 올린다.
+- 예정 attempt 수(진행률 분모)는 `update_progress` 한 곳에서만 계산한다: agent는 `run.repeat_n`, replay_only는 재생 attempt 수. auto 재생 중에는 끊길 경우에 대비해 재생 attempt 수 + `run.repeat_n`을 미리 잡는다(끊긴 뒤 90%에서 멈추지 않게). 재생이 끊기면(`replay_status=partial`) 이 분모를 유지하고, 끝까지 재생되면(`full`) 재생 attempt 수만 센다 ([ADR 0011](adr/0011-w3-plan-gaps.md) 8번). 재생은 시작할 때 attempt 행을 만들고 step마다 `update_progress`를 부른다. 에이전트 attempt는 재생이 끝난 뒤 시작하며 병렬로 돈다(4.6, #55). 후처리까지 끝나면 100으로 올린다.
 - 에이전트가 과업에 실패하거나 사이트가 막은 경우는 `completed`, 사유는 `attempt.end_reason` (openapi.yaml RunStatus)
 
 ## 3. DB 쓰기 경계 (2.2, 10장)

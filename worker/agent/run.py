@@ -20,6 +20,21 @@ from worker.replay.runner import execute_replay
 
 ROOT = Path(__file__).resolve().parents[2]
 VIEWPORTS = {'desktop': {'width': 1280, 'height': 800}, 'mobile': {'width': 390, 'height': 844}}
+MAX_PARALLEL = 3  # 계획서 4.6 "LLM API 호출 한도 안에서 최대 3개를 동시에 실행"
+# #55: LLM 어댑터가 429(호출 한도)면 던지는 예외 이름. execute_attempt가 attempt.end_detail에 예외 이름을 적는다
+RATE_LIMITED = 'LLMRateLimitError'
+
+
+def max_parallel_attempts():
+    """동시에 돌릴 에이전트 attempt 수. STEPMETER_MAX_PARALLEL_ATTEMPTS(1~3, 기본 3)로 줄일 수 있다(스테이징 메모리).
+
+    숫자가 아니면 기본값, 범위를 벗어나면 1~3으로 맞춘다.
+    """
+    try:
+        value = int(os.environ.get('STEPMETER_MAX_PARALLEL_ATTEMPTS', MAX_PARALLEL))
+    except ValueError:
+        return MAX_PARALLEL
+    return min(MAX_PARALLEL, max(1, value))
 
 
 async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=None, axe_path=None, evidence_sink=None):
@@ -74,7 +89,9 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             finally:
                 await context.close()
         agent_needed = row.mode == 'agent' or (row.mode == 'auto' and (not replay or not replay_full))
-        for index in range(1, config['repeat_n'] + 1) if agent_needed else ():
+
+        async def attempt_once(index):
+            """attempt 하나를 돌리고, 호출 한도(LLMRateLimitError)로 끝났으면 True."""
             with factory.begin() as session:
                 running(session, run_id)
                 attempt = Attempt(run_id=run_id, index=index + (1 if replay else 0), kind='agent')
@@ -93,6 +110,36 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 await execute_attempt(page, factory, config, attempt_id, adapter, axe_path=axe_path, evidence_sink=evidence_sink)
             finally:
                 await context.close()
+            with factory() as session:
+                # 예외에 code가 있으면 loop.py가 'LLMRateLimitError:<code>'로 적는다
+                return (session.get(Attempt, attempt_id).end_detail or '').startswith(RATE_LIMITED)
+
+        # 계획서 4.6: attempt를 최대 max_parallel_attempts()개 동시에. 재생이 끝난 뒤에 시작한다 (ADR 0011 8번).
+        # 호출 한도로 끝난 attempt가 하나라도 나오면, 그때 실행 중인 attempt가 모두 끝난 뒤 남은 attempt를 하나씩 돌린다.
+        # 실행 중인 attempt는 멈추지 않고, 한도로 끝난 attempt는 다시 재지 않는다.
+        # 한 attempt의 예외(취소 포함)는 실행 중인 attempt가 모두 끝난 뒤에 올리고, 그 뒤로는 새 attempt를 시작하지 않는다
+        # (취소면 각 attempt가 다음 step에서 스스로 멈춘다).
+        pending = list(range(1, config['repeat_n'] + 1)) if agent_needed else []
+        limit, rate_limited, failure = max_parallel_attempts(), False, None
+        tasks: dict[asyncio.Task, int] = {}  # 실행 중 task → attempt 번호
+        try:
+            while tasks or (pending and failure is None):
+                while pending and failure is None and len(tasks) < (1 if rate_limited else limit):
+                    index = pending.pop(0)
+                    tasks[asyncio.create_task(attempt_once(index))] = index
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                for task in sorted(done, key=tasks.__getitem__):
+                    del tasks[task]
+                    if task.exception() is not None:
+                        failure = failure or task.exception()
+                    elif task.result():
+                        rate_limited = True
+        finally:
+            for task in tasks:  # execute_run 자체가 취소된 경우에만 남는다
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        if failure is not None:
+            raise failure
         with factory.begin() as session:
             row = running(session, run_id)
             kind = 'agent' if agent_needed else 'replay'
