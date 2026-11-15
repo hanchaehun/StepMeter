@@ -95,8 +95,13 @@ def build_session(meta: SessionMeta, events: list[dict[str, Any]], completed: bo
 def _init_script(start_ms: int, origin: str) -> str:
     if not BUNDLE.exists():
         raise FileNotFoundError(f"{BUNDLE} 없음: 저장소 루트에서 `npm run build:collect` 먼저 실행")
+    bundle = BUNDLE.read_text(encoding="utf-8")
+    if not re.search(r"__stepmeter\s*=\s*\{[^}]*\bdescribe\b", bundle):
+        # 번들은 git에 없다. describe()가 없는 옛 번들이면 collect.js가 모든 대상을 null로 남기므로 시작하지 않는다 (#43)
+        # 옛 번들에도 dom-accessibility-api의 "aria-describedby"가 있어 글자 포함 여부로는 못 가린다. 내보낸 객체를 본다
+        raise RuntimeError(f"{BUNDLE} 가 오래됨(describe 없음): 저장소 루트에서 `npm run build:collect` 다시 실행")
     header = f"window.__hsStart = {start_ms}; window.__hsOrigin = {json.dumps(origin)};\n"
-    return header + BUNDLE.read_text(encoding="utf-8") + "\n" + COLLECT.read_text(encoding="utf-8")
+    return header + bundle + "\n" + COLLECT.read_text(encoding="utf-8")
 
 
 Interact = Callable[[Page], Awaitable[bool]]
