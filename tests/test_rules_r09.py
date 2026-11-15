@@ -146,3 +146,33 @@ class LoopTests(unittest.IsolatedAsyncioTestCase):
         with self.factory() as s:
             self.assertEqual(s.scalar(select(Attempt.end_reason)), "success")
         self.assertEqual(self.rows()[1], [])
+
+    async def test_retried_action_is_not_recorded_for_r09(self):
+        # 목록에 없는 번호(99)는 다시 묻기로 버려져 Step이 되지 않는다. R09 기록도 실제 저장된 Step과 같아야 한다
+        from unittest.mock import patch
+        from sqlalchemy import select
+        from apps.api.db.models import Step
+        from worker.agent import loop
+        replies = iter([json.dumps(dict(action="click", target=99, thought="t", expectation="버려질 행동")),
+                        json.dumps(dict(action="click", target=1, thought="t", expectation="저장될 것")),
+                        json.dumps(dict(action="done", reason="goal_reached", thought="t", expectation="끝"))])
+        adapter = self.adapter("[]")
+
+        async def ask(_self, request):
+            text = next(replies) if request.purpose == "action" else "[]"
+            return LLMResult(text, "scripted", 1, 1, 0.0, 1)
+        type(adapter).ask = ask
+        seen = []
+        original = loop.judge_expectations
+
+        async def spy(adapter, records, **kw):
+            seen.append(list(records))
+            return await original(adapter, records, **kw)
+        with patch.object(loop, "judge_expectations", spy):
+            await self.run_with(adapter)
+        with self.factory() as s:
+            steps = [(st.id, st.idx) for st in s.scalars(select(Step).order_by(Step.idx))]
+        self.assertEqual(len(seen), 1)  # 시도당 한 번
+        self.assertEqual([(r.step_id, r.idx) for r in seen[0]], steps)
+        self.assertEqual(len(steps), 2)  # click 1 + done
+        self.assertNotIn("버려질 행동", [r.expectation for r in seen[0]])
