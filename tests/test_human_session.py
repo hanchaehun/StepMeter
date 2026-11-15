@@ -94,6 +94,30 @@ class BuildSessionTests(unittest.TestCase):
             session.build_session(meta(device="pen"), [], completed=False, started_at=datetime.now(timezone.utc))
 
 
+class InitScriptTests(unittest.TestCase):
+    def test_stale_bundle_without_describe_is_refused(self):
+        # 번들(worker/collect/dist)은 git에 없다. describe()가 없는 옛 번들로 세션을 열면 모든 대상이 null이 되므로 시작 전에 멈춘다 (#43)
+        with tempfile.TemporaryDirectory() as tmp:
+            stale = Path(tmp) / "collect.js"
+            # 옛 번들에도 dom-accessibility-api의 "aria-describedby" 문자열은 있다. 글자 포함 여부가 아니라 내보낸 함수로 판단해야 한다
+            stale.write_text(
+                'var attr = "aria-describedby";\n'
+                "globalThis.__stepmeter = { recordFirstView, observe, snapshot, resolveElement, clickPoint, scrollTarget };",
+                encoding="utf-8",
+            )
+            original = session.BUNDLE
+            session.BUNDLE = stale
+            try:
+                with self.assertRaises(RuntimeError) as cm:
+                    session._init_script(0, "http://127.0.0.1:8766")
+            finally:
+                session.BUNDLE = original
+            self.assertIn("npm run build:collect", str(cm.exception))
+
+    def test_current_bundle_is_accepted(self):
+        self.assertIn("__stepmeter", session._init_script(0, "http://127.0.0.1:8766"))
+
+
 class RunSessionTests(unittest.IsolatedAsyncioTestCase):
     async def test_run_session_headless_records_click_and_validates(self):
         async def interact(page):
