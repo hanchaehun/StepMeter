@@ -132,11 +132,12 @@ class DbTests(unittest.TestCase):
             result = c.execute(text(q), params)
             return result.first() if result.returns_rows else None
 
-    def make_run(self, status: str = "running", progress: int = 0, repeat_n: int = 3) -> int:
+    def make_run(self, status: str = "running", progress: int = 0, repeat_n: int = 3,
+                 mode: str = "agent") -> int:
         return self.sql(
             "INSERT INTO run (task_id, viewport, mode, repeat_n, model, status, progress) "
-            "VALUES (1, 'desktop', 'agent', :n, 'claude-haiku-5-5', :s, :p) RETURNING id",
-            n=repeat_n, s=status, p=progress,
+            "VALUES (1, 'desktop', :m, :n, 'claude-haiku-5-5', :s, :p) RETURNING id",
+            n=repeat_n, s=status, p=progress, m=mode,
         )[0]
 
     def add_attempt(self, run_id: int, index: int, steps: int, end_reason: str | None = None) -> None:
@@ -174,6 +175,36 @@ class DbTests(unittest.TestCase):
         self.add_attempt(r, 2, steps=15)
         self.assertTrue(self.update(r))
         self.assertEqual(self.run_row(r).progress, 45)
+
+    def test_replay_attempt_increases_expected_attempt_count(self):
+        # ADR 0011 8: replay 1 + repeat_n=3. Two completed attempts => floor(90*2/4)=45.
+        r = self.make_run(repeat_n=3)
+        self.sql("INSERT INTO attempt (run_id, index, kind, end_reason) "
+                 "VALUES (:r, 1, 'replay', 'success')", r=r)
+        self.add_attempt(r, 2, steps=0, end_reason="success")
+        self.assertTrue(self.update(r))
+        self.assertEqual(self.run_row(r).progress, 45)
+
+    def test_replay_only_counts_its_single_attempt(self):
+        r = self.make_run(mode="replay_only", repeat_n=3)
+        self.sql("INSERT INTO attempt (run_id, index, kind, replay_status, end_reason) "
+                 "VALUES (:r, 1, 'replay', 'full', 'success')", r=r)
+        self.assertTrue(self.update(r))
+        self.assertEqual(self.run_row(r).progress, 90)
+
+    def test_full_auto_replay_does_not_reserve_unused_agent_attempts(self):
+        r = self.make_run(mode="auto", repeat_n=3)
+        self.sql("INSERT INTO attempt (run_id, index, kind, replay_status, end_reason) "
+                 "VALUES (:r, 1, 'replay', 'full', 'success')", r=r)
+        self.assertTrue(self.update(r))
+        self.assertEqual(self.run_row(r).progress, 90)
+
+    def test_partial_auto_replay_reserves_agent_attempts(self):
+        r = self.make_run(mode="auto", repeat_n=3)
+        self.sql("INSERT INTO attempt (run_id, index, kind, replay_status, end_reason) "
+                 "VALUES (:r, 1, 'replay', 'partial', 'gave_up')", r=r)
+        self.assertTrue(self.update(r))
+        self.assertEqual(self.run_row(r).progress, 22)
 
     def test_three_parallel_open_attempts(self):
         # floor(90 × (10/30 × 3) / 3) = 30
