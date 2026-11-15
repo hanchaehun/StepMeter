@@ -20,7 +20,7 @@ def running(session, run_id):
 
 def start(session, run_id):
     return session.execute(update(Run).where(Run.id == run_id, Run.status == 'queued').values(
-        status='running', started_at=datetime.now(timezone.utc), prompt_version='action_v1',
+        status='running', started_at=datetime.now(timezone.utc), prompt_version='action_v2',
     ).returning(Run.id)).scalar_one_or_none() is not None
 
 
@@ -31,7 +31,7 @@ def log_call(factory, run_id, result):
         if row is None:
             raise Canceled()
         session.add(LlmCall(run_id=run_id, purpose='action', model=result.model,
-                           prompt_version='action_v1', input_tokens=result.input_tokens,
+                           prompt_version='action_v2', input_tokens=result.input_tokens,
                            output_tokens=result.output_tokens, cost_usd=result.cost_usd,
                            latency_ms=result.latency_ms))
         if result.cost_usd is not None:

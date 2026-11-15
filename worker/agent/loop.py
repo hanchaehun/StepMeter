@@ -31,7 +31,7 @@ from worker.rules.r08 import evaluate as backtracking_candidate
 from worker.rules.r06 import FirstTargetTracker, screen_key
 from worker.schemas import ActionInputError, parse_action_json
 
-PROMPT = Path(__file__).resolve().parents[2] / 'prompts/action_v1.md'
+PROMPT = Path(__file__).resolve().parents[2] / 'prompts/action_v2.md'
 
 
 async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_path, max_steps=30, max_seconds=300, evidence_sink=None):
@@ -69,7 +69,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                            'recent_actions': history[-5:]}
                 screenshot = await labeled_screenshot(page, rows)
                 for retry in range(3):
-                    request = LLMRequest(purpose='action', prompt_version='action_v1',
+                    request = LLMRequest(purpose='action', prompt_version='action_v2',
                         system=PROMPT.read_text(encoding='utf-8'),
                         user_text=json.dumps(context, ensure_ascii=False),
                         image_jpeg=screenshot, run_id=config['id'])
