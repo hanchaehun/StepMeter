@@ -10,14 +10,19 @@ class LoginWall(RuntimeError):
     pass
 
 
+# Token boundaries: whitespace, any non-ASCII character (e.g. Korean particles), brackets and quotes.
+_TOKEN_BOUNDARY = re.compile(r'[\s"\'`()\[\]{}]|[^\x00-\x7f]')
+
+
 def _literal_in_task(task_description, value):
+    """True only when value equals one task token exactly (case-sensitive).
+
+    Trailing . , ; : on a token may be dropped; other symbols (! ? @ # ...) stay part of the token.
+    """
     if not value or not value.strip():
         return False
-    for match in re.finditer(re.escape(value), task_description):
-        before = task_description[match.start() - 1] if match.start() else ''
-        after = task_description[match.end()] if match.end() < len(task_description) else ''
-        if ((not before or before.isspace() or before in '"\'`([{:=') and
-                (not after or after.isspace() or after in '"\'`)]},;.')):
+    for token in _TOKEN_BOUNDARY.split(task_description or ''):
+        if token and value in (token, token.rstrip('.,;:')):
             return True
     return False
 

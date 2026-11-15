@@ -16,6 +16,7 @@ from worker.agent import run as agent_run
 from worker.agent.action_feedback import missing_fields, retry_message
 from worker.agent.run import execute_run
 from worker.agent.observation import state_hash
+from worker.agent.safety import _literal_in_task
 from worker.agent.termination import LoopGuard, representative
 from worker.llm.fake import FakeAdapter
 from worker.schemas import parse_action_json
@@ -67,6 +68,66 @@ class PureTests(unittest.TestCase):
         rows = [Attempt(id=1,index=2,success=True), Attempt(id=2,index=1,success=True),
                 Attempt(id=3,index=3,success=False)]
         self.assertEqual(representative(rows,{1:1,2:3,3:2}),2)
+
+
+BENCHMARK_PASSWORD = 'Study1234'
+
+
+def benchmark_password_descriptions():
+    # Read the real task sentences so the tests follow benchmark/tasks.json if the wording changes.
+    path = Path(__file__).resolve().parents[1] / 'benchmark' / 'tasks.json'
+    cases = json.loads(path.read_text(encoding='utf-8'))['cases']
+    return sorted({c['description'] for c in cases if BENCHMARK_PASSWORD in c['description']})
+
+
+class PasswordLiteralTests(unittest.TestCase):
+    # Rule (ADR 0011 #1 + PM decision): the value must equal one task token exactly, case-sensitive.
+    # Token boundaries: whitespace, non-ASCII, ( ) [ ] { } " ' `; trailing . , ; : may be dropped.
+    def test_benchmark_password_sentences_accept_password(self):
+        descriptions = benchmark_password_descriptions()
+        self.assertEqual(len(descriptions), 3)
+        for d in descriptions:
+            with self.subTest(d):
+                self.assertTrue(_literal_in_task(d, BENCHMARK_PASSWORD))
+
+    def test_benchmark_password_sentences_reject_other_values(self):
+        for d in benchmark_password_descriptions():
+            for value in ('Pass1234', 'Study123', 'tudy1234', 'study1234', 'STUDY1234', '', ' ', '\t'):
+                with self.subTest(d=d, value=value):
+                    self.assertFalse(_literal_in_task(d, value))
+
+    def test_accepted_surroundings(self):
+        cases = [
+            'abc123',                       # whole sentence
+            'abc123 is the password',       # sentence start
+            'The password is abc123',       # sentence end
+            'Enter abc123.',                # trailing period
+            'Enter abc123, then log in',
+            'Enter abc123; then log in',
+            'password: abc123: done',
+            'Enter "abc123" here', "Enter 'abc123' here", 'Enter `abc123` here',
+            'Enter (abc123) here', 'Enter [abc123] here', 'Enter {abc123} here',
+            '비밀번호 abc123를 입력', '비밀번호를 abc123로 바꿔', '비밀번호 abc123(확인 칸에도)',
+            '비밀번호는abc123입니다',
+        ]
+        for d in cases:
+            with self.subTest(d):
+                self.assertTrue(_literal_in_task(d, 'abc123'))
+
+    def test_rejected_surroundings(self):
+        cases = [
+            'Enter abc123! in the password field',   # ! stays part of the token
+            'Enter abc123? now', 'Enter abc123@x now', 'Enter #abc123 now',
+            'Enter abc1234 in the field', 'Enter xabc123 in the field',
+            'Enter abc123-4 now', 'password=abc123', 'Enter ABC123 now', 'No password here',
+        ]
+        for d in cases:
+            with self.subTest(d):
+                self.assertFalse(_literal_in_task(d, 'abc123'))
+
+    def test_symbol_password_is_accepted_whole(self):
+        self.assertTrue(_literal_in_task('Enter abc123! in the password field', 'abc123!'))
+        self.assertTrue(_literal_in_task('Enter abc123!.', 'abc123!'))
 
 
 class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
@@ -200,6 +261,25 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
         with self.factory() as s:
             a=s.scalar(select(Attempt))
             self.assertEqual((a.end_reason,a.steps_count),('gave_up',2))
+
+    async def test_benchmark_login_password_with_korean_particle_proceeds(self):
+        # sb-admin-2 login-like page; task sentence is the real one ("비밀번호 Study1234를 ...").
+        description = next(d for d in benchmark_password_descriptions() if 'Remember Me' in d)
+        self.html = ('<html><body><form class="user">'
+                     '<input type="email" id="exampleInputEmail" aria-label="Email">'
+                     '<input type="password" id="exampleInputPassword" aria-label="Password">'
+                     '<button type="button" onclick="document.body.textContent='
+                     '(document.querySelector(\'#exampleInputEmail\').value===\'study@example.com\'&&'
+                     'document.querySelector(\'#exampleInputPassword\').value===\'Study1234\')?\'Complete\':\'Wrong\'">'
+                     'Login</button></form></body></html>')
+        with self.factory.begin() as s:
+            s.get(Task, self.task_id).description = description
+        await self.run_replies([action('type', target=1, text='study@example.com'),
+                                action('type', target=2, text=BENCHMARK_PASSWORD),
+                                action('click', target=3), action('done', reason='goal_reached')])
+        with self.factory() as s:
+            a = s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason, a.end_detail, a.steps_count), ('success', None, 4))
 
     async def test_password_field_click_is_allowed(self):
         self.html='<html><body><input type="password"></body></html>'
