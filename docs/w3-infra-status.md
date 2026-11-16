@@ -102,3 +102,27 @@ Hobby 결제·$8 상한 설정·배포 완료로 기록하지 않는다.
 기존 TOML 준비안은 신규 Railway 서비스에서 지원되지 않는 것을 실제 설정 화면과 공식 문서에서
 확인해 제거하고, 대시보드 설정으로 바꿨다. 최신 상태와 남은 단계는
 [스테이징 실제 구성 기록](../infra/staging.md#1113-railway-실제-구성-기록)에 있다.
+
+
+## 11/13 실제 스테이징 연결 점검
+
+PR #56이 main `3aee684`로 병합됐고 Railway API·worker 자동 배포가 성공했다.
+Alembic 사전 실행·API healthcheck·RQ 큐 대기 및 실제 job 처리까지 확인했다.
+Vercel 웹에 `/api` 프록시와 `VITE_API_URL=/api`를 적용해 READY 배포를 만들었다.
+브라우저에서 실제 API 명세와 초대 코드 인증 후 측정 상태 조회를 확인했다.
+
+실제 Claude 검증 측정은 R2 PutObject의 `InvalidArgument`로 실패했다.
+R2가 Access Key ID 길이를 64자리로 인식하며 요구값은 32자리다.
+PM에게 Shared Variable 수정 요청을 남겼으며, 저장·리포트 생성 성공으로 표기하지 않는다.
+정식 Haiku 0차 평가는 별도로 남아 있다. 상세 증거·배포 ID·남은 검증은
+[스테이징 실배포 기록](../infra/staging.md#1113-소스-연결-후-실배포연결-검증)을 따른다.
+
+
+## 11/16 스테이징 R2 차단 해결
+
+PM의 R2 키 수정 후 실제 Claude 측정 `run_id=3`이 3/3 성공으로 완료됐다.
+API→RQ→worker→PostgreSQL→R2 저장과 API 서명 URL 조회(200 JPEG),
+Vercel `/api` 프록시를 통한 브라우저 인증·리포트·단계 스크린샷·새로고침을 확인했다.
+검증용 임시 코드는 비활성화했다. 단순 페이지 확인 과업의 연결 검증이며 정식 0차 평가가 아니다.
+이전 R2 Access Key ID 길이 오류는 해결됐다. 상세 결과는
+[11/16 스테이징 검증 기록](../infra/staging.md#1116-r2-수정-후-전체-흐름-검증-완료)에 있다.

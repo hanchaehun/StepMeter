@@ -149,3 +149,77 @@ PR #36 PM 리뷰에서 `/api` 리버스 프록시 사용은 승인됐다.
 
 완료한 것은 프로젝트·DB 생성과 API/worker 준비 설정이다. 소스 연결, 인증/R2 변수,
 Postgres 18 환경에서의 DB 검증, API/worker 실배포, Vercel 연결, 비용 상한 확인은 남아 있다.
+
+
+## 11/13 소스 연결 후 실배포·연결 검증
+
+- 기준 코드: main `3aee684` (PR #56 병합, R2·R01 수정 포함).
+- API·worker가 `hanchaehun/StepMeter`의 main에 연결되어 자동 배포 성공.
+  API 배포 `c9d92319-1982-45f2-83b7-f8bced724d86`,
+  worker 배포 `2ea8a62a-a014-48e7-9758-d2616f4e759f`.
+- API pre-deploy Alembic 실행과 Uvicorn 시작, healthcheck 200 확인.
+  worker는 RQ `runs` 큐를 대기하고 검증 job `run-1`을 처리했다.
+- API 공개 주소: https://api-staging-eb905ed1.up.railway.app
+  외부 `/openapi.json` 200, 초대 코드 없는 `/projects` 401 확인.
+- PM 초대 수락과 API·worker의 R2 shared 변수 4개, worker의 Claude 키 등록을 확인했다.
+  비밀값을 문서·소스·로컬 환경으로 복사하지 않았다.
+- Vercel `stepmeter-staging`에 `VITE_API_URL=/api` (production·preview)를 설정했다.
+  `vercel.json`의 SPA rewrite 앞에 실제 API로 향하는 `/api/:path*` rewrite를 추가했다.
+- 웹 배포 `dpl_2cUZc2oFXfypfBDFpUgmt8xpsMWU`: READY.
+  주소: https://stepmeter-staging-91pdq0pwj-jcwoo1204.vercel.app
+  main의 추적된 프론트·공개 목 파일과 위 프록시 설정 67개를 직접 업로드했다.
+  Vercel Git 자동 배포 연결은 이번에 수행하지 않았다.
+- 기존 Vercel 보호를 유지하고 GitHub 로그인으로 인증했다.
+  브라우저의 `/api/openapi.json`에서 실제 OpenAPI 3.1.0과 `/projects`, `/compare`를 확인했다.
+  `/runs/1`에서 임시 검증 코드 입력 후 실제 API의 failed 상태 화면을 확인했다.
+- 웹 typecheck·build와 `git diff --check` 통과.
+
+### 11/13 당시 차단: R2 Access Key ID 수정 (11/16 해결)
+
+실제 Claude·API→RQ→worker→PostgreSQL 측정 `run_id=1`은 3회 모두 `ClientError`로 실패했다.
+기록된 Claude 비용은 약 $0.001206이다. 정식 0차 평가 결과로 세지 않는다.
+R2 PutObject 진단의 응답은 다음과 같다(비밀값 없음).
+
+```text
+InvalidArgument: Credential access key has length 64, should be 32
+```
+
+endpoint HTTPS·R2 호스트 형식, 버킷 이름, 변수 앞뒤 공백은 정상이다.
+PM이 Shared Variables의 `STEPMETER_R2_ACCESS_KEY_ID`를 R2에서 발급한 32자리 Access Key ID로
+수정하도록 요청했다. API 토큰 문자열이나 Secret Access Key와 구분하며 키 원문은 전달하지 않았다.
+수정 후 실제 측정 완료, R2 업로드·서명 URL 조회, 웹 리포트 재검증은 아래 11/16 기록에서 완료했다.
+
+스크린샷은 `screenshots/railway-staging/` (git 제외)에 보관한다.
+Usage Limits는 이번 작업에서 설정하지 않았다. 공식 CLI 문서의 Compute hard limit 최솟값은
+$10이며, PM의 $8 요청은 알림 설정과 구분해야 한다.
+
+검증용 임시 초대 코드는 점검 후 비활성화하고 원격 임시 코드 파일을 제거했다.
+11/13 당시에는 PM의 R2 값 수정 후 재검증을 기다렸으며, 11/16 재검증을 완료했다.
+
+
+## 11/16 R2 수정 후 전체 흐름 검증 완료
+
+- PM의 키 수정 후 현재 API 배포(main `87c97d4`, 배포
+  `0f764f32-f28d-492e-9b0a-03a050688357`)에서 R2 PutObject 성공을 확인했다.
+  비밀값은 읽거나 로컬에 복사하지 않았다.
+- 실제 API→Redis/RQ→worker→Claude→PostgreSQL→R2→API→Vercel 브라우저 흐름을 검증했다.
+- 첫 재검증 `run_id=2`는 completed였으나 example.com에서 이전 `Example Domain` 문구가 사라져
+  독립 성공 조건은 0/3이었다. API의 단계 조회로 받은 R2 서명 URL은 JPEG 46,761 bytes,
+  HTTP 200이었다. 문구 변경으로 인한 과업 실패와 저장소 장애를 구분했다.
+- 페이지에서 직접 확인한 문구 `This domain is for use in documentation examples`를
+  독립 성공 조건으로 사용한 `run_id=3`은 3/3 성공, progress 100, 대표 attempt 1이었다.
+  모델 `claude-haiku-5-5`, prompt `action_v2`, agent 모드, desktop, repeat_n=3.
+  비용은 run 2 $0.00167010, run 3 $0.00097244 (합계 약 $0.002643).
+- `/runs/3/report`와 대표 attempt 단계 조회 성공. API가 발급한 서명 URL에서
+  HTTP 200, image/jpeg, 46,761 bytes 확인.
+- 기존 Vercel 배포의 `/runs/3`에서 초대 코드 인증 후 `3회 중 3회 성공` 리포트를 확인했다.
+  단계 상세의 실제 R2 이미지(1280×800)가 표시됐고 새로고침 후에도 유지됐다.
+  웹 소스 변경이 없으므로 추가 Vercel 배포는 하지 않았다.
+- 점검 후 임시 초대 코드를 비활성화하고 원격 임시 코드 파일을 제거했다.
+  검증 run은 스테이징 DB에 남겨 두며 참가자 데이터나 정식 성능 평가로 사용하지 않는다.
+- 증거: `screenshots/railway-staging/report-success-2026-11-16.jpg`,
+  `report-screenshot-2026-11-16.jpg`, `verification-2026-11-16.json` (모두 git 제외).
+
+R2 오류로 막혔던 스테이징 연결 검증은 완료됐다. 별도 정식 W3 평가, Hobby 전환,
+사용량 한도 설정, 발표 후 서비스 정리는 이 검증의 완료 범위에 포함하지 않는다.
+프록시 설정과 이 검증 기록은 작업 브랜치 `feat/staging-deployment`에서 관리한다.
