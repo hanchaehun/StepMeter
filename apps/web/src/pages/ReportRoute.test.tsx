@@ -44,7 +44,7 @@ test('?mock=1이면 API 주소가 있어도 목 모드', () => {
   expect(impl).not.toHaveBeenCalled();
 });
 
-test('실제 모드: 불러오는 중 → 리포트. /runs/42에서 id를 읽고 과업 번호를 제목으로', async () => {
+test('실제 모드: 불러오는 중 → 리포트. 과업 조회가 실패하면(응답 없음) 과업 번호를 제목으로', async () => {
   setAccessCode('code-1');
   const { impl, calls } = fetchSeq(okSeq());
   render(<ReportRoute location={at('/runs/42')} baseUrl={BASE} fetchImpl={impl} />);
@@ -52,6 +52,22 @@ test('실제 모드: 불러오는 중 → 리포트. /runs/42에서 id를 읽고
   await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('과업 #7'));
   expect(calls[0]).toBe(`${BASE}/runs/42`);
   expect(screen.getByText('3회 중 2회 성공')).toBeInTheDocument();
+});
+
+test('실제 모드: 과업 조회가 되면 제목은 과업 문장, 부제에 사이트 주소 (ADR 0011 7번)', async () => {
+  setAccessCode('code-1');
+  const routes: Record<string, () => Response> = {
+    [`${BASE}/runs/42`]: () => progress(),
+    [`${BASE}/runs/42/report`]: () => json(200, mock.report),
+    [`${BASE}/runs/42/attempts/2/steps`]: () => json(200, mock.steps),
+    [`${BASE}/tasks/7`]: () => json(200, mock.task),
+    [`${BASE}/projects`]: () => json(200, [{ ...mock.project, latest_run: null }]),
+  };
+  const impl = vi.fn(async (input: RequestInfo | URL) => (routes[String(input)] ?? (() => json(404, { detail: 'x' })))());
+  render(<ReportRoute location={at('/runs/42')} baseUrl={BASE} fetchImpl={impl} />);
+  // task.json "러닝화 A를 장바구니에 담는다", project.json base_url https://shop.example → 호스트 shop.example
+  await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('러닝화 A를 장바구니에 담는다'));
+  expect(screen.getByText(/shop\.example/)).toBeInTheDocument();
 });
 
 test('주소에 run id가 없으면 안내', () => {

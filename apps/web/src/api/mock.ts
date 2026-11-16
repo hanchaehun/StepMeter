@@ -18,9 +18,9 @@ export type ElementSnapshot = components['schemas']['ElementSnapshot'];
 export interface ReportData {
   report: Report;
   steps: Step[];
-  /** 과업 문장. API에 GET /tasks/{id}가 아직 없어 실제 모드에서는 null */
+  /** 과업 문장 (GET /tasks/{id}). 못 읽으면 null → 제목은 "과업 #번호" */
   task?: Task | null;
-  /** 프로젝트(사이트 주소). 같은 이유로 실제 모드에서는 null */
+  /** 프로젝트(사이트 주소). GET /projects에서 task.project_id로 찾는다. 없으면 null */
   project?: Project | null;
 }
 
