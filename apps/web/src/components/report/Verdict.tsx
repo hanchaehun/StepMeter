@@ -10,7 +10,8 @@ export function Verdict({ report }: { report: Report }) {
 
   const estText = mobile || !est
     ? '예상 시간은 데스크톱에서만'
-    : `예상 소요 시간 ${fmt(est.value)}초 (${est.model_version_id === null ? '문헌값 기준' : '사람 실험 보정'})`;
+    // ADR 0011 3번: 예측에 R(시스템 응답)을 넣지 않으므로 보정 여부와 관계없이 "시스템 응답 시간 제외"
+    : `예상 소요 시간 ${fmt(est.value)}초 (${est.model_version_id === null ? '문헌값 기준 추정' : '사람 실험 보정'} · 시스템 응답 시간 제외)`;
 
   return (
     <div>

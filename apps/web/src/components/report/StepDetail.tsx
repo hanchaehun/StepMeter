@@ -1,5 +1,5 @@
 import type { Report, Step } from '@/api/mock';
-import { actionLabel, effectLabel, issueMeasure, issueTitle, ruleName, stepIssueMap, stepOverlays } from '@/lib/report';
+import { actionLabel, effectLabel, isLoopIssue, issueMeasure, issueTitle, ruleName, stepIssueMap, stepOverlays } from '@/lib/report';
 import { cn } from '@/lib/cn';
 import { Screenshot } from '@/components/Screenshot';
 import { Severity } from '@/components/Severity';
@@ -37,8 +37,8 @@ export function StepDetail({ report, steps, state, onChange }: Props) {
   const subtitle = issue ? `${issue.rule_id} ${ruleName(issue)}${issue.is_reference ? ' · Reference' : ''}` : step?.action.thought ?? '';
   const measure = issue ? issueMeasure(issue) : null;
   const vp = report.run.viewport === 'mobile' ? { width: 390, height: 844 } : { width: 1280, height: 800 };
-  // 요소 자체가 없는 문제(R05)만 Attempts 띠. 요소는 있는데 경로 밖(step null)이면 안내 문장.
-  const noElement = issue !== null && issue.element_key === null;
+  // 요소 자체가 없는 문제(R05)만 Attempts 띠. 그 밖의 경로 밖 문제(step null)는 안내 문장 (ADR 0010 3번: rule_id로 판단)
+  const noElement = issue !== null && isLoopIssue(issue);
   const offPath = issue !== null && !noElement && issue.step === null;
 
   return (

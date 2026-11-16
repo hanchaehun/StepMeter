@@ -1,5 +1,5 @@
 import type { Issue, Step } from '@/api/mock';
-import { issueMeasure, issueTitle, ruleName } from '@/lib/report';
+import { isLoopIssue, issueMeasure, issueTitle, ruleName } from '@/lib/report';
 import { cn } from '@/lib/cn';
 import { Severity } from '@/components/Severity';
 import { Screenshot } from '@/components/Screenshot';
@@ -56,8 +56,8 @@ function Thumb({ step, issue, full }: { step?: Step; issue: Issue; full: boolean
   const size = full ? 'h-[84px] w-[128px]' : 'h-12 w-[72px]';
   const snap = step?.element_snapshot;
   if (!step || !snap) {
-    // 단계가 없는 문제: 요소도 없으면(R05) "구간", 요소는 있는데 경로 밖이면 "경로 밖"
-    const text = issue.step ? '화면' : issue.element_key === null ? '구간' : '경로 밖';
+    // 단계가 없는 문제: R05면 "구간", 그 밖은 "경로 밖" (ADR 0010 3번: element_key가 아니라 rule_id로 판단)
+    const text = issue.step ? '화면' : isLoopIssue(issue) ? '구간' : '경로 밖';
     return (
       <div className={cn(size, 'flex items-center justify-center rounded bg-surface text-[11px] text-faint outline outline-1 outline-hair')}>
         {text}

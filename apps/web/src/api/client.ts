@@ -1,11 +1,12 @@
 // 실제 API에서 리포트 데이터를 읽는다 (apps/api/openapi.yaml, PR #32).
-// 순서: GET /runs/{id} → (completed일 때만) GET /runs/{id}/report → GET /runs/{id}/attempts/{n}/steps (대표 attempt).
-// 과업 문장·사이트 주소를 주는 엔드포인트(GET /tasks/{id})가 아직 없어 task·project는 null로 둔다.
+// 순서: GET /runs/{id} → (completed일 때만) GET /runs/{id}/report → 동시에 대표 attempt의 steps,
+// GET /tasks/{task_id}(과업 문장), GET /projects(사이트 주소). 과업·프로젝트는 못 읽어도 리포트를 연다.
 import type { components } from './types';
-import type { ReportData, Report, Step } from './mock';
+import type { ReportData, Report, Step, Task } from './mock';
 
 export type RunStatus = components['schemas']['RunStatus'];
 type RunProgress = components['schemas']['RunProgress'];
+type ProjectListItem = components['schemas']['ProjectListItem'];
 
 const ACCESS_CODE_KEY = 'stepmeter.accessCode';
 
@@ -70,8 +71,24 @@ export async function fetchReportData(runId: number, opts: Options): Promise<Rep
     throw e;
   }
   const rep = report.run.representative_attempt_index;
-  const steps = rep === null ? [] : await getJson<Step[]>(`${base}/runs/${runId}/attempts/${rep}/steps`, opts);
-  return { report, steps, task: null, project: null };
+  const [steps, task, projects] = await Promise.all([
+    rep === null ? Promise.resolve<Step[]>([]) : getJson<Step[]>(`${base}/runs/${runId}/attempts/${rep}/steps`, opts),
+    optional(getJson<Task>(`${base}/tasks/${report.run.task_id}`, opts)),
+    optional(getJson<ProjectListItem[]>(`${base}/projects`, opts)),
+  ]);
+  // 사이트 주소는 과업의 project_id를 GET /projects 결과에서 찾는다 (ADR 0011 7번). 다른 초대 코드의 프로젝트면 목록에 없다
+  const project = task && projects ? (projects.find((p) => p.id === task.project_id) ?? null) : null;
+  return { report, steps, task, project };
+}
+
+/** 제목용 보조 정보(과업 문장·사이트 주소). 못 읽어도 리포트는 열고 "과업 #번호"로 보인다. 취소는 그대로 던진다 */
+async function optional<T>(p: Promise<T>): Promise<T | null> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e;
+    return null;
+  }
 }
 
 export function getAccessCode(): string | null {

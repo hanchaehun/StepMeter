@@ -23,7 +23,7 @@ function duration(start: string | null, end: string | null): string | null {
 export function ReportHeader({ report, task, project }: { report: Report; task?: Task | null; project?: Project | null }) {
   const { run } = report;
   const viewport = run.viewport === 'mobile' ? 'Mobile 390×844' : 'Desktop 1280×800';
-  // GET /tasks/{id}가 아직 없어 실제 API 모드에서는 과업 문장·사이트 주소가 없다 → 과업 번호만
+  // 과업 조회가 실패하면(404·네트워크) 과업 번호만
   const title = task?.description ?? `과업 #${run.task_id}`;
   const parts = [project ? hostOf(project.base_url) : null, viewport, fmtDate(run.created_at), `${report.attempts.length} attempts`].filter(
     (p): p is string => p !== null,

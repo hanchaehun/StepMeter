@@ -1,7 +1,9 @@
+import taskJson from '@mock/task.json';
+import projectsJson from '@mock/projects.json';
 import { loadMockReport } from './mock';
 import { ApiError, clearAccessCode, describeError, fetchReportData, getAccessCode, setAccessCode } from './client';
 
-// 응답 순서는 /runs/{id} → /runs/{id}/report → /runs/{id}/attempts/{n}/steps. 기대값은 목 JSON에서 사람이 읽은 값.
+// 순서: /runs/{id} → /runs/{id}/report → (동시에) steps·/tasks/{task_id}·/projects. 기대값은 목 JSON에서 사람이 읽은 값.
 const mock = loadMockReport();
 const BASE = 'http://api.test';
 
@@ -20,20 +22,91 @@ function fetchSeq(responses: Array<Response | Error>) {
   return { impl, calls };
 }
 
+/** 주소별로 응답한다(과업·프로젝트·steps는 동시에 부르므로 순서에 기대지 않는다). 없는 주소는 404 */
+function fetchRoutes(routes: Record<string, () => Response | Error>) {
+  const calls: Array<{ url: string; headers: Record<string, string> }> = [];
+  const impl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({ url, headers: Object.fromEntries(new Headers(init?.headers).entries()) });
+    const route = routes[url];
+    const res = route ? route() : json(404, { detail: 'not found' });
+    if (res instanceof Error) throw res;
+    return res;
+  });
+  return { impl, calls };
+}
+
+const completedRun = { ...mock.report.run, latest_step: null };
+
 describe('fetchReportData', () => {
-  test('정상: 3번 호출, 초대 코드 헤더, 대표 attempt의 steps', async () => {
-    const progress = { ...mock.report.run, latest_step: null };
-    const { impl, calls } = fetchSeq([json(200, progress), json(200, mock.report), json(200, mock.steps)]);
+  test('정상: run·report·steps·과업·프로젝트 목록, 모두 초대 코드 헤더', async () => {
+    const { impl, calls } = fetchRoutes({
+      [`${BASE}/runs/42`]: () => json(200, completedRun),
+      [`${BASE}/runs/42/report`]: () => json(200, mock.report),
+      [`${BASE}/runs/42/attempts/2/steps`]: () => json(200, mock.steps), // representative_attempt_index 2
+      [`${BASE}/tasks/7`]: () => json(200, taskJson), // report.run.task_id 7
+      [`${BASE}/projects`]: () => json(200, projectsJson),
+    });
     const data = await fetchReportData(42, { baseUrl: BASE, accessCode: 'code-1', fetchImpl: impl });
-    expect(calls.map((c) => c.url)).toEqual([
-      `${BASE}/runs/42`,
-      `${BASE}/runs/42/report`,
-      `${BASE}/runs/42/attempts/2/steps`, // representative_attempt_index 2
-    ]);
+    expect(calls.map((c) => c.url).sort()).toEqual(
+      [`${BASE}/runs/42`, `${BASE}/runs/42/report`, `${BASE}/runs/42/attempts/2/steps`, `${BASE}/tasks/7`, `${BASE}/projects`].sort(),
+    );
     expect(calls.every((c) => c['headers']['x-access-code'] === 'code-1')).toBe(true);
     expect(data.report.run.id).toBe(42);
     expect(data.steps).toHaveLength(3);
-    expect(data.task ?? null).toBeNull(); // GET /tasks/{id}가 없어 과업은 못 받는다
+    // task.json: "러닝화 A를 장바구니에 담는다", project_id 1 → projects.json 1번 "https://shop.example"
+    expect(data.task?.description).toBe('러닝화 A를 장바구니에 담는다');
+    expect(data.project?.base_url).toBe('https://shop.example');
+  });
+
+  test('과업 조회가 실패해도(404) 리포트는 열고 과업·프로젝트는 null', async () => {
+    const { impl } = fetchRoutes({
+      [`${BASE}/runs/42`]: () => json(200, completedRun),
+      [`${BASE}/runs/42/report`]: () => json(200, mock.report),
+      [`${BASE}/runs/42/attempts/2/steps`]: () => json(200, mock.steps),
+      [`${BASE}/projects`]: () => json(200, projectsJson),
+    });
+    const data = await fetchReportData(42, { baseUrl: BASE, accessCode: 'c', fetchImpl: impl });
+    expect(data.steps).toHaveLength(3);
+    expect(data.task).toBeNull();
+    expect(data.project).toBeNull();
+  });
+
+  test('프로젝트 목록에 과업의 프로젝트가 없으면(다른 초대 코드의 프로젝트) 과업만', async () => {
+    const { impl } = fetchRoutes({
+      [`${BASE}/runs/42`]: () => json(200, completedRun),
+      [`${BASE}/runs/42/report`]: () => json(200, mock.report),
+      [`${BASE}/runs/42/attempts/2/steps`]: () => json(200, mock.steps),
+      [`${BASE}/tasks/7`]: () => json(200, taskJson),
+      [`${BASE}/projects`]: () => json(200, projectsJson.filter((p) => p.id !== 1)),
+    });
+    const data = await fetchReportData(42, { baseUrl: BASE, accessCode: 'c', fetchImpl: impl });
+    expect(data.task?.id).toBe(7);
+    expect(data.project).toBeNull();
+  });
+
+  test('프로젝트 목록이 네트워크 오류여도 리포트와 과업은 연다', async () => {
+    const { impl } = fetchRoutes({
+      [`${BASE}/runs/42`]: () => json(200, completedRun),
+      [`${BASE}/runs/42/report`]: () => json(200, mock.report),
+      [`${BASE}/runs/42/attempts/2/steps`]: () => json(200, mock.steps),
+      [`${BASE}/tasks/7`]: () => json(200, taskJson),
+      [`${BASE}/projects`]: () => new TypeError('Failed to fetch'),
+    });
+    const data = await fetchReportData(42, { baseUrl: BASE, accessCode: 'c', fetchImpl: impl });
+    expect(data.task?.id).toBe(7);
+    expect(data.project).toBeNull();
+  });
+
+  test('steps가 실패하면 리포트 전체가 실패한다 (과업 조회와 달리 보조 정보가 아니다)', async () => {
+    const { impl } = fetchRoutes({
+      [`${BASE}/runs/42`]: () => json(200, completedRun),
+      [`${BASE}/runs/42/report`]: () => json(200, mock.report),
+      [`${BASE}/runs/42/attempts/2/steps`]: () => json(500, { detail: 'db down' }),
+      [`${BASE}/tasks/7`]: () => json(200, taskJson),
+      [`${BASE}/projects`]: () => json(200, projectsJson),
+    });
+    await expect(fetchReportData(42, { baseUrl: BASE, accessCode: 'c', fetchImpl: impl })).rejects.toMatchObject({ status: 500 });
   });
 
   test('401 → ApiError 401, 더 부르지 않음', async () => {
@@ -66,10 +139,16 @@ describe('fetchReportData', () => {
   test('대표 경로가 없으면(전부 실패) steps를 부르지 않는다', async () => {
     const progress = { ...mock.report.run, latest_step: null, representative_attempt_index: null };
     const report = { ...mock.report, run: { ...mock.report.run, representative_attempt_index: null } };
-    const { impl, calls } = fetchSeq([json(200, progress), json(200, report)]);
+    const { impl, calls } = fetchRoutes({
+      [`${BASE}/runs/42`]: () => json(200, progress),
+      [`${BASE}/runs/42/report`]: () => json(200, report),
+      [`${BASE}/tasks/7`]: () => json(200, taskJson),
+      [`${BASE}/projects`]: () => json(200, projectsJson),
+    });
     const data = await fetchReportData(42, { baseUrl: BASE, accessCode: 'c', fetchImpl: impl });
-    expect(calls).toHaveLength(2);
+    expect(calls.some((c) => c.url.includes('/steps'))).toBe(false);
     expect(data.steps).toEqual([]);
+    expect(data.task?.id).toBe(7); // 성공한 시도가 없어도 제목은 과업 문장
   });
 
   test('/report가 409를 주면 /runs/{id}를 다시 읽어 runStatus를 채운다 (명세: API 409도 같은 처리)', async () => {
