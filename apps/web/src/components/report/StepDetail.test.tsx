@@ -49,3 +49,19 @@ test('actionLabel / effectLabel', () => {
   expect(effectLabel('url_change')).toBe('주소 바뀜');
   expect(effectLabel('no_change')).toBe('변화 없음');
 });
+
+// ADR 0010 3번: R05 여부는 rule_id로 판단한다. 경로 밖 참고 이슈도 element_key가 null이라 element_key로는 R05와 못 가린다
+test('단계 상세: 경로 밖 참고 이슈(R10, step·element_key null)는 R05처럼 시도별 경로가 아니라 경로 밖 안내', () => {
+  const offPath = { ...report.issues[0], id: 301, rule_id: 'R10', step: null, element_key: null, is_reference: true };
+  const r = { ...report, issues: [...report.issues, offPath] };
+  render(<StepDetail report={r} steps={steps} state={{ issueId: 301, stepIdx: null }} onChange={noop} />);
+  expect(screen.getByText(/경로 밖 요소라 단계 화면이 없습니다/)).toBeInTheDocument();
+  expect(screen.queryByText(/요소가 없는 문제라 화면 대신 시도별 경로/)).not.toBeInTheDocument();
+});
+
+test('단계 상세: R05는 element_key가 있어도 시도별 경로', () => {
+  const loop = { ...report.issues[0], id: 302, rule_id: 'R05', step: null };
+  const r = { ...report, issues: [...report.issues, loop] };
+  render(<StepDetail report={r} steps={steps} state={{ issueId: 302, stepIdx: null }} onChange={noop} />);
+  expect(screen.getByText(/요소가 없는 문제라 화면 대신 시도별 경로/)).toBeInTheDocument();
+});

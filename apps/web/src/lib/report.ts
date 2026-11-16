@@ -2,6 +2,14 @@
 import type { Attempt, Issue, Metric, Report, Step } from '@/api/mock';
 import { RULES, RULE_IDS, isRuleId, type RuleId, type TitleCtx } from './rules';
 
+/**
+ * 요소 없이 시도 경로 전체를 가리키는 문제(R05 반복 루프)인지. ADR 0010 3번: element_key가 아니라 rule_id로 판단한다.
+ * 경로 밖 참고 이슈(is_reference, step null)도 element_key가 null이라 element_key로는 둘을 가를 수 없다.
+ */
+export function isLoopIssue(issue: Issue): boolean {
+  return issue.rule_id === 'R05';
+}
+
 const ROLE_KO: Record<string, string> = {
   button: '버튼',
   link: '링크',
