@@ -35,8 +35,8 @@ test('ReportHeader: 재생 전용이면 표시', () => {
 test('Verdict와 보조 줄', () => {
   render(<Verdict report={report} />);
   expect(screen.getByText('3회 중 2회 성공')).toBeInTheDocument();
-  // est 7.9 문헌값, 문제 2(is_reference=false), 참고 1, 통과 8
-  expect(screen.getByText(/예상 소요 시간 7\.9초 \(문헌값 기준\) · 문제 2건 · 참고 1건 · 통과 8/)).toBeInTheDocument();
+  // est 7.9 문헌값, 문제 2(is_reference=false), 참고 1, 통과 8. 표기는 ADR 0011 3번 "문헌값 기준 추정 · 시스템 응답 시간 제외"
+  expect(screen.getByText(/예상 소요 시간 7\.9초 \(문헌값 기준 추정 · 시스템 응답 시간 제외\) · 문제 2건 · 참고 1건 · 통과 8/)).toBeInTheDocument();
 });
 
 test('PathMetrics 데스크톱 4타일, 모바일이면 예상 시간 대체 문구', () => {
