@@ -9,12 +9,13 @@ from __future__ import annotations
 import json
 import os
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 import yaml
-from sqlalchemy import select
+from sqlalchemy import func, select
 from jsonschema import Draft202012Validator
 
 from tests import test_openapi_schema as openapi_test
@@ -82,11 +83,12 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(r.status_code, 201, r.text)
         return r.json()["id"]
 
-    def insert_run(self, task_id: int, status: str = "completed", viewport: str = "desktop") -> int:
+    def insert_run(self, task_id: int, status: str = "completed", viewport: str = "desktop", **cols) -> int:
         from apps.api.db.models import Run
 
+        cols = {"mode": "agent", **cols}
         with self.main.SessionLocal.begin() as db:
-            r = Run(task_id=task_id, viewport=viewport, mode="agent", repeat_n=3, model="claude-haiku-5-5", status=status)
+            r = Run(task_id=task_id, viewport=viewport, repeat_n=3, model="claude-haiku-5-5", status=status, **cols)
             db.add(r)
             db.flush()
             return r.id
@@ -298,6 +300,90 @@ class ApiTests(unittest.TestCase):
             run = db.scalars(select(Run).where(Run.task_id == tid)).one()
             self.assertEqual(run.status, "failed")
             self.assertIsNotNone(run.finished_at)
+
+    # --- 일일 측정 상한 (F17) ---
+    # openapi createRun: 당일 측정 수가 daily_run_limit(기본 10)을 넘으면 429,
+    # 당일 = run.created_at 기준 Asia/Seoul 자정(서머타임 없음, UTC+9), replay_only는 세지 않음
+
+    def assert_429(self, task_id: int, body: dict | None = None):
+        r, enqueued = self.post_run(task_id, body or {})
+        self.assertEqual(r.status_code, 429, r.text)
+        self.assertEqual(schema_errors(r.json(), "/tasks/{id}/runs", "post", "429"), [])
+        self.assertEqual(enqueued, [])
+
+    def assert_202(self, task_id: int, body: dict | None = None):
+        r, _ = self.post_run(task_id, body or {})
+        self.assertEqual(r.status_code, 202, r.text)
+
+    def test_daily_limit_10th_ok_11th_429(self):
+        from apps.api.db.models import Run
+
+        tid = self.make_task()
+        for _ in range(9):
+            self.insert_run(tid)
+        self.assert_202(tid)  # 10번째
+        self.assert_429(tid)  # 11번째
+        with self.main.SessionLocal() as db:  # 429는 run을 만들지 않는다
+            self.assertEqual(db.scalar(select(func.count()).select_from(Run).where(Run.task_id == tid)), 10)
+
+    def test_daily_limit_counts_whole_project_not_other_projects(self):
+        pid = self.make_project()["id"]
+        tid, other_tid = (
+            self.call("POST", f"/projects/{pid}/tasks", json={"description": d}).json()["id"] for d in ("t1", "t2")
+        )
+        for _ in range(5):
+            self.insert_run(tid)
+            self.insert_run(other_tid)
+        self.assert_429(tid)  # 같은 프로젝트의 과업 2개 합쳐 10개
+        self.assert_202(self.make_task())  # 다른 프로젝트는 0개
+
+    def test_daily_limit_uses_project_value(self):
+        from apps.api.db.models import Project, Task
+
+        tid = self.make_task()
+        with self.main.SessionLocal.begin() as db:
+            db.get(Project, db.get(Task, tid).project_id).daily_run_limit = 2
+        self.assert_202(tid)
+        self.assert_202(tid)
+        self.assert_429(tid)
+
+    def test_daily_limit_replay_only_not_counted_nor_blocked(self):
+        tid = self.make_task()
+        for _ in range(5):
+            self.insert_run(tid, mode="replay_only")
+        for _ in range(9):
+            self.insert_run(tid)
+        self.assert_202(tid)  # replay_only 5개는 안 셈 → 10번째
+        self.assert_202(tid, {"mode": "replay_only"})  # 상한에 걸려도 replay_only는 받는다
+        self.assert_429(tid)
+
+    def test_daily_limit_skips_runs_never_queued(self):
+        tid = self.make_task()
+        for _ in range(9):
+            self.insert_run(tid)
+        for _ in range(3):  # 큐에 못 넣은 run: failed, started_at 없음 → 안 셈
+            self.insert_run(tid, status="failed")
+        self.assert_202(tid)  # 10번째
+        self.assert_429(tid)
+
+    def test_daily_limit_counts_canceled_and_worker_failed(self):
+        tid = self.make_task()
+        for _ in range(8):
+            self.insert_run(tid)
+        self.insert_run(tid, status="canceled")
+        self.insert_run(tid, status="failed", started_at=datetime.now(timezone.utc))  # 워커에서 실패
+        self.assert_429(tid)
+
+    def test_daily_limit_resets_at_seoul_midnight(self):
+        tid = self.make_task()
+        kst = timezone(timedelta(hours=9))
+        midnight = datetime.now(kst).replace(hour=0, minute=0, second=0, microsecond=0)
+        for _ in range(9):
+            self.insert_run(tid, created_at=midnight)  # 오늘 00:00 → 셈
+        for _ in range(5):
+            self.insert_run(tid, created_at=midnight - timedelta(minutes=1))  # 어제 23:59 → 안 셈
+        self.assert_202(tid)  # 10번째
+        self.assert_429(tid)
 
     # --- GET /runs/{id} ---
 
