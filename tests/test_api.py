@@ -86,9 +86,9 @@ class ApiTests(unittest.TestCase):
     def insert_run(self, task_id: int, status: str = "completed", viewport: str = "desktop", **cols) -> int:
         from apps.api.db.models import Run
 
-        cols = {"mode": "agent", **cols}
+        cols = {"mode": "agent", "repeat_n": 3, **cols}
         with self.main.SessionLocal.begin() as db:
-            r = Run(task_id=task_id, viewport=viewport, repeat_n=3, model="claude-haiku-5-5", status=status, **cols)
+            r = Run(task_id=task_id, viewport=viewport, model="claude-haiku-5-5", status=status, **cols)
             db.add(r)
             db.flush()
             return r.id
@@ -102,8 +102,9 @@ class ApiTests(unittest.TestCase):
     def add_attempt(self, run_id: int, index: int, **cols) -> int:
         from apps.api.db.models import Attempt
 
+        cols = {"kind": "agent", **cols}
         with self.main.SessionLocal.begin() as db:
-            a = Attempt(run_id=run_id, index=index, kind="agent", **cols)
+            a = Attempt(run_id=run_id, index=index, **cols)
             db.add(a)
             db.flush()
             return a.id
@@ -224,6 +225,105 @@ class ApiTests(unittest.TestCase):
                 r = self.call("GET", f"/tasks/{tid}")
                 self.assertEqual(r.status_code, 404)
                 self.assertEqual(schema_errors(r.json(), "/tasks/{id}", "get", "404"), [])
+
+    # --- 과업 목록 (ADR 0011 7번): 요청한 초대 코드의 project만, id 내림차순 ---
+
+    def test_list_tasks(self):
+        pid = self.make_project()["id"]
+        ids = [self.call("POST", f"/projects/{pid}/tasks", json={"description": d}).json()["id"] for d in "abc"]
+        self.make_task()  # 같은 코드의 다른 프로젝트 과업 → 빠져야 함
+        r = self.call("GET", f"/projects/{pid}/tasks")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(schema_errors(r.json(), "/projects/{id}/tasks", "get", "200"), [])
+        self.assertEqual([t["id"] for t in r.json()], ids[::-1])
+
+    def test_list_tasks_empty(self):
+        pid = self.make_project()["id"]
+        self.assertEqual(self.call("GET", f"/projects/{pid}/tasks").json(), [])
+
+    def test_list_tasks_404_other_code_or_missing(self):
+        other = self.make_project("code-b")["id"]
+        for pid in (other, 9999):
+            with self.subTest(pid=pid):
+                r = self.call("GET", f"/projects/{pid}/tasks")
+                self.assertEqual(r.status_code, 404)
+                self.assertEqual(schema_errors(r.json(), "/projects/{id}/tasks", "get", "404"), [])
+
+    # --- 측정 목록 (F11, ADR 0011 6번): created_at 내림차순, viewport로 거르기 ---
+
+    def list_runs(self, task_id: int, query: str = "") -> list[dict]:
+        r = self.call("GET", f"/tasks/{task_id}/runs{query}")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(schema_errors(r.json(), "/tasks/{id}/runs", "get", "200"), [])
+        return r.json()
+
+    def test_list_task_runs_order_all_statuses(self):
+        tid = self.make_task()
+        t0 = datetime(2026, 11, 18, 3, 0, tzinfo=timezone.utc)
+        ids = {}
+        for minutes, status in [(0, "completed"), (20, "failed"), (10, "canceled"), (30, "queued"), (40, "running")]:
+            ids[status] = self.insert_run(tid, status=status, created_at=t0 + timedelta(minutes=minutes))
+        self.insert_run(self.make_task())  # 다른 과업 → 빠져야 함
+        body = self.list_runs(tid)
+        self.assertEqual([i["run"]["id"] for i in body],
+                         [ids["running"], ids["queued"], ids["failed"], ids["canceled"], ids["completed"]])
+
+    def test_list_task_runs_viewport_filter(self):
+        tid = self.make_task()
+        d = self.insert_run(tid, viewport="desktop")
+        m = self.insert_run(tid, viewport="mobile")
+        self.assertEqual([i["run"]["id"] for i in self.list_runs(tid, "?viewport=mobile")], [m])
+        self.assertEqual([i["run"]["id"] for i in self.list_runs(tid, "?viewport=desktop")], [d])
+        self.assertEqual({i["run"]["id"] for i in self.list_runs(tid)}, {d, m})
+
+    def test_list_task_runs_metrics_run_level_only(self):
+        from apps.api.db.models import Metric
+
+        tid = self.make_task()
+        run = self.insert_run(tid)
+        a1 = self.add_attempt(run, 1, success=True)
+        with self.main.SessionLocal.begin() as db:
+            db.add_all([
+                Metric(run_id=run, key="click_count", value=2, unit="count", spread=0.0, spread_quality="weak"),
+                Metric(run_id=run, attempt_id=a1, key="click_count", value=9, unit="count"),  # attempt별 값 → 제외
+            ])
+        self.assertEqual(self.list_runs(tid)[0]["metrics"], [
+            {"key": "click_count", "value": 2, "unit": "count", "spread": 0.0, "spread_quality": "weak",
+             "model_version_id": None},
+        ])
+
+    def test_list_task_runs_success_and_attempt_count(self):
+        # 기대값: 이슈 #69 표 (agent attempt가 있으면 agent만, 없으면 replay만 센다).
+        # agent 쪽 분모는 행 수가 아니라 repeat_n (워커가 5회면 3개를 먼저, 2개를 나중에 만든다)
+        tid = self.make_task()
+        cases = {
+            "첫 측정, agent 3회 중 2회 성공": ("agent", 3, [("agent", True), ("agent", True), ("agent", False)], (2, 3)),
+            "재측정, 재생 끝까지 성공": ("auto", 3, [("replay", True)], (1, 1)),
+            "재측정, 재생 끊김 → agent 3회 중 2회 성공":
+                ("auto", 3, [("replay", False), ("agent", True), ("agent", False), ("agent", True)], (2, 3)),
+            "replay_only, 재생 끊김": ("replay_only", 3, [("replay", False)], (0, 1)),
+            "대기 중, attempt 없음": ("agent", 3, [], (0, 0)),
+            "진행 중, 끝난 agent 1개 성공·나머지 진행 중": ("agent", 3, [("agent", True), ("agent", None), ("agent", None)], (1, 3)),
+            "repeat_n=5, agent 3개만 시작": ("agent", 5, [("agent", True), ("agent", None), ("agent", None)], (1, 5)),
+        }
+        run_ids = {}
+        for name, (mode, repeat_n, attempts, _) in cases.items():
+            run_ids[name] = self.insert_run(tid, mode=mode, repeat_n=repeat_n)
+            for i, (kind, success) in enumerate(attempts, start=1):
+                self.add_attempt(run_ids[name], i, kind=kind, success=success)
+        got = {i["run"]["id"]: (i["success_count"], i["attempt_count"]) for i in self.list_runs(tid)}
+        for name, (_, _, _, expected) in cases.items():
+            with self.subTest(name):
+                self.assertEqual(got[run_ids[name]], expected)
+
+    def test_list_task_runs_404_other_code_or_missing(self):
+        other = self.make_task("code-b")
+        self.insert_run(other)
+        for tid in (other, 9999):
+            with self.subTest(tid=tid):
+                r = self.call("GET", f"/tasks/{tid}/runs")
+                self.assertEqual(r.status_code, 404)
+                self.assertEqual(schema_errors(r.json(), "/tasks/{id}/runs", "get", "404"), [])
 
     # --- run ---
 

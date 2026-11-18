@@ -18,6 +18,7 @@
       "representative_attempt_index": 2
     },
     "success_count": 2,
+    "attempt_count": 3,
     "metrics": [
       {
         "key": "click_count",
@@ -72,6 +73,7 @@
       "representative_attempt_index": 1
     },
     "success_count": 3,
+    "attempt_count": 3,
     "metrics": [
       {
         "key": "click_count",

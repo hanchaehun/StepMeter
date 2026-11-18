@@ -575,8 +575,10 @@ export interface components {
         };
         RunHistoryItem: {
             run: components["schemas"]["Run"];
-            /** @description 성공한 반복 실행 수 (분모는 run.repeat_n) */
+            /** @description 같은 종류(replay/agent)에서 성공한 attempt 수 (분모는 attempt_count) */
             success_count: number;
+            /** @description 지표를 낸 쪽의 attempt 수. agent attempt가 있으면 run.repeat_n, 없으면 replay 수 (#69) */
+            attempt_count: number;
             metrics: components["schemas"]["Metric"][];
         };
         MetricChange: {
