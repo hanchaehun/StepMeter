@@ -177,6 +177,12 @@ def create_task(id: int, body: TaskCreate, db: DB, code: Code) -> dict[str, Any]
     return task_out(t)
 
 
+@app.get("/projects/{id}/tasks")
+def list_tasks(id: int, db: DB, code: Code) -> list[dict[str, Any]]:
+    own_project(db, code, id)
+    return [task_out(t) for t in db.scalars(select(Task).where(Task.project_id == id).order_by(Task.id.desc()))]
+
+
 @app.get("/tasks/{id}")
 def get_task(id: int, db: DB, code: Code) -> dict[str, Any]:
     return task_out(own_task(db, code, id))
@@ -314,6 +320,54 @@ def get_run(id: int, request: Request, db: DB, code: Code) -> dict[str, Any]:
     }
 
 
+def run_metrics(db: Session, run_id: int) -> list[dict[str, Any]]:
+    """run 단위 집계값만 (metric.attempt_id = null, openapi Metric)."""
+    metrics = db.scalars(select(Metric).where(Metric.run_id == run_id, Metric.attempt_id.is_(None)).order_by(Metric.id))
+    return [
+        {
+            "key": m.key,
+            "value": m.value,
+            "unit": m.unit,
+            "spread": m.spread,
+            "spread_quality": m.spread_quality,
+            "model_version_id": m.model_version_id,
+        }
+        for m in metrics
+    ]
+
+
+def success_counts(db: Session, r: Run) -> tuple[int, int]:
+    """(success_count, attempt_count): agent attempt가 있으면 agent만, 없으면 replay만 센다 (#69).
+    지표(save_run_medians)도 두 종류를 섞지 않는다. 진행 중이라 success가 null인 attempt는 성공으로 안 센다.
+    agent 분모는 repeat_n: 워커가 5회면 3개를 먼저 만들어 행 수로 세면 진행 중에 3 → 5로 바뀐다."""
+    rows = db.execute(
+        select(Attempt.kind, func.count().filter(Attempt.success.is_(True)), func.count())
+        .where(Attempt.run_id == r.id)
+        .group_by(Attempt.kind)
+    )
+    by_kind = {kind: (ok, n) for kind, ok, n in rows}
+    if "agent" in by_kind:
+        return by_kind["agent"][0], r.repeat_n
+    return by_kind.get("replay", (0, 0))
+
+
+@app.get("/tasks/{id}/runs")
+def list_task_runs(
+    id: int, db: DB, code: Code, viewport: Literal["desktop", "mobile"] | None = None
+) -> list[dict[str, Any]]:
+    """측정 목록 (F11). 상태와 상관없이 모두, created_at 내림차순."""
+    own_task(db, code, id)
+    q = select(Run).where(Run.task_id == id).order_by(Run.created_at.desc(), Run.id.desc())
+    if viewport is not None:
+        q = q.where(Run.viewport == viewport)
+    # ponytail: 페이지 나누기 없음, run마다 쿼리 몇 개(N+1). 과업당 수백 개까지는 충분, 느려지면 나눠 받기·한 번에 모아 읽기
+    items = []
+    for r in db.scalars(q).all():
+        ok, n = success_counts(db, r)
+        items.append({"run": run_out(db, r), "success_count": ok, "attempt_count": n, "metrics": run_metrics(db, r.id)})
+    return items
+
+
 # --- report ---
 
 
@@ -359,7 +413,6 @@ def get_report(id: int, db: DB, code: Code) -> dict[str, Any]:
     attempts = db.scalars(
         select(Attempt).where(Attempt.run_id == id, Attempt.end_reason.is_not(None)).order_by(Attempt.index)
     )
-    metrics = db.scalars(select(Metric).where(Metric.run_id == id, Metric.attempt_id.is_(None)).order_by(Metric.id))
     issues = db.execute(
         select(Issue, Attempt.index, Step.idx)
         .outerjoin(Step, Issue.step_id == Step.id)
@@ -370,17 +423,7 @@ def get_report(id: int, db: DB, code: Code) -> dict[str, Any]:
     return {
         "run": run_out(db, r),
         "attempts": [attempt_out(db, a) for a in attempts],
-        "metrics": [
-            {
-                "key": m.key,
-                "value": m.value,
-                "unit": m.unit,
-                "spread": m.spread,
-                "spread_quality": m.spread_quality,
-                "model_version_id": m.model_version_id,
-            }
-            for m in metrics
-        ],
+        "metrics": run_metrics(db, id),
         "issues": [
             {
                 "id": i.id,
