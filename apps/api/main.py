@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import os
 from collections.abc import Iterator
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -224,10 +225,31 @@ def run_out(db: Session, r: Run) -> dict[str, Any]:
     }
 
 
+KST = timezone(timedelta(hours=9))  # Asia/Seoul. 서머타임이 없어 고정 +9 (Windows에 시간대 DB가 없어도 동작)
+
+
+def check_daily_limit(db: Session, task: Task) -> None:
+    """프로젝트의 오늘(한국 시간) 측정 수가 daily_run_limit 이상이면 429 (F17).
+    replay_only와 큐에 못 넣은 run(failed인데 started_at 없음)은 세지 않는다."""
+    # ponytail: 동시 요청 2개가 같이 통과하면 상한 +1까지 가능. 막으려면 project 행을 FOR UPDATE로 잠근다
+    today = datetime.now(KST).replace(hour=0, minute=0, second=0, microsecond=0)
+    count = db.execute(
+        select(func.count()).select_from(Run).join(Task).where(
+            Task.project_id == task.project_id,
+            Run.created_at >= today,
+            Run.mode != "replay_only",
+            ~((Run.status == "failed") & Run.started_at.is_(None)),
+        )
+    ).scalar_one()
+    if count >= db.get_one(Project, task.project_id).daily_run_limit:
+        raise HTTPException(429, "오늘 측정 상한을 넘었습니다")
+
+
 @app.post("/tasks/{id}/runs", status_code=202)
 def create_run(id: int, body: RunCreate, db: DB, code: Code) -> dict[str, Any]:
-    # ponytail: 일일 측정 상한(429, F17)은 W4에서
-    own_task(db, code, id)
+    task = own_task(db, code, id)
+    if body.mode != "replay_only":  # replay_only는 LLM 비용이 거의 없어 상한과 상관없이 받는다 (계획서 11장)
+        check_daily_limit(db, task)
     if "base_run_id" not in body.model_fields_set:
         # 생략하면 같은 과업·뷰포트의 직전 완료 run (openapi RunCreate.base_run_id)
         base_run_id = db.scalar(
