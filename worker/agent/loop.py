@@ -184,7 +184,11 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             detail = 'goal_reached was not confirmed by the configured condition'
                     break
                 if action.action == 'fail':
-                    reason = 'gave_up'
+                    # Same as done(safety_stop): giving up after the configured goal was reached is a success.
+                    if await goal_already_met(page, config['success_condition']):
+                        reason, success, estimated = 'success', True, False
+                    else:
+                        reason = 'gave_up'
                     break
                 if repeated:
                     reason = 'loop'

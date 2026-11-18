@@ -267,6 +267,25 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
         await self.run_replies([action('click',target=1)])
         self.assertEqual(self.ending()[:3],('success',True,False))
 
+    # fail(모델의 포기)도 done(safety_stop)과 같은 원칙: 조건 충족이면 확인된 성공, 미충족이면 gave_up,
+    # 조건이 없으면 추정 성공으로 바꾸지 않고 gave_up.
+    async def test_fail_after_goal_is_verified_success(self):
+        self.html='<html><title>Test</title><body><p>Complete</p><button>Next</button></body></html>'
+        await self.run_replies([action('fail')])
+        self.assertEqual(self.ending()[:3],('success',True,False))
+
+    async def test_fail_before_goal_stays_gave_up(self):
+        self.html='<html><title>Test</title><body><p>Pending</p><button>Next</button></body></html>'
+        await self.run_replies([action('fail')])
+        self.assertEqual(self.ending()[:3],('gave_up',False,False))
+
+    async def test_fail_without_condition_stays_gave_up(self):
+        with self.factory.begin() as s:
+            s.get(Task,self.task_id).success_condition=None
+        self.html='<html><title>Test</title><body><p>Complete</p><button>Next</button></body></html>'
+        await self.run_replies([action('fail')])
+        self.assertEqual(self.ending()[:3],('gave_up',False,False))
+
     async def test_failed_goal_check_keeps_original_stop(self):
         self.html='<html><title>Test</title><body><p>Complete</p><button>Next</button></body></html>'
         with patch('worker.agent.termination.verify_success',side_effect=RuntimeError('page closed')):

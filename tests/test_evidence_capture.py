@@ -144,5 +144,64 @@ class WorkerSafetyStopIntegration(unittest.IsolatedAsyncioTestCase):
             engine.dispose()
 
 
+class WorkerFailIntegration(unittest.IsolatedAsyncioTestCase):
+    """Real worker loop with a fake model that answers fail on a page where the worker condition is met.
+
+    fail is not done, so the check comes from the capture taken right before the fail action.
+    """
+    async def measure(self, html):
+        from sqlalchemy import create_engine, select
+        from sqlalchemy.dialects.postgresql import JSONB
+        from sqlalchemy.ext.compiler import compiles
+        from sqlalchemy.orm import sessionmaker
+
+        from apps.api.db.models import AccessCode, Attempt, Base, Project, Run, Task
+        from benchmark.serve import serve
+        from tests.test_agent_core import progress
+        from worker.agent.run import execute_run
+        from worker.llm.fake import FakeAdapter
+
+        @compiles(JSONB, 'sqlite')
+        def jsonb_sqlite(_type, _compiler, **kw):
+            return 'JSON'
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root/'index.html').write_text(html)
+            engine = create_engine('sqlite:///'+str(root/'test.db'))
+            Base.metadata.create_all(engine)
+            factory = sessionmaker(engine, expire_on_commit=False)
+            try:
+                with serve(root) as origin:
+                    with factory.begin() as db:
+                        owner = AccessCode(code_hash='synthetic', active=False);db.add(owner);db.flush()
+                        project = Project(owner_id=owner.id, name='Synthetic', base_url=origin+'/index.html');db.add(project);db.flush()
+                        task = Task(project_id=project.id, description='Finish the order', success_condition={'text_present': 'Finished'})
+                        db.add(task);db.flush()
+                        run = Run(task_id=task.id, viewport='desktop', mode='agent', repeat_n=1, model='claude-haiku-5-5')
+                        db.add(run);db.flush();rid = run.id
+                    replies = [json.dumps({'action': 'fail', 'thought': 'Give up', 'expectation': 'Stopped'})]
+                    sink = EvidenceSink(root/'dom', CHECK, [MILESTONE])
+                    with patch('worker.agent.persistence.update_progress', progress), patch('worker.agent.run.update_progress', progress):
+                        await execute_run(rid, factory, adapter_factory=lambda _: FakeAdapter(replies), evidence_sink=sink)
+                    with factory() as db:
+                        attempts = list(db.scalars(select(Attempt).where(Attempt.run_id == rid)))
+                    return attempts, sink
+            finally:
+                engine.dispose()
+
+    async def test_fail_success_gets_last_capture_check(self):
+        attempts, sink = await self.measure('<main><p id="seen"></p><p id="state">Finished</p><button>Next</button></main>')
+        self.assertEqual([(a.end_reason, a.success, a.success_estimated) for a in attempts], [('success', True, False)])
+        self.assertEqual(sink.completions, {})
+        self.assertEqual([verified_success({'check': CHECK}, sink, a) for a in attempts], [True])
+
+    async def test_fail_success_without_milestone_is_not_verified(self):
+        # Worker condition (text 'Finished') is met, but the milestone was never seen: check fails.
+        attempts, sink = await self.measure('<main><p id="state">Finished</p><button>Next</button></main>')
+        self.assertEqual([(a.end_reason, a.success) for a in attempts], [('success', True)])
+        self.assertEqual([verified_success({'check': CHECK}, sink, a) for a in attempts], [False])
+
+
 if __name__ == '__main__':
     unittest.main()

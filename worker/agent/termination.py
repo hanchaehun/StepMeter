@@ -34,7 +34,7 @@ async def verify_success(page, condition):
 
 
 async def goal_already_met(page, condition):
-    """Before ending with safety_stop/blocked: has the page already met the configured goal?
+    """Before ending with safety_stop/blocked/fail: has the page already met the configured goal?
 
     Only a configured success condition counts (never an estimated success when it is None).
     If the check itself fails (closed page, timeout, invalid condition), the original stop stands.
