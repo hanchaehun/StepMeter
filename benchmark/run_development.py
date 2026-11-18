@@ -84,6 +84,13 @@ def export_measurements(db, run_id, case, evidence):
             'observations':observations}
 
 
+def verified_success(case, sink, attempt):
+    """Benchmark completion: the task check when it has one, else a non-estimated worker success."""
+    if not case.get('check'):
+        return bool(attempt.success and not attempt.success_estimated)
+    return sink.verified(attempt.id, attempt.success is True)
+
+
 async def run_case(case, factory, output, model):
     location = output/case['app_id']/case['case_id']
     sink = EvidenceSink(location/'dom', case.get('check'), case.get('milestones', []))
@@ -109,7 +116,7 @@ async def run_case(case, factory, output, model):
             summary = {'run_id':run_id,'status':run.status,'cost_usd':run.cost_usd,
                 'attempts':[{'id':a.id,'end_reason':a.end_reason,'end_detail':a.end_detail,
                     'success':a.success,'success_estimated':a.success_estimated,
-                    'verified_success':sink.completions.get(a.id) if case.get('check') else bool(a.success and not a.success_estimated)} for a in attempts]}
+                    'verified_success':verified_success(case,sink,a)} for a in attempts]}
             summary['verified_success_count'] = sum(a['verified_success'] is True for a in summary['attempts'])
             (location/'measurement.json').write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')
             (location/'features.json').write_text(json.dumps(build_dataset(data),ensure_ascii=False,indent=2),encoding='utf-8')

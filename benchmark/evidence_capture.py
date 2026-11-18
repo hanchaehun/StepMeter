@@ -17,17 +17,37 @@ class EvidenceSink:
         self.completions = {}
         self.milestones = milestones
         self.seen_milestones = {}
+        # Check result on the page of each attempt's most recent capture.
+        self.latest = {}
+
+    async def _completed(self, page, seen):
+        if not self.completion_check:
+            return None
+        try:
+            return bool(await page.evaluate(self.completion_check)) and len(seen) == len(self.milestones)
+        except Exception:
+            return None
+
+    def verified(self, attempt_id, worker_success):
+        """Independent check (check passed and every milestone seen) for the page an attempt ended on.
+
+        done of any reason: the check at that done. An attempt the worker judged successful
+        without done ended by SafetyStop/LoginWall, raised before the blocked control ran,
+        so the page is the one of its last capture. Otherwise None (not checked).
+        """
+        if attempt_id in self.completions:
+            return self.completions[attempt_id]
+        return self.latest.get(attempt_id) if worker_success else None
 
     async def capture(self, page, action, axe, url, attempt_id):
         seen = self.seen_milestones.setdefault(attempt_id, set())
         for i, expression in enumerate(self.milestones):
             if await page.evaluate(expression):
                 seen.add(i)
-        if action.action == 'done' and action.reason == 'goal_reached':
-            try:
-                self.completions[attempt_id] = bool(await page.evaluate(self.completion_check)) and len(seen) == len(self.milestones) if self.completion_check else None
-            except Exception:
-                self.completions[attempt_id] = None
+        # Captures run right before each action; checks are read-only DOM expressions.
+        self.latest[attempt_id] = await self._completed(page, seen)
+        if action.action == 'done':
+            self.completions[attempt_id] = self.latest[attempt_id]
         if not hasattr(action, 'target'):
             return None
         handle = await resolve_element(page, action.target)
