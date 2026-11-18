@@ -278,7 +278,7 @@ function observe() {
 }
 
 function hitAt(entry, b) {
-  const hit = deepHit(...visibleCenter(b));
+  const hit = deepHit(...actionPoint(entry, b));
   if (!hit) return undefined;
   if (isSelfOrAncestor(entry.el, hit.el)) return null;
   // Only a label's own activation surface is interchangeable with its control.
@@ -289,6 +289,52 @@ function hitAt(entry, b) {
 }
 
 const isOccluded = (entry, b) => hitAt(entry, b) !== null;
+
+// A disconnected/concave SVG shape's bounding-box centre can be empty water.
+// Pick geometry BEFORE hit-testing: never hunt for a hole in a real overlay.
+// Other elements (including labels) retain their existing centre policy.
+function svgShapes(el) {
+  if (typeof el.isPointInFill === "function") return [el];
+  if (el.namespaceURI !== "http://www.w3.org/2000/svg" || el.localName !== "g") return [];
+  return [...el.querySelectorAll("path,rect,circle,ellipse,polygon,polyline")].filter(shape => {
+    for (let parent = shape; parent !== el; parent = parent.parentElement) {
+      if (isInteractive(parent)) return false;
+    }
+    return true;
+  });
+}
+
+function actionPoint(entry, b) {
+  const center = visibleCenter(b);
+  const el = entry.el;
+  if (globalThis.__stepmeterSvgGeometry !== true || entry.proxy) return center;
+  const shapes = svgShapes(el).filter(shape => {
+    const cs = getComputedStyle(shape);
+    if (cs.fill === "none" || Number(cs.fillOpacity) === 0 || Number(cs.opacity) === 0 ||
+        cs.visibility !== "visible" || cs.display === "none") return false;
+    return true;
+  });
+  if (!shapes.length) return center;
+  const localBox = el.getBoundingClientRect();
+  const ox = b.x - localBox.x, oy = b.y - localBox.y;
+  // The full paint stack includes a shape underneath an overlay. Selecting
+  // geometry from that stack cannot hunt for an uncovered edge. Let Chromium
+  // project CSS 3D transforms: SVG getScreenCTM() only exposes a 2D matrix.
+  const root = el.getRootNode();
+  const painted = ([x, y]) => root.elementsFromPoint(x - ox, y - oy)
+    .some(hit => shapes.includes(hit));
+  if (painted(center)) return center;
+  const points = [];
+  const left = Math.max(0, b.x), top = Math.max(0, b.y);
+  const width = Math.min(innerWidth, b.x + b.width) - left;
+  const height = Math.min(innerHeight, b.y + b.height) - top;
+  for (let y = 1; y < 32; y++) for (let x = 1; x < 32; x++) {
+    points.push([left + width * x / 32, top + height * y / 32]);
+  }
+  points.sort((a, c) => Math.hypot(a[0]-center[0], a[1]-center[1]) -
+                         Math.hypot(c[0]-center[0], c[1]-center[1]));
+  return points.find(painted) || center;
+}
 
 // 측정 훅: 마지막 observe()의 el_id 요소 값 (ElementSnapshot).
 function snapshot(elId) {
@@ -354,10 +400,11 @@ function resolveElement(elId) {
 function clickPoint(elId) {
   resolveElement(elId);
   const entry = observed[elId - 1];
-  if (!entry.proxy) return null;
+  if (!entry.proxy && (globalThis.__stepmeterSvgGeometry !== true ||
+      !svgShapes(entry.el).length)) return null;
   const box = bboxOf(entry);
-  if (!inViewport(box) || isOccluded(entry, box)) throw new Error("label target is occluded");
-  const [x, y] = visibleCenter(box);
+  if (!inViewport(box) || isOccluded(entry, box)) throw new Error("action target is occluded");
+  const [x, y] = actionPoint(entry, box);
   return { x, y };
 }
 

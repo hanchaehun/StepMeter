@@ -17,7 +17,7 @@
 - **`select` 옵션**: `observe()` 항목 중 `tag == "select"`인 요소는 활성 `<option>` 텍스트 목록(1번부터)을 함께 읽어 LLM 프롬프트에 보여준다.
 - **루프·종료 판정**: 매 단계 `Step.state_hash`는 `sha256(URL 경로 + 보이는 요소 이름·텍스트 정렬 목록)`으로 계산하며, 같은 `(state_hash, action)`이 3회 반복되면 `end_reason="loop"`로 끝내고 `r05.evaluate()` 후보를 만든다. `done(goal_reached)` 시 `task.success_condition`(`url_contains`, `text_present`)을 확인하고, 조건이 `null`이면 `success=True, success_estimated=True`로 기록한다. 드라이버/효과 관찰 예외(`EffectObservationError` 등)는 `end_reason="error"`, `end_detail`에 사유를 남긴다.
 - **병렬 실행**: 에이전트 attempt는 재생이 끝난 뒤 최대 `STEPMETER_MAX_PARALLEL_ATTEMPTS`개(1~3, 기본 3) 동시에 돈다. 호출 한도(`LLMRateLimitError`)로 끝난 attempt가 나오면 실행 중인 attempt가 모두 끝난 뒤 남은 attempt를 하나씩 돌린다 (계획서 4.6).
-- **대표 시도·이슈 점수**: 성공한 시도(`success=True`) 중 `step_count`가 중앙값에 가장 가까운 시도(동률이면 `Attempt.index`가 작은 것)를 `run.representative_attempt_id`에 기록한다(성공 시도가 없으면 `None`). W4 이슈 점수 모델 전까지 `save_candidates(..., confidence=1.0)`을 기본값으로 넘긴다.
+- **대표 시도·이슈 점수**: 성공한 시도(`success=True`) 중 `step_count`가 중앙값에 가장 가까운 시도(동률이면 `Attempt.index`가 작은 것)를 `run.representative_attempt_id`에 기록한다(성공 시도가 없으면 `None`). 후보 저장 시 `confidence=1.0`을 잠정값으로 넘긴다. `STEPMETER_ISSUE_SCORE_CONFIG`가 있으면 모든 agent 시도 후 `save_run_medians` 다음, run 완료 전에 점수를 확정한다. 설정이 없으면 기존 값이다. 재생 이슈·run 단위 참고 후보는 유지한다. 설정 형식·기록·제약은 [이슈 점수 README](../../ml/issue_clf/README.md)를 따른다.
 
 ## ADR 0011에 따른 할 일
 

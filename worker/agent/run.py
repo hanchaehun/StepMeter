@@ -1,5 +1,6 @@
 """RQ entrypoint for agent and replay runs; no implicit benchmark or credential setup."""
 import asyncio
+import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,6 +10,8 @@ from sqlalchemy import create_engine, select, update
 from sqlalchemy.orm import sessionmaker
 
 from apps.api.db.models import Attempt, Metric, Project, Run, Task
+from ml.issue_clf.runtime import finalize_scores
+from ml.issue_clf.scoring import ScoreConfig
 from worker.agent.loop import execute_attempt
 from worker.agent.persistence import Canceled, running, start
 from worker.agent.termination import representative
@@ -89,6 +92,10 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             finally:
                 await context.close()
         agent_needed = row.mode == 'agent' or (row.mode == 'auto' and (not replay or not replay_full))
+        score_path = os.environ.get('STEPMETER_ISSUE_SCORE_CONFIG') if agent_needed else None
+        config['issue_score'] = (ScoreConfig.from_dict(json.loads(
+            Path(score_path).read_text(encoding='utf-8'))) if score_path else None)
+        config['score_evidence'] = {}
 
         async def attempt_once(index):
             """attempt 하나를 돌리고, 호출 한도(LLMRateLimitError)로 끝났으면 True."""
@@ -145,6 +152,8 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             kind = 'agent' if agent_needed else 'replay'
             finalize_run_metrics(session, run_id, kind=kind)
             save_run_medians(session, run_id, kind=kind)
+            if agent_needed and config['issue_score'] is not None:
+                finalize_scores(session, run_id, config['issue_score'], config['score_evidence'])
             attempts = list(session.scalars(select(Attempt).where(Attempt.run_id == run_id)))
             counts = dict(session.execute(select(Metric.attempt_id, Metric.value).where(
                 Metric.run_id == run_id, Metric.attempt_id.is_not(None), Metric.key == 'step_count')).all())

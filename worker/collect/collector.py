@@ -43,7 +43,7 @@ async def snapshot(page: Page, el_id: int) -> ElementSnapshot:
 
 
 async def click_point(page: Page, el_id: int) -> dict[str, float] | None:
-    """Validated label-proxy activation point in top-level viewport coordinates."""
+    """Validated label/SVG activation point in top-level viewport coordinates."""
     await _inject(page)
     return await page.evaluate("id => __stepmeter.clickPoint(id)", el_id)
 
