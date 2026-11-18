@@ -9,6 +9,7 @@ from playwright.async_api import Error as PlaywrightError
 from sqlalchemy import select
 
 from apps.api.db.models import Attempt, Step
+from ml.issue_clf.runtime import TARGET_SCRIPT, remember
 
 from worker.a11y.scan import scan_page
 from worker.agent.action_feedback import failure_code, missing_fields, retry_message
@@ -97,6 +98,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 repeated = guard.repeated(state, action)
                 axe = None
                 identity = None
+                score_target = None
                 if hasattr(action, 'target'):
                     try:
                         handle = await resolve_element(page, action.target)
@@ -116,6 +118,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         if await handle.owner_frame() == page.main_frame:
                             await scroll_target_into_view(page, action.target)
                             axe = await scan_page(page, axe_path, {idx: handle})
+                        if config.get('issue_score') is not None:
+                            score_target = await handle.evaluate(TARGET_SCRIPT)
                     finally:
                         await handle.dispose()
                 evidence = await evidence_sink.capture(page, action, axe, url, attempt_id) if evidence_sink else None
@@ -144,6 +148,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         if axe:
                             candidates += evaluate_axe(axe, {idx: step_id}, {step_id: result.element})
                         saved = save_candidates(session, config['id'], candidates, confidence=1.0)
+                        if config.get('issue_score') is not None:
+                            remember(config['score_evidence'], saved, score_target, step_id)
                         if evidence_sink:
                             evidence_sink.record(attempt_id, step_id, idx, action, result.element, saved, evidence)
                 if not active:

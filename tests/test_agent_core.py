@@ -180,6 +180,22 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(list(s.scalars(select(Step)))),2)
             self.assertTrue(all(Path(self.tmp.name,'shots',x.screenshot_key).is_file() for x in s.scalars(select(Step))))
 
+    async def test_explicit_score_config_finalizes_after_attempt(self):
+        from apps.api.db.models import Issue
+        from ml.issue_clf.scoring import ScoreConfig
+        self.html = '<html lang="en"><title>Test</title><body><button>Go</button></body></html>'
+        config = Path(self.tmp.name)/'issue-score.json'
+        config.write_text(json.dumps(ScoreConfig((0, 0, 1, 0, 0, 0), 1).as_dict()), encoding='utf-8')
+        with patch.dict('os.environ', {'STEPMETER_ISSUE_SCORE_CONFIG': str(config)}):
+            await self.run_replies([action('click',target=1), action('fail')])
+        with self.factory() as s:
+            issue = s.scalar(select(Issue).where(Issue.rule_id == 'R03'))
+            self.assertIsNotNone(issue)
+            self.assertEqual(issue.confidence, 1)
+            self.assertFalse(issue.is_reference)
+            self.assertIn('finalized n=1', issue.score_reason)
+            self.assertEqual(s.get(Run, self.run_id).status, 'completed')
+
     async def test_label_proxy_completes_agent_path_with_native_snapshot(self):
         from tests.test_collect_labels import HTML
         from apps.api.db.models import ElementSnapshot

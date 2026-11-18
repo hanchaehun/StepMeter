@@ -23,7 +23,7 @@
 | `bbox` | `{x, y, width, height}` | `getBoundingClientRect()` + iframe 오프셋 |
 | `style` | 아래 표 | `getComputedStyle()` |
 | `bg_chain` | `BackgroundLayer[]` (1개 이상) | 대상 자신부터 `html`까지. iframe 안이면 iframe 요소를 거쳐 바깥 문서 `html`까지 |
-| `occluded` | bool | 중심점의 `elementFromPoint`가 대상 또는 그 자손이 아님 |
+| `occluded` | bool | 조작 지점의 `elementFromPoint`가 대상 또는 그 자손이 아님. 조작 지점은 보통 bbox 중심이고, SVG 도형은 아래 예외 |
 | `occluder` | `{tag, role, name, bbox}` \| `null` | 대신 잡힌 맨 위 요소. `occluded=false`면 반드시 `null` |
 | `in_first_view` | bool | 로드 직후 기록한 첫 화면 목록에 있었는지 |
 | `first_view_scroll_px` | 0 이상 실수 \| `null` | 아래 참고 |
@@ -36,6 +36,7 @@
 ### 판정 세부
 
 - **가림**: 중심점은 bbox 중심이다. bbox가 뷰포트에 일부만 걸치면 보이는 부분의 중심을 쓴다. Shadow DOM과 같은 출처 iframe 안까지 내려가 맨 위 요소를 찾는다. 대상의 **조상**이 잡히면(예: 대상에 `pointer-events:none`) 가림으로 본다.
+  - **SVG 조작 지점 예외(기본 적용)**: 대상이 SVG 도형이거나 상호작용 `g`이고 bbox 중심이 도형을 칠한 곳이 아니면(떨어진 섬·오목한 도형), 전체 paint stack에서 도형이 있는 지점 중 중심에 가장 가까운 곳을 조작 지점으로 쓴다. 이 지점을 먼저 정한 뒤 최상단 hit-test를 하므로 덮개를 피해 다른 지점을 찾지 않는다. 덮개가 그 지점을 가리면 가림이다. 31×31 격자에서 도형을 못 찾으면 중심으로 돌아간다. 검증용으로 `globalThis.__stepmeterSvgGeometry=false`면 순수 중심점 판정이다. label·일반 HTML은 중심점이다.
 - **첫 화면**: 페이지 로드 직후 1회, 상호작용 요소마다 중심점이 `[0, width) × [0, height)` 안이면 첫 화면이다. 기록 시점의 스크롤을 빼서 스크롤 0 기준으로 계산한다.
   - `first_view_scroll_px` = `max(0, 문서 기준 중심 y − 뷰포트 높이)`. 첫 화면 요소는 `0`이다. 가로로만 벗어난 요소는 `in_first_view=false`, `0`이다.
   - 로드 때 없던 요소(나중에 뜬 메뉴 등)는 `in_first_view=false`, `first_view_scroll_px=null`이다.

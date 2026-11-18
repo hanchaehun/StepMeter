@@ -62,6 +62,26 @@ input 사각형 중심이 label 또는 절대 배치된 `::before` 안이면 nat
 가림 보강·특징 추출·검증과 협업 전달 사항은
 [W3 기록](../../docs/w3-collection-features.md)을 참고한다.
 
+### W4 SVG 조작 지점 예외 (기본 활성)
+
+미치 도쿄처럼 떨어진 섬을 포함한 SVG는 bbox 중심이 바다여서 가림으로 잡힌다.
+PM 확인에 따라 SVG 조작 지점 예외를 기본으로 켠다(`docs/element_snapshot_spec.md`).
+`globalThis.__stepmeterSvgGeometry=false`면 순수 중심점 판정으로 되돌린다.
+SVG 도형 또는 상호작용 g의 자식 도형에서 중심에 가까운 실제 조작 지점을 고른다.
+31×31 고정 격자를 쓰므로 매우 가늘거나 작은 도형은 놓칠 수 있고 중심으로 되돌아간다.
+독립적인 자식 컨트롤은 부모 g의 조작 표면에 포함하지 않는다.
+
+기하 선택에는 전체 `elementsFromPoint` 목록을 써서 덮개 아래 도형도 찾고,
+선택 후 기존 최상단 hit-test로 실제 가림을 판정한다. 덮개를 피하는 지점을 찾아
+누르지 않는다. 선택한 지점은 observe·snapshot·Driver 번호 클릭이 같이 쓴다.
+label·일반 HTML은 기존 중심점 정책을 유지한다. 다른 출처 iframe·닫힌 shadow root와
+복잡하게 변환된 iframe 좌표 지원은 늘리지 않는다.
+
+검증: `python -m unittest tests.test_collect_svg -v`.
+공개 미치의 도쿄 진입만 재현: `python -m benchmark.verify_collect_svg --output data/michi-new`.
+모델·Enter·drag는 사용하지 않으며 전체 과업 성공 검증이 아니다.
+[W4 기록·스크린샷](../../docs/w4-issue-scoring.md)에 실측과 승인 대기 사항을 적었다.
+
 ## ADR 0010에 따른 할 일
 
 - LLM에 보내는 요소 목록에 가려진 요소(`occluded=True`)도 빼지 않고 넣으며 `"(가려짐)"`으로 표시한다 (ADR 0010)
