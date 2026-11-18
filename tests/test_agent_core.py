@@ -228,6 +228,51 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
         with self.factory() as s:
             a=s.scalar(select(Attempt));self.assertEqual((a.end_reason,a.steps_count),('safety_stop',0))
 
+    # 멈추는 종료(done(safety_stop)·SafetyStop·LoginWall) 전에도 설정된 성공 조건을 페이지로 확인한다.
+    # 조건(text_present 'Complete')이 이미 충족됐으면 확인된 성공, 아니면 원래 종료 사유, 조건이 없으면 추정 성공으로 바꾸지 않는다.
+    def ending(self):
+        with self.factory() as s:
+            a=s.scalar(select(Attempt))
+            return a.end_reason,a.success,a.success_estimated,a.end_detail
+
+    async def test_safety_stop_done_after_goal_is_verified_success(self):
+        self.html='<html><title>Test</title><body><p>Complete</p><button>Next</button></body></html>'
+        await self.run_replies([action('done',reason='safety_stop')])
+        self.assertEqual(self.ending()[:3],('success',True,False))
+
+    async def test_safety_stop_done_before_goal_stays_safety_stop(self):
+        self.html='<html><title>Test</title><body><p>Pending</p><button>Next</button></body></html>'
+        await self.run_replies([action('done',reason='safety_stop')])
+        self.assertEqual(self.ending()[:3],('safety_stop',False,False))
+
+    async def test_login_wall_after_goal_is_verified_success(self):
+        self.html='<html><title>Test</title><body><p>Complete</p><input type="password"></body></html>'
+        await self.run_replies([action('type',target=1,text='invented')])
+        self.assertEqual(self.ending()[:3],('success',True,False))
+
+    async def test_login_wall_before_goal_stays_blocked(self):
+        self.html='<html><title>Test</title><body><p>Pending</p><input type="password"></body></html>'
+        await self.run_replies([action('type',target=1,text='invented')])
+        self.assertEqual(self.ending(),('blocked',False,False,'login_wall'))
+
+    async def test_safety_stop_without_condition_is_not_estimated_success(self):
+        with self.factory.begin() as s:
+            s.get(Task,self.task_id).success_condition=None
+        self.html='<html><title>Test</title><body><p>Complete</p><button>Next</button></body></html>'
+        await self.run_replies([action('done',reason='safety_stop')])
+        self.assertEqual(self.ending()[:3],('safety_stop',False,False))
+
+    async def test_unsafe_control_after_goal_is_verified_success(self):
+        self.html='<html><title>Test</title><body><p>Complete</p><button>Pay now</button></body></html>'
+        await self.run_replies([action('click',target=1)])
+        self.assertEqual(self.ending()[:3],('success',True,False))
+
+    async def test_failed_goal_check_keeps_original_stop(self):
+        self.html='<html><title>Test</title><body><p>Complete</p><button>Next</button></body></html>'
+        with patch('worker.agent.termination.verify_success',side_effect=RuntimeError('page closed')):
+            await self.run_replies([action('done',reason='safety_stop')])
+        self.assertEqual(self.ending()[:3],('safety_stop',False,False))
+
     async def test_visible_password_field_does_not_block_attempt(self):
         self.html='<html><body><input type="password"></body></html>'
         await self.run_replies([action('fail')])

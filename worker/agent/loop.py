@@ -16,7 +16,7 @@ from worker.agent.action_feedback import failure_code, missing_fields, retry_mes
 from worker.agent.observation import describe, labeled_screenshot, state_hash
 from worker.agent.persistence import Canceled, finish_attempt, log_call, running, save_step
 from worker.agent.safety import LoginWall, SafetyStop, blocked_reason
-from worker.agent.termination import LoopGuard, verify_success
+from worker.agent.termination import LoopGuard, goal_already_met, verify_success
 from worker.collect.collector import observe, record_first_view, resolve_element, scroll_target_into_view
 from worker.driver.effects import EffectResult
 from worker.driver.playwright_driver import ActionResult, PlaywrightDriver
@@ -172,7 +172,11 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 scrolls.append(await page.evaluate('scrollY'))
                 if action.action == 'done':
                     if action.reason == 'safety_stop':
-                        reason = 'safety_stop'
+                        # Page evidence first: a stop after the configured goal was reached is a success.
+                        if await goal_already_met(page, config['success_condition']):
+                            reason, success, estimated = 'success', True, False
+                        else:
+                            reason = 'safety_stop'
                     else:
                         success, estimated = await verify_success(page, config['success_condition'])
                         reason = 'success' if success else 'gave_up'
@@ -199,11 +203,20 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
         detail = f'{max_seconds} second attempt budget exceeded' if budget.expired() else 'TimeoutError'
         finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
     except LoginWall:
-        reason, detail = 'blocked', 'login_wall'
-        finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
+        # The blocked control was never executed; the page may still already show the goal.
+        if await goal_already_met(page, config['success_condition']):
+            reason = 'success'
+            finish_attempt(factory, config['id'], attempt_id, reason, True, False)
+        else:
+            reason, detail = 'blocked', 'login_wall'
+            finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
     except SafetyStop:
-        reason = 'safety_stop'
-        finish_attempt(factory, config['id'], attempt_id, reason, detail='Unsafe control blocked before execution')
+        if await goal_already_met(page, config['success_condition']):
+            reason = 'success'
+            finish_attempt(factory, config['id'], attempt_id, reason, True, False)
+        else:
+            reason = 'safety_stop'
+            finish_attempt(factory, config['id'], attempt_id, reason, detail='Unsafe control blocked before execution')
     except Canceled:
         raise
     except Exception as error:
