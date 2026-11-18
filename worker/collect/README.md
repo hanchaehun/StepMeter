@@ -62,11 +62,11 @@ input 사각형 중심이 label 또는 절대 배치된 `::before` 안이면 nat
 가림 보강·특징 추출·검증과 협업 전달 사항은
 [W3 기록](../../docs/w3-collection-features.md)을 참고한다.
 
-### W4 SVG 가림 실험 (기본 비활성)
+### W4 SVG 조작 지점 예외 (기본 활성)
 
-동결 명세는 bbox 중심점 판정이다. 미치 도쿄처럼 떨어진 섬을 포함한 SVG는 중심이
-바다여서 가림으로 잡힌다. PM의 판정 정의 확인 전에는 기본 동작을 바꾸지 않는다.
-검증 페이지에서 `globalThis.__stepmeterSvgGeometry=true`를 명시했을 때만
+미치 도쿄처럼 떨어진 섬을 포함한 SVG는 bbox 중심이 바다여서 가림으로 잡힌다.
+PM 확인에 따라 SVG 조작 지점 예외를 기본으로 켠다(`docs/element_snapshot_spec.md`).
+`globalThis.__stepmeterSvgGeometry=false`면 순수 중심점 판정으로 되돌린다.
 SVG 도형 또는 상호작용 g의 자식 도형에서 중심에 가까운 실제 조작 지점을 고른다.
 31×31 고정 격자를 쓰므로 매우 가늘거나 작은 도형은 놓칠 수 있고 중심으로 되돌아간다.
 독립적인 자식 컨트롤은 부모 g의 조작 표면에 포함하지 않는다.

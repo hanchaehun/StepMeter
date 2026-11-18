@@ -21,7 +21,6 @@ async def verify(output):
         browser = await pw.chromium.launch()
         try:
             page = await browser.new_page(viewport={'width': 1280, 'height': 800})
-            await page.add_init_script('globalThis.__stepmeterSvgGeometry = true')
             await page.goto(URL, wait_until='networkidle')
             await page.wait_for_timeout(1500)
             rows = await observe(page)
@@ -37,7 +36,7 @@ async def verify(output):
                 row = matches[0]
                 await page.evaluate('globalThis.__stepmeterSvgGeometry = false')
                 report['center_snapshot'] = (await snapshot(page, row['el_id'])).model_dump()
-                await page.evaluate('globalThis.__stepmeterSvgGeometry = true')
+                await page.evaluate('delete globalThis.__stepmeterSvgGeometry')
                 report['snapshot'] = (await snapshot(page, row['el_id'])).model_dump()
                 report['action_point'] = (await click_point(page, row['el_id'])
                                           if not report['snapshot']['occluded'] else None)

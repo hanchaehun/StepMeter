@@ -27,17 +27,16 @@ class SVGTests(unittest.IsolatedAsyncioTestCase):
         self.browser = await self.pw.chromium.launch()
         self.addAsyncCleanup(self.browser.close)
         self.page = await self.browser.new_page(viewport={'width': 800, 'height': 600})
-        await self.page.evaluate('globalThis.__stepmeterSvgGeometry = true')
         self.driver = PlaywrightDriver(self.page, window_ms=1000)
         self.addAsyncCleanup(self.driver.aclose)
 
-    async def test_default_preserves_frozen_center_contract(self):
+    async def test_opt_out_restores_center_contract(self):
         await self.page.evaluate('globalThis.__stepmeterSvgGeometry = false')
         await self.page.set_content(HTML)
         row = next(r for r in await observe(self.page) if r['name'] == 'Tokyo')
         self.assertTrue(row['occluded'])
 
-    async def test_disconnected_path_is_not_occluded_and_number_click_opens(self):
+    async def test_default_on_disconnected_path_is_not_occluded_and_number_click_opens(self):
         await self.page.set_content(HTML)
         row = next(r for r in await observe(self.page) if r['name'] == 'Tokyo')
         self.assertFalse(row['occluded'], 'Empty SVG bbox centre is not a covering element')

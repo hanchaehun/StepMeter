@@ -292,6 +292,7 @@ const isOccluded = (entry, b) => hitAt(entry, b) !== null;
 
 // A disconnected/concave SVG shape's bounding-box centre can be empty water.
 // Pick geometry BEFORE hit-testing: never hunt for a hole in a real overlay.
+// On by default; `__stepmeterSvgGeometry = false` restores pure centre policy.
 // Other elements (including labels) retain their existing centre policy.
 function svgShapes(el) {
   if (typeof el.isPointInFill === "function") return [el];
@@ -307,7 +308,7 @@ function svgShapes(el) {
 function actionPoint(entry, b) {
   const center = visibleCenter(b);
   const el = entry.el;
-  if (globalThis.__stepmeterSvgGeometry !== true || entry.proxy) return center;
+  if (globalThis.__stepmeterSvgGeometry === false || entry.proxy) return center;
   const shapes = svgShapes(el).filter(shape => {
     const cs = getComputedStyle(shape);
     if (cs.fill === "none" || Number(cs.fillOpacity) === 0 || Number(cs.opacity) === 0 ||
@@ -400,7 +401,7 @@ function resolveElement(elId) {
 function clickPoint(elId) {
   resolveElement(elId);
   const entry = observed[elId - 1];
-  if (!entry.proxy && (globalThis.__stepmeterSvgGeometry !== true ||
+  if (!entry.proxy && (globalThis.__stepmeterSvgGeometry === false ||
       !svgShapes(entry.el).length)) return null;
   const box = bboxOf(entry);
   if (!inViewport(box) || isOccluded(entry, box)) throw new Error("action target is occluded");
