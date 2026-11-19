@@ -38,5 +38,6 @@ def evaluate(snapshot: ElementSnapshot, *, mobile: bool = False,
         return Candidate("R01", "high", "타겟이 24px 최소 크기·간격 기준에 미달합니다.", size, 24)
     if 24 <= size < 44 or mobile and size < 44:
         return Candidate("R01", "medium" if mobile else "low",
-                         "타겟이 44px 권장 크기보다 작습니다.", size, 44)
+                         "타겟이 44px 권장 크기보다 작습니다.", size, 44,
+                         is_reference=not mobile)
     return None

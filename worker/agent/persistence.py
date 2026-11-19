@@ -38,12 +38,12 @@ def log_call(factory, run_id, result, *, purpose='action', prompt_version='actio
             row.cost_usd += result.cost_usd
 
 
-def save_step(session, run_id, attempt_id, idx, action, url, state, result, *, fitts=None):
+def save_step(session, run_id, attempt_id, idx, action, url, state, result, *, fitts=None, est_seconds=None):
     # A step already executed before cancellation is still evidence. The caller
     # checks progress AFTER committing it and then stops.
     row = Step(attempt_id=attempt_id, idx=idx, action=action.model_dump(), thought=action.thought,
                screenshot_key=save_screenshot(result.screenshot), url=url, state_hash=state,
-               fitts_id=fitts, **result.effect.as_step_effect())
+               fitts_id=fitts, est_seconds=est_seconds, **result.effect.as_step_effect())
     session.add(row)
     session.flush()
     if result.element is not None:

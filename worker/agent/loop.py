@@ -19,13 +19,14 @@ from worker.agent.safety import LoginWall, SafetyStop, blocked_reason
 from worker.agent.termination import LoopGuard, goal_already_met, verify_success
 from worker.collect.collector import observe, record_first_view, resolve_element, scroll_target_into_view
 from worker.driver.effects import EffectResult
-from worker.driver.playwright_driver import ActionResult, PlaywrightDriver
+from worker.driver.playwright_driver import ActionResult, PlaywrightDriver, SCROLL_STATE
 from worker.llm.base import LLMRequest
 from worker.metrics.cursor_distance import calculate_cursor_distance
 from worker.metrics.fitts import calculate_fitts_ids
 from worker.metrics.interactions import (calculate_scroll_distance, count_interactions,
     count_no_response_clicks, count_page_transitions, count_repeated_clicks)
 from worker.metrics.persistence import save_attempt_metrics
+from worker.metrics.klm import estimate_step, MOTOR_ACTIONS
 from worker.rules.engine import evaluate_step, evaluate_axe, axe_target_size_result, element_key
 from worker.rules.persistence import save_candidates
 from worker.rules.r05 import evaluate as loop_candidate
@@ -43,6 +44,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
     guard, first = LoopGuard(), FirstTargetTracker()
     actions, effects, identities, targets, history = [], [], [], [], []
     target_step_ids = []
+    klm_values = []
+    klm_first = True
     records = []  # R09 판단용: 실제로 실행·저장된 step만 (시도가 끝난 뒤 한 번 묻는다)
     urls, scrolls = [], []
     navigation = {'changed': False}
@@ -99,6 +102,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 axe = None
                 identity = None
                 score_target = None
+                prepared_scroll = False
                 if hasattr(action, 'target'):
                     try:
                         handle = await resolve_element(page, action.target)
@@ -116,7 +120,9 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         }''', uuid.uuid4().hex)
                         # Frames are not claimed as scanned by the W2 axe interface.
                         if await handle.owner_frame() == page.main_frame:
+                            before_scroll = await handle.evaluate(SCROLL_STATE)
                             await scroll_target_into_view(page, action.target)
+                            prepared_scroll = before_scroll != await handle.evaluate(SCROLL_STATE)
                             axe = await scan_page(page, axe_path, {idx: handle})
                         if config.get('issue_score') is not None:
                             score_target = await handle.evaluate(TARGET_SCRIPT)
@@ -134,12 +140,16 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             raise
                         stale_retries += 1
                         continue
+                est_seconds = estimate_step(action.model_dump(), first_action=klm_first,
+                    previous_action=actions[-1] if actions else None,
+                    auto_scrolled=prepared_scroll or result.auto_scrolled,
+                    mobile=config['viewport'] == 'mobile')
                 effect = result.effect.as_step_effect()['effect_type']
                 metric_targets = targets + ([result.element] if result.element and action.action in ('click','type','select') else [])
                 fid = calculate_fitts_ids(metric_targets)[-1] if len(metric_targets) > len(targets) else None
                 with factory.begin() as session:
                     step_id, active = save_step(session, config['id'], attempt_id, idx, action,
-                                                url, state, result, fitts=fid)
+                                                url, state, result, fitts=fid, est_seconds=est_seconds)
                     if result.element:
                         candidates = evaluate_step(result.element, step_id=step_id, action=action.action,
                             effect_type=effect, is_first_target=first.is_first_target(url, action.action),
@@ -154,6 +164,10 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             evidence_sink.record(attempt_id, step_id, idx, action, result.element, saved, evidence)
                 if not active:
                     raise Canceled()
+                if est_seconds is not None:
+                    klm_values.append(est_seconds)
+                if action.action in MOTOR_ACTIONS:
+                    klm_first = False
                 actions.append(action.action)
                 effects.append(effect)
                 identities.append(identity)
@@ -200,6 +214,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 if current_document != document_id or screen_key(page.url) != screen_key(url):
                     await record_first_view(page)
                     first.new_screen()
+                    klm_first = True
                     navigation['changed'] = False
         finish_attempt(factory, config['id'], attempt_id, reason, success, estimated, detail)
     except TimeoutError:
@@ -232,6 +247,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
         page.remove_listener('framenavigated', navigated)
         await driver.aclose()
     values = count_interactions(actions)
+    if config['viewport'] != 'mobile':
+        values['est_task_time'] = sum(klm_values)
     values.update(no_response_click_count=count_no_response_clicks(actions, effects),
                   repeated_click_count=count_repeated_clicks(actions, identities),
                   page_transition_count=count_page_transitions(urls),

@@ -100,3 +100,10 @@ measured는 back이 있었던 시도 수, threshold는 필요한 시도 수다.
 update_explanation은 run 소속을 검사하고 commit하지 않는다. 호출자가 run 권한·취소를
 검사하며 기존 트랜잭션에서 완료한다. LLM 호출은 DB 잠금 밖에서 한다.
 설명 생성 모델 호출과 run 후처리 연결은 LLM·에이전트 담당 작업으로 남아 있다.
+
+## W4 #77 R01 권장 후보
+
+PM 결정에 따라 desktop의 24~44px 권장 후보는 low 참고(is_reference=True)다.
+24px 최소·간격 위반 high와 모바일 medium 기본 목록은 유지한다.
+간격 예외로 통과하는 작은 타겟을 무조건 high로 바꾸지 않는다. 44px 이상은 후보 없음.
+WCAG AA/AAA 구분과 0차 자료의 영향은 ADR 0011 9절 및 docs/w4-metrics-review.md에 있다.

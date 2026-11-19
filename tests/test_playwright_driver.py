@@ -103,3 +103,13 @@ class DriverTests(unittest.IsolatedAsyncioTestCase):
             actions.append(action.action)
             effects.append(step.effect_type)
         self.assertEqual(count_no_response_clicks(actions, effects), 1)
+
+    async def test_automatic_preparation_scroll_is_reported(self):
+        from worker.metrics.klm import estimate_step
+        await self.page.set_content('<div style="height:1600px"></div><button>Far</button>')
+        await self.page.locator('button').scroll_into_view_if_needed()
+        rows=await observe(self.page)
+        await self.page.evaluate('scrollTo(0,0)')
+        result=await self.driver.perform(ClickAction(action='click',target=rows[0]['el_id'],thought='Click',expectation='Effect'))
+        self.assertTrue(result.auto_scrolled)
+        self.assertAlmostEqual(estimate_step(dict(action='click'),first_action=False,auto_scrolled=result.auto_scrolled),3.75)
