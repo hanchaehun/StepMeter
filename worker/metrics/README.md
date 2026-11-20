@@ -79,9 +79,9 @@ SQLite 결과는 PostgreSQL 잠금·동시성 검증을 대신하지 않는다.
 
 결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
 
-- 문헌값 KLM을 순수 함수로 만든다(예: `klm.py`). 행동별 식과 추가 규칙(화면 첫 행동의 M, type 뒤의 H, 스크롤이 필요했을 때의 S)은 ADR 0011 3번을 따른다. R(시스템 응답)은 넣지 않는다 (ADR 0011 3번)
+- 문헌값 KLM 순수 함수는 `klm.py`에 구현했다(아래 W4 절). 행동별 식과 추가 규칙(화면 첫 행동의 M, type 뒤의 H, 스크롤이 필요했을 때의 S)은 ADR 0011 3번을 따른다. R(시스템 응답)은 넣지 않는다 (ADR 0011 3번)
 - 테스트 기대값은 문헌 상수로 사람이 계산한다. ADR 0011 3번의 예(8.88초 + 3.05초 = 11.93초)를 쓸 수 있다 (ADR 0011 3번)
-- `UNITS`에 `est_task_time`(초)을 더한다. run 값은 지금처럼 성공한 시도의 중앙값이다 (ADR 0011 3번)
+- `UNITS`에 `est_task_time`(초)을 추가했다. run 값은 지금처럼 성공한 시도의 중앙값이다 (ADR 0011 3번)
 - select를 click처럼 세는 작업(`interactions.py`)을 할 때, select 단계가 Fitts ID·이동 거리 경로에도 들어가게 `worker/agent/loop.py`의 대상 조건(지금 `click`·`type`만)을 같이 바꾼다. 위 표의 "click/type/select 직전 snapshot" 설명도 맞춘다 (ADR 0011 6번)
 
 ## W3
@@ -89,3 +89,33 @@ SQLite 결과는 PostgreSQL 잠금·동시성 검증을 대신하지 않는다.
 `select`는 click_count에 1회로 센다. 무반응·연속 반복 클릭 집계에도 같은
 클릭 계열로 포함한다. `loop.py`도 select snapshot을 이동 거리·Fitts ID 경로에 넣는다.
 선택 열기/고르기의 물리 클릭 두 번을 추정하지 않는다.
+
+## W4 문헌값 KLM (ADR 0011 §3)
+
+`klm.estimate_step(action, first_action=..., previous_action=..., auto_scrolled=..., mobile=...)`
+계산은 순수 함수이고 시스템 응답 R은 포함하지 않는다. click/back 2.65, select 3.95,
+scroll 2.45초, type은 3.05+글자 수×0.28초다. 화면 첫 유효 행동에 M=1.35,
+직전 행동이 type이면 H=0.4, 실제 준비 스크롤이 있으면 S=1.1을 추가한다.
+wait/done/fail은 항상 0이고 모바일은 None이다. wait는 첫 유효 행동의 M을 소비하지 않는다.
+선택 필드 submit=True인 type은 Enter 1K를 추가할 준비가 되어 있다(#75).
+현재 공용 TypeAction에는 submit이 없어 입력·Enter 실행 자체는 코어 담당의 후속 작업이다.
+
+loop는 실제 실행·저장된 단계에만 `Step.est_seconds`를 쓰고 시도 합계를
+`est_task_time`(s)에 저장한다. run 값은 기존 성공 agent 중앙값이며 실패와 replay를 섞지 않는다.
+모바일은 단계 None 및 지표 생략이다. 보정하지 않았으므로 model_version_id는 None이다.
+화면 전환은 R06과 같은 출처+경로 및 실제 reload로 판단한다. 드라이버와 axe 준비 단계의
+실제 스크롤을 모두 확인하고 같은 행동에는 S를 최대 1회 더한다.
+
+### W4 Docker 검증
+
+마이그레이션 전체 검사와 ORM 집중 검사는 같은 미초기화 DB를 재사용하지 않는다.
+아래처럼 전용 프로젝트의 새 test-db(tmpfs)/test-redis를 사용하고 종료 후 정리한다.
+기존 개발 프로젝트의 DB나 볼륨은 삭제하지 않는다.
+
+```sh
+docker compose -p stepmeter-w4-verify --profile test run --build --rm tests
+docker compose -p stepmeter-w4-verify --profile test down
+```
+
+집중 검사 전에 Base.metadata.create_all로 만든 테이블만 남아 있으면 migration의
+upgrade에서 DuplicateTable이 날 수 있다. 테이블을 임의 stamp하지 말고 새 테스트 DB로 검증한다.

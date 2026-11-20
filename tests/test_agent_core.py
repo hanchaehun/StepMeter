@@ -581,3 +581,24 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(issues), 1, [(a.end_reason, a.end_detail) for a in s.scalars(select(Attempt))])
             self.assertEqual((issues[0].measured, issues[0].threshold, issues[0].is_reference), (2, 2, True))
             self.assertIsNone(issues[0].step_id)
+
+    async def test_klm_step_attempt_and_run_storage(self):
+        self.html = '''<html lang="en"><title>KLM</title><main><input aria-label="Name">
+            <button onclick="document.querySelector('p').textContent='Complete'">Next</button><p></p></main></html>'''
+        await self.run_replies([action('type', target=1, text='x'*16), action('click', target=2), action('done', reason='goal_reached')])
+        with self.factory() as s:
+            self.assertEqual(s.scalar(select(Attempt)).end_reason,'success')
+            steps=list(s.scalars(select(Step).order_by(Step.idx)))
+            self.assertEqual([step.est_seconds for step in steps],[8.88,3.05,0])
+            values=list(s.scalars(select(Metric).where(Metric.key=='est_task_time')))
+            self.assertEqual(len(values),2)
+            self.assertTrue(all(abs(m.value-11.93)<1e-8 for m in values))
+            self.assertTrue(all(m.model_version_id is None for m in values))
+
+    async def test_klm_mobile_has_no_time_metric(self):
+        with self.factory.begin() as s: s.get(Run,self.run_id).viewport='mobile'
+        await self.run_replies([action('click',target=1),action('done',reason='goal_reached')])
+        with self.factory() as s:
+            self.assertEqual(s.scalar(select(Attempt)).end_reason,'success')
+            self.assertTrue(all(step.est_seconds is None for step in s.scalars(select(Step))))
+            self.assertEqual(list(s.scalars(select(Metric).where(Metric.key=='est_task_time'))),[])

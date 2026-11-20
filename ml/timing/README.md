@@ -148,3 +148,36 @@ notes는 진행 프로그램(`human-study/app`)이 참가자마다 만드는 `no
 현재 진행 프로그램은 참가자별 `upload-<코드>.zip`을 만든다.
 [수령 절차](session-handoff.md)에 Notion 접근·로컬 보관·notes 확인·철회 삭제 범위를 정리했다.
 실험 종료 전에도 완료한 참가자의 파일을 받을 수 있다. 실제 수령은 페이지 접근 권한이 필요하다.
+
+## W4 분석 도구 (실제 자료 수합 전 구현)
+
+`analyze.analyze_session(session, notes, completion_index=..., completion_reason=...)`는
+원본 클릭 보완 함수를 재사용한다. completion_index는 사람이 완료 상태·메모와 대조한
+**원본 events 인덱스**다. 실제 click, 보완된 up, key 중 하나만 가능하고 대상과 근거가 필수다.
+마지막 키나 클릭을 자동으로 완료 행동이라고 정하지 않는다. 미확정은 end_unresolved로 제외한다.
+첫 stable 전 조작, notes 미확인/진행 이상, 미완료, 비표준 viewport도 사유를 남긴다.
+R 구간은 행동 후 첫 stable만 다음 조작보다 먼저일 때 채택한다. 이동은 무시하고,
+같은 조작의 down/up은 묶는다. 같은 시각의 다음 조작이 있으면 채택하지 않는다.
+음수·역행은 오류다. 관측/대기/조정 시간, 구간 합집합, 원본 인덱스와 미확정 대기를 반환한다.
+
+`prior_procedure=True`는 운영자가 별도 표시한 이전 절차 참가자용이다. 주 분석에서 빼고
+포함했을 때 민감도도 요약한다. read_aloud 버전만 보고 해당 참가자라고 추정하지 않는다.
+`summarize()`는 페이지 전체 및 procedure_version별로 완료율·제외 건수·유효 표본 수를 낸다.
+유효 성공 3건 미만이면 시간 중앙값을 내지 않고 completion_only로 보고한다.
+미확정 대기 표본 제외 결과도 별도로 낸다. 실제 비교 수치/MAPE/상관/보정은 후속 작업이다.
+
+CLI: `python -m ml.timing.analyze --manifest <로컬목록.json> --output <로컬결과.json>`.
+목록은 아래 형식이며 경로는 목록 파일 기준이다. 출력은 어떤 입력도 덮어쓰지 못한다.
+
+```json
+[{"session":"session-SYNTHETIC.json","notes":"notes-SYNTHETIC.json",
+  "completion_index":4,"completion_reason":"완료 컨트롤과 진행 메모 대조",
+  "prior_procedure":false}]
+```
+
+실제 파일·목록·결과는 모두 비공개 로컬 폴더에 두고 커밋하지 않는다.
+이번 검증은 합성 기록만 사용한다. 수집 코드와 확정된 분석 상수는 바꾸지 않았다.
+
+완료율의 분모는 입력한 참가자/페이지 세션 수다. 누락 파일을 성공·실패 어느 쪽으로도
+임의 대체하지 않으므로, 실제 자료는 먼저 기존 check_sessions.py로 6페이지 누락을 점검하고
+수합 현황과 분석에 입력한 표본 수를 함께 보고해야 한다.

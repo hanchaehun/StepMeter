@@ -14,7 +14,8 @@ concurrency:
 
 jobs:
   python:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 supports Ubuntu 24.04; ubuntu-latest can move ahead of it.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-alpine

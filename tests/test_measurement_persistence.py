@@ -218,3 +218,16 @@ class PersistenceTests(unittest.TestCase):
         ordinary = save_candidates(self.session, self.run.id, [Candidate("R03", "high", "Original")], confidence=.7)[0]
         update_explanation(self.session, self.run.id, ordinary.id, "Generated prose")
         self.assertEqual(ordinary.explanation, "Generated prose")
+
+    def test_klm_success_median_retry_failure_replay_and_rollback(self):
+        # Successful agent times 10,14 ->12; failure 100 and replay 900 excluded.
+        for attempt,value in zip(self.attempts,(10,14,100,900)):
+            save_attempt_metrics(self.session,attempt.id,{'est_task_time':value})
+        row=save_run_medians(self.session,self.run.id)[0]
+        self.assertEqual((row.key,row.value,row.unit,row.model_version_id),('est_task_time',12,'s',None))
+        save_attempt_metrics(self.session,self.attempts[0].id,{'est_task_time':10})
+        self.assertEqual(save_run_medians(self.session,self.run.id)[0].value,12)
+        for attempt in self.attempts:attempt.success=False
+        self.assertEqual(save_run_medians(self.session,self.run.id),[])
+        self.session.rollback()
+        self.assertEqual(self.session.scalar(select(func.count()).select_from(Metric)),self.initial_metrics)

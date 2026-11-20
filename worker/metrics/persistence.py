@@ -14,7 +14,7 @@ UNITS = {
     "click_count": "count", "type_count": "count", "step_count": "count",
     "back_count": "count", "no_response_click_count": "count",
     "repeated_click_count": "count", "page_transition_count": "count",
-    "travel_distance": "px", "scroll_distance": "px", "fitts_id_sum": "bit",
+    "est_task_time": "s", "travel_distance": "px", "scroll_distance": "px", "fitts_id_sum": "bit",
 }
 
 

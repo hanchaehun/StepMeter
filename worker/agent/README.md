@@ -25,9 +25,17 @@
 
 - 비밀번호 칸이 보이기만 하면 진행한다. 비밀번호 칸 클릭은 허용하고, 입력은 과업 문장에 그대로 있는 비어 있지 않은 값만 허용한다. 그렇지 않으면 `blocked`·`end_detail=login_wall`로 끝낸다. CAPTCHA·봇 확인은 차단하고 카드 칸과 되돌릴 수 없는 버튼은 `safety_stop`이다 (ADR 0011 1번).
 - 행동 프롬프트는 `action_v2`이며 읽는 파일, Run과 LlmCall의 `prompt_version`이 일치한다.
-- 단계마다 `worker/metrics`가 계산한 예상 소요 시간을 `Step.est_seconds`에 저장하고, 시도 합계를 지표 `est_task_time`으로 저장한다. 모바일은 저장하지 않는다 (ADR 0011 3번)
+- W4 연결 완료: 단계마다 `Step.est_seconds`, 시도 합계 `est_task_time`을 저장한다. 모바일은 저장하지 않는다(아래 W4 절, ADR 0011 3번).
 - 모델이 요소 목록에 없는 번호를 고르면 형식 오류처럼 최대 2번 다시 묻는다. 끝내 번호가 없으면 `ActionInputError:invalid_target`로 기록한다 (ADR 0011 6번).
 - 시도가 끝나면 `r07.evaluate()`를 불러 대상 step ID와 요소 키를 붙여 후보를 저장한다 (ADR 0011 6번).
 - select 단계도 Fitts ID·이동 거리·R07 대상에 넣는다. 지금 `loop.py`의 대상 조건은 `click`·`type`뿐이라 select 단계의 `fitts_id`가 비고 `travel_distance`·`fitts_id_sum`에서 빠진다(`openapi.yaml`의 Step.fitts_id는 click·type·select). 측정 지표·규칙 담당의 "select를 click처럼 세기"와 같이 바꾼다 (ADR 0011 6번)
 - R08·R09는 구현한 담당(측정 지표·규칙, LLM·프롬프트)이 `loop.py` 호출까지 PR에 넣는다. 에이전트 코어는 호출 위치와 인자를 리뷰한다 (ADR 0011 6번)
 - 재측정(`auto`, 기준 run 있음)은 대표 경로를 먼저 재생하고, 끊기면 에이전트로 처음부터 `repeat_n`회 다시 잰다. 끊긴 지점에서 이어 가지 않는다. 에이전트 시도의 병렬 실행은 재생이 끝난 뒤에 시작한다 (ADR 0011 8번)
+
+## W4 KLM 연결
+
+loop는 행동 완료 후 KLM 문헌값을 계산해 save_step의 est_seconds로 전달한다.
+시도 합계는 est_task_time이며 run 중앙값은 기존 save_run_medians가 만든다.
+중단·취소 때 미실행 행동은 합계에 넣지 않는다. 모바일은 시간 지표를 저장하지 않는다.
+자동 준비 스크롤은 ActionResult.auto_scrolled와 axe 준비 전후 비교로 전달한다.
+#75의 submit 행동 스키마/실행은 변경하지 않았다. 추가될 때 KLM의 1K 반영을 같이 확인한다.

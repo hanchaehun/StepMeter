@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from worker.agent.safety import guard_target
 from worker.collect.collector import click_point, resolve_element, snapshot, scroll_target_into_view
 from worker.driver.effects import EffectObserver, EffectObservationError, EffectResult
-from worker.schemas import ActionRequest, ElementSnapshot
+from worker.schemas import ActionRequest, ElementSnapshot, ClickAction, TypeAction, SelectAction, ScrollAction
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,21 @@ class ActionResult:
     element: ElementSnapshot | None
     effect: EffectResult
     screenshot: bytes
+    auto_scrolled: bool = False
+
+
+SCROLL_STATE = """el => {
+    const positions = [];
+    for (let node = el; node; node = node.parentNode || node.host) {
+        if (node.nodeType === 1) positions.push([node.scrollLeft, node.scrollTop]);
+    }
+    let win = el.ownerDocument.defaultView;
+    while (win) {
+        positions.push([win.scrollX, win.scrollY]);
+        try { if (win === win.parent) break; win = win.parent; } catch (_) { break; }
+    }
+    return positions;
+}"""
 
 
 async def enabled_select_options(handle):
@@ -71,10 +86,12 @@ class PlaywrightDriver:
         kind = action.action
         if kind in ('done', 'fail'):
             raise ValueError('Terminal actions must be handled by the agent')
-        if kind in ('click', 'type', 'select'):
+        if isinstance(action, (ClickAction, TypeAction, SelectAction)):
             handle = await resolve_element(self.page, action.target)
             try:
+                before_scroll = await handle.evaluate(SCROLL_STATE)
                 await scroll_target_into_view(self.page, action.target)
+                auto_scrolled = before_scroll != await handle.evaluate(SCROLL_STATE)
                 # Revalidate after preparation: scrolling can recycle virtual rows.
                 validated = await resolve_element(self.page, action.target)
                 try:
@@ -85,12 +102,12 @@ class PlaywrightDriver:
                 element = await snapshot(self.page, action.target)
                 screenshot = await self.page.screenshot(type='jpeg', quality=70, caret='initial')
                 if element.occluded:
-                    return ActionResult(element, EffectResult('no_change'), screenshot)
-                if kind == 'type' and not await handle.is_editable():
+                    return ActionResult(element, EffectResult('no_change'), screenshot, auto_scrolled)
+                if isinstance(action, TypeAction) and not await handle.is_editable():
                     raise EffectObservationError('Type target is not editable')
-                if kind == 'select' and not await handle.is_enabled():
+                if isinstance(action, SelectAction) and not await handle.is_enabled():
                     raise EffectObservationError('Select target is disabled')
-                if kind == 'click':
+                if isinstance(action, ClickAction):
                     async def callback():
                         point = await click_point(self.page, action.target)
                         if point is None:
@@ -99,7 +116,7 @@ class PlaywrightDriver:
                             if not await handle.is_enabled():
                                 raise EffectObservationError('Click target is disabled')
                             await self.page.mouse.click(point['x'], point['y'])
-                elif kind == 'type':
+                elif isinstance(action, TypeAction):
                     callback = lambda: handle.fill(action.text)
                 else:
                     options = await enabled_select_options(handle)
@@ -112,7 +129,7 @@ class PlaywrightDriver:
                     native_index = options[index]['index']
                     callback = lambda: handle.select_option(index=native_index)
                 await guard_target(handle, kind, task_description=self.task_description,
-                                   text=action.text if kind == 'type' else None)
+                                   text=action.text if isinstance(action, TypeAction) else None)
                 async def checked_action():
                     current = await resolve_element(self.page, action.target)
                     try:
@@ -120,15 +137,15 @@ class PlaywrightDriver:
                             raise EffectObservationError('Numbered target changed during preparation')
                     finally:
                         await current.dispose()
-                    if kind == 'select' and await enabled_select_options(handle) != options:
+                    if isinstance(action, SelectAction) and await enabled_select_options(handle) != options:
                         raise EffectObservationError('Native select options changed during preparation')
                     await guard_target(handle, kind, task_description=self.task_description,
-                                       text=action.text if kind == 'type' else None)
+                                       text=action.text if isinstance(action, TypeAction) else None)
                     await callback()
-                return ActionResult(element, await self.effects.observe(checked_action, target=handle), screenshot)
+                return ActionResult(element, await self.effects.observe(checked_action, target=handle), screenshot, auto_scrolled)
             finally:
                 await handle.dispose()
-        if kind == 'scroll':
+        if isinstance(action, ScrollAction):
             sign = 1 if action.direction == 'down' else -1
             callback = lambda: self.page.evaluate('(s) => window.scrollBy(0, s * innerHeight * 0.8)', sign)
         elif kind == 'back':
