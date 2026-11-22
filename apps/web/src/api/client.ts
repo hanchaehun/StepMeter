@@ -28,7 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-interface Options {
+export interface Options {
   baseUrl: string;
   accessCode: string;
   fetchImpl?: typeof fetch;
@@ -37,8 +37,15 @@ interface Options {
 }
 
 async function getJson<T>(url: string, opts: Options): Promise<T> {
+  return requestJson<T>('GET', url, undefined, opts);
+}
+
+/** GET·POST 공용. body가 있으면 JSON으로 보낸다. 실패하면 ApiError(detail이 문자열일 때만 그 값) */
+export async function requestJson<T>(method: 'GET' | 'POST', url: string, body: unknown, opts: Options): Promise<T> {
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const res = await fetchImpl(url, { headers: { Accept: 'application/json', 'X-Access-Code': opts.accessCode }, signal: opts.signal });
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-Access-Code': opts.accessCode };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const res = await fetchImpl(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: opts.signal });
   if (!res.ok) {
     let detail = res.statusText || `HTTP ${res.status}`;
     try {
