@@ -50,14 +50,14 @@ test('과업 칸 옆에 가짜 값 안내가 있고 과업 칸과 연결된다 (
   expect(screen.getByLabelText('과업').getAttribute('aria-describedby')).toContain(hint.id);
 });
 
-test('첫 측정: 프로젝트·과업을 만들고 mode=agent, 반복 3회·데스크톱으로 요청한 뒤 /runs/{id}로 이동', async () => {
+test('첫 측정: 프로젝트·과업을 만들고 mode=agent, 반복 3회·데스크톱으로 요청한 뒤 /runs/{id}/progress로 이동', async () => {
   const server = createMockServer();
   const { user, navigate } = setup(server);
   await user.type(screen.getByLabelText('측정할 주소'), 'https://shop.example.com');
   await user.type(screen.getByLabelText('과업'), '장바구니에 상품을 담는다');
   await user.click(screen.getByRole('button', { name: '측정 시작' }));
 
-  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/1'));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/1/progress'));
   expect(server.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
     'GET /projects',
     'POST /projects',
@@ -97,7 +97,7 @@ test('같은 주소·과업이고 같은 화면 크기의 완료 측정이 있�
   await user.type(screen.getByLabelText('과업'), '가입한다');
   await user.click(screen.getByRole('button', { name: '측정 시작' }));
 
-  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/2'));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/2/progress'));
   expect(server.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
     'GET /projects',
     'GET /projects/7/tasks',
@@ -157,7 +157,7 @@ test('401이면 코드를 지우고 다시 묻고, 입력값은 남긴 채 새 �
   await user.type(screen.getByLabelText('초대 코드'), 'code-2');
   await user.click(screen.getByRole('button', { name: '확인' }));
 
-  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/1'));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/1/progress'));
   expect(window.sessionStorage.getItem('stepmeter.accessCode')).toBe('code-2');
 });
 
@@ -185,7 +185,7 @@ test('429: 끝난 측정이 있으면 재생만 하기로 replay_only를 보낸�
   await user.click(screen.getByRole('button', { name: '측정 시작' }));
   await user.click(await screen.findByRole('button', { name: '재생만 하기' }));
 
-  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/2'));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/2/progress'));
   expect(server.requests.at(-1)).toEqual({
     method: 'POST',
     path: '/tasks/1/runs',
@@ -198,7 +198,7 @@ test('목 모드에서는 이동 주소에 ?mock=1을 붙인다', async () => {
   await user.type(screen.getByLabelText('측정할 주소'), 'https://example.com');
   await user.type(screen.getByLabelText('과업'), '가입한다');
   await user.click(screen.getByRole('button', { name: '측정 시작' }));
-  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/1?mock=1'));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/1/progress?mock=1'));
 });
 
 function completedRun(id: number, taskId: number) {

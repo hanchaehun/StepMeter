@@ -1,11 +1,17 @@
 import { ReportRoute } from '@/pages/ReportRoute';
 import { MeasureCreatePage } from '@/pages/MeasureCreatePage';
+import { MeasureProgressPage } from '@/pages/MeasureProgressPage';
 import { apiBaseUrl } from '@/api/client';
 import type { MockScenario } from '@/api/mockServer';
 
-// 라우터 라이브러리 없이 주소로 화면을 고른다. /new = 측정 생성(F01), 나머지 = 리포트(ReportRoute가 /runs/{id}를 읽는다)
-export function pageFromPath(pathname: string): 'new' | 'report' {
-  return /^\/new\/?$/.test(pathname) ? 'new' : 'report';
+// 라우터 라이브러리 없이 주소로 화면을 고른다.
+// /new = 측정 생성(F01), /runs/{id}/progress = 측정 진행(F02), 나머지 = 리포트(ReportRoute가 /runs/{id}를 읽는다)
+export type Page = { kind: 'new' } | { kind: 'progress'; runId: number } | { kind: 'report' };
+export function pageFromPath(pathname: string): Page {
+  if (/^\/new\/?$/.test(pathname)) return { kind: 'new' };
+  const m = /^\/runs\/(\d+)\/progress\/?$/.exec(pathname);
+  if (m) return { kind: 'progress', runId: Number(m[1]) };
+  return { kind: 'report' };
 }
 
 function mockScenario(search: string): MockScenario {
@@ -25,6 +31,7 @@ export default function App() {
   const page = pageFromPath(window.location.pathname);
   const params = new URLSearchParams(window.location.search);
   const base = apiBaseUrl();
+  const mock = base === null || params.get('mock') === '1';
   return (
     <div className="min-h-screen bg-bg">
       <header className="flex min-h-14 flex-wrap items-center gap-x-7 gap-y-1 border-b border-border px-4 py-2 sm:px-10 sm:py-0">
@@ -34,7 +41,7 @@ export default function App() {
             <a
               key={n.label}
               href={n.href === '/new' && params.get('mock') === '1' ? '/new?mock=1' : n.href}
-              aria-current={n.page === page ? 'page' : undefined}
+              aria-current={n.page === page.kind ? 'page' : undefined}
               className="inline-flex min-h-[44px] items-center rounded-md px-3 text-muted aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-fg"
             >
               {n.label}
@@ -43,8 +50,10 @@ export default function App() {
         </nav>
         <span className="ml-auto whitespace-nowrap text-[13px] text-muted">Today 7 / 10 runs left</span>
       </header>
-      {page === 'new' ? (
-        <MeasureCreatePage baseUrl={params.get('mock') === '1' ? null : base} mockScenario={mockScenario(window.location.search)} />
+      {page.kind === 'new' ? (
+        <MeasureCreatePage baseUrl={mock ? null : base} mockScenario={mockScenario(window.location.search)} />
+      ) : page.kind === 'progress' ? (
+        <MeasureProgressPage runId={page.runId} baseUrl={mock ? null : base} />
       ) : (
         <ReportRoute location={window.location} baseUrl={base} />
       )}

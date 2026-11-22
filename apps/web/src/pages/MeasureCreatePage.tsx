@@ -1,7 +1,7 @@
 // 측정 생성 화면 (F01). 명세: docs/wireframes/f01-measure-create.md
 // - 입력: 측정할 주소, 과업(예시 칩), 성공 조건(선택), 화면 크기, 반복 횟수(고급 설정)
 // - 테스트 계정은 이번 일정에서 구현하지 않는다 (ADR 0004). 과업 문장에 가짜 값만 적도록 안내한다 (ADR 0011 1번)
-// - 요청 순서는 src/api/measure.ts. 성공하면 /runs/{id}로 간다(측정 진행 화면 F02가 생기면 그 경로로 바꾼다)
+// - 요청 순서는 src/api/measure.ts. 성공하면 측정 진행 화면(/runs/{id}/progress, F02)으로 간다
 // - 401이면 초대 코드를 다시 묻고 입력값은 그대로 둔 채 다시 보낸다. 429면 상한 안내 + 재생만 하기
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -85,7 +85,7 @@ export function MeasureCreatePage({ baseUrl, mockScenario = 'ok', fetchImpl, nav
   const urlRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
-  const go = (runId: number) => navigate(`/runs/${runId}${mock ? '?mock=1' : ''}`);
+  const go = (runId: number) => navigate(`/runs/${runId}/progress${mock ? '?mock=1' : ''}`);
 
   const onAuthError = (e: unknown, input: MeasureInput | null) => {
     if (e instanceof ApiError && e.status === 401) {

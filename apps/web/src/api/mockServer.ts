@@ -7,6 +7,7 @@ type Project = components['schemas']['Project'];
 type Task = components['schemas']['Task'];
 type Run = components['schemas']['Run'];
 type RunHistoryItem = components['schemas']['RunHistoryItem'];
+type RunProgress = components['schemas']['RunProgress'];
 
 export type MockScenario = 'ok' | 'unauthorized' | 'limit';
 
@@ -25,7 +26,62 @@ function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-export function createMockServer(scenario: MockScenario = 'ok', delayMs = 0): MockServer {
+export interface MockOptions {
+  /** GET /runs/{id}에 없는 id가 오면 진행 중인 측정을 만들어 준다 (진행 화면을 목 모드로 열 때) */
+  autoRun?: boolean;
+  /** GET /runs/{id}를 부를 때마다 진행을 한 칸 앞으로 (queued → running 15…90 → completed 100) */
+  advance?: boolean;
+}
+
+/** 진행 화면 목 모드에서 보여 줄 판단 문장 */
+const DEMO_THOUGHTS = [
+  '첫 화면에서 회원가입 버튼을 찾았습니다. 눌러서 가입 양식으로 이동합니다.',
+  '이름 칸에 과업에 적힌 값 Minsu Kim을 입력합니다.',
+  '이메일 칸에 study@example.com을 입력합니다.',
+  '비밀번호 칸에 과업에 적힌 값을 입력합니다.',
+  '가입 버튼이 화면 아래에 있어 스크롤합니다.',
+  'Register Account 버튼을 누릅니다.',
+];
+
+const latest = new WeakMap<Run, RunProgress['latest_step']>();
+
+function addDemoRun(s: MockServer, id: number): Run {
+  const r: Run = {
+    id, task_id: 1, viewport: 'desktop', mode: 'agent', base_run_id: null, repeat_n: 3, model: 'claude-haiku-5-5',
+    prompt_version: null, status: 'queued', progress: 0, cost_usd: 0, created_at: NOW, started_at: null, finished_at: null,
+    representative_attempt_index: null,
+  };
+  s.runs.push(r);
+  return r;
+}
+
+function advanceDemo(r: Run) {
+  if (r.status === 'queued') {
+    r.status = 'running';
+    r.started_at = NOW;
+    r.prompt_version = 'v3';
+    return;
+  }
+  if (r.status !== 'running') return;
+  // 실행 중 진행률은 최대 90, 후처리가 끝나야 100 (docs/worker_api_spec.md 2번)
+  if (r.progress >= 90) {
+    r.progress = 100;
+    r.status = 'completed';
+    r.finished_at = NOW;
+    r.representative_attempt_index = 1;
+    return;
+  }
+  r.progress = Math.min(90, r.progress + 15);
+  const n = Math.round(r.progress / 15);
+  r.cost_usd = Math.round(n * 0.002 * 1000) / 1000;
+  latest.set(r, { attempt_index: (n % r.repeat_n) + 1, idx: n, screenshot_url: null, thought: DEMO_THOUGHTS[n % DEMO_THOUGHTS.length] });
+}
+
+function progressOf(r: Run): RunProgress {
+  return { ...r, latest_step: latest.get(r) ?? null };
+}
+
+export function createMockServer(scenario: MockScenario = 'ok', delayMs = 0, opts: MockOptions = {}): MockServer {
   const s: MockServer = { fetch: undefined as unknown as typeof fetch, projects: [], tasks: [], runs: [], requests: [] };
 
   const handle = (method: string, path: string, body: Record<string, unknown> | null): Response => {
@@ -80,6 +136,21 @@ export function createMockServer(scenario: MockScenario = 'ok', delayMs = 0): Mo
       };
       s.runs.push(r);
       return json(r, 202);
+    }
+    if ((m = /^\/runs\/(\d+)$/.exec(path)) && method === 'GET') {
+      const run = s.runs.find((r) => r.id === Number(m![1])) ?? (opts.autoRun ? addDemoRun(s, Number(m[1])) : null);
+      if (!run) return json({ detail: 'not found' }, 404);
+      if (opts.advance) advanceDemo(run);
+      return json(progressOf(run), 200);
+    }
+    if ((m = /^\/runs\/(\d+)\/cancel$/.exec(path)) && method === 'POST') {
+      const run = s.runs.find((r) => r.id === Number(m![1]));
+      if (!run) return json({ detail: 'not found' }, 404);
+      if (run.status !== 'queued' && run.status !== 'running') return json({ detail: `run is already ${run.status}` }, 409);
+      // 명세(docs/worker_api_spec.md 1번 "취소"): API가 바로 canceled·finished_at으로 바꾼다
+      run.status = 'canceled';
+      run.finished_at = NOW;
+      return json(run, 202);
     }
     return json({ detail: 'not found' }, 404);
   };
