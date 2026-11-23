@@ -20,7 +20,8 @@ export function IssueRow({ issue, steps, variant = 'compact', onOpen }: Props) {
   const step = issue.step ? steps.find((s) => s.idx === issue.step!.idx) : undefined;
   const title = issueTitle(issue, steps);
   const measure = issueMeasure(issue);
-  const sub = [`${issue.rule_id} ${ruleName(issue)}`, measure, issue.score_reason, issue.is_reference ? '참고' : null]
+  // 참고는 심각도 배지 대신 "참고" 표시가 있으므로 부제에서 다시 쓰지 않는다 (#75 UX 감사 F-02)
+  const sub = [`${issue.rule_id} ${ruleName(issue)}`, measure, issue.score_reason]
     .filter(Boolean)
     .join(' · ');
 
@@ -39,7 +40,11 @@ export function IssueRow({ issue, steps, variant = 'compact', onOpen }: Props) {
       <div className="row-span-3 sm:row-span-1">
         <Thumb step={step} issue={issue} full={full} />
       </div>
-      <Severity level={issue.severity} />
+      {issue.is_reference ? (
+        <span className="inline-flex items-center whitespace-nowrap text-sm font-semibold text-muted">참고</span>
+      ) : (
+        <Severity level={issue.severity} />
+      )}
       <div className={cn('min-w-0 font-semibold leading-tight', full && 'text-base', issue.is_reference && 'font-medium')}>
         {title}
         <small className="mt-0.5 block text-xs font-normal text-faint">
@@ -59,7 +64,8 @@ function Thumb({ step, issue, full }: { step?: Step; issue: Issue; full: boolean
     // 단계가 없는 문제: R05면 "구간", 그 밖은 "경로 밖" (ADR 0010 3번: element_key가 아니라 rule_id로 판단)
     const text = issue.step ? '화면' : isLoopIssue(issue) ? '구간' : '경로 밖';
     return (
-      <div className={cn(size, 'flex items-center justify-center rounded bg-surface text-[11px] text-faint outline outline-1 outline-hair')}>
+      // 회색(surface) 바탕 위라 faint(흰 바탕 4.74:1)는 4.34:1로 AA 미달. 기존 muted 토큰을 쓴다 (#75 UX 감사 F-04, WCAG 1.4.3)
+      <div className={cn(size, 'flex items-center justify-center rounded bg-surface text-[11px] text-muted outline outline-1 outline-hair')}>
         {text}
       </div>
     );

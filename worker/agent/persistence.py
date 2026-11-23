@@ -6,6 +6,10 @@ from sqlalchemy import select, update
 from apps.api.db.models import Attempt, ElementSnapshot, LlmCall, Run, Step
 from worker.queue.runs import update_progress, save_screenshot
 
+# 행동 프롬프트 버전. loop.py가 prompts/{PROMPT_VERSION}.md를 읽고 Run·LlmCall에 같은 값을 남긴다.
+# action_v3: type.submit(입력 후 Enter) 설명 추가 (#75, prompts/README.md 이력)
+PROMPT_VERSION = 'action_v3'
+
 
 class Canceled(Exception):
     pass
@@ -20,11 +24,11 @@ def running(session, run_id):
 
 def start(session, run_id):
     return session.execute(update(Run).where(Run.id == run_id, Run.status == 'queued').values(
-        status='running', started_at=datetime.now(timezone.utc), prompt_version='action_v2',
+        status='running', started_at=datetime.now(timezone.utc), prompt_version=PROMPT_VERSION,
     ).returning(Run.id)).scalar_one_or_none() is not None
 
 
-def log_call(factory, run_id, result, *, purpose='action', prompt_version='action_v2'):
+def log_call(factory, run_id, result, *, purpose='action', prompt_version=PROMPT_VERSION):
     with factory.begin() as session:
         # Preserve charged-call evidence even if cancellation arrived during ask.
         row = session.scalar(select(Run).where(Run.id == run_id).with_for_update())

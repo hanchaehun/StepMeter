@@ -1086,6 +1086,9 @@ components:
         text:
           maxLength: 4096
           type: string
+        submit:
+          default: false
+          type: boolean
       required:
       - thought
       - expectation

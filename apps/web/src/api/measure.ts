@@ -4,6 +4,9 @@
 //    같은 과업을 다시 쓰는 이유: 측정 이력(F11)과 비교(F07)가 과업 단위로 묶인다 (7.1)
 // 3. POST /tasks/{id}/runs. 같은 과업·뷰포트에 완료된 측정이 있으면 mode 생략(서버 기본 auto = 재측정),
 //    없으면 mode=agent. 기준 run이 없는데 auto로 보내면 재생할 경로가 없다 (#72 참고)
+//    #72 임시 회피: 가장 최근 완료 측정에 대표 경로(representative_attempt_index)가 없으면 서버가 그 run을
+//    기준으로 골라 auto 재측정이 failed로 끝난다. 그래서 그때도 mode=agent로 보내고 재생만 하기도 주지 않는다.
+//    워커가 "대표 경로가 없으면 에이전트로 측정"(#72 제안 2)을 고치면 latestUsableBase의 대표 경로 검사를 지워 되돌린다.
 import type { components } from './types';
 import { ApiError, requestJson, type Options } from './client';
 
@@ -36,7 +39,7 @@ export interface MeasureCreated {
 export class DailyLimitError extends Error {
   project: Project;
   task: Task;
-  /** 같은 과업·뷰포트의 완료 측정. 있으면 재생만 하기(replay_only, 상한에 안 셈)를 보낼 수 있다 */
+  /** 같은 과업·뷰포트의 가장 최근 완료 측정(대표 경로가 있을 때만, #72). 있으면 재생만 하기(replay_only, 상한에 안 셈)를 보낼 수 있다 */
   baseRunId: number | null;
   detail: string;
 
@@ -63,6 +66,16 @@ function sameCondition(a: SuccessCondition | null, b: SuccessCondition | null): 
   return (a?.url_contains ?? null) === (b?.url_contains ?? null) && (a?.text_present ?? null) === (b?.text_present ?? null);
 }
 
+/** 서버가 기준으로 고를 run(같은 뷰포트의 가장 최근 완료 측정)이 재생할 경로를 가졌으면 그 번호, 아니면 null.
+ *  history는 GET /tasks/{id}/runs 응답이라 최신순이다.
+ *  #72 임시 회피: 대표 경로가 없으면 null로 돌려 mode=agent로 보내고 재생만 하기를 숨긴다 */
+export function latestUsableBase(history: RunHistoryItem[], viewport: ViewportPreset): number | null {
+  const latest = history.find((h) => h.run.status === 'completed' && h.run.viewport === viewport)?.run;
+  if (!latest) return null;
+  if (latest.representative_attempt_index === null) return null; // #72
+  return latest.id;
+}
+
 export async function createMeasurement(input: MeasureInput, opts: Options): Promise<MeasureCreated> {
   const base = opts.baseUrl.replace(/\/$/, '');
 
@@ -78,7 +91,7 @@ export async function createMeasurement(input: MeasureInput, opts: Options): Pro
   let baseRunId: number | null = null;
   if (task) {
     const history = await requestJson<RunHistoryItem[]>('GET', `${base}/tasks/${task.id}/runs?viewport=${input.viewport}`, undefined, opts);
-    baseRunId = history.find((h) => h.run.status === 'completed' && h.run.viewport === input.viewport)?.run.id ?? null;
+    baseRunId = latestUsableBase(history, input.viewport);
   } else {
     const body: TaskCreate = { description: input.description, success_condition: input.successCondition };
     task = await requestJson<Task>('POST', `${base}/projects/${project.id}/tasks`, body, opts);

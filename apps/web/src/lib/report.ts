@@ -98,7 +98,7 @@ export function metricTiles(report: Report): MetricTile[] {
     const m = report.metrics.find((x) => x.key === key);
     if (key === 'est_task_time') {
       if (mobile || !m) return { key, label, value: '—', unit: '', note: '예상 시간은 데스크톱에서만' };
-      return { key, label, value: fmt(m.value, 1), unit, note: m.model_version_id === null ? '보정 전' : '사람 실험 보정' };
+      return { key, label, value: fmt(m.value, 1), unit, note: m.model_version_id === null ? '문헌값 기준 추정' : '사람 실험 보정' };
     }
     if (!m) return { key, label, value: '—', unit: '', note: '값 없음' };
     const value = key === 'travel_distance' ? String(Math.round(m.value)) : fmt(m.value, 1);
@@ -164,6 +164,33 @@ export function splitIssues(issues: Issue[]): { main: Issue[]; reference: Issue[
     main: issues.filter((i) => !i.is_reference),
     reference: issues.filter((i) => i.is_reference),
   };
+}
+
+export interface IssueGroup {
+  key: string;
+  /** 같은 (규칙, 요소)의 문제들. API 순서(심각도 → 점수)를 그대로 지키고 첫 문제가 대표다 */
+  issues: Issue[];
+}
+
+/**
+ * 목록 표시용 묶음(#75 UX 감사 F-02): 같은 rule_id + element_key는 한 줄로 묶는다(ADR 0011 2번의 검출 단위와 같다).
+ * element_key가 없는 문제(R05처럼 요소가 없는 것)는 묶지 않는다. API·채점은 바꾸지 않고 화면에서만 묶는다.
+ */
+export function groupIssues(issues: Issue[]): IssueGroup[] {
+  const groups: IssueGroup[] = [];
+  const byKey = new Map<string, IssueGroup>();
+  for (const issue of issues) {
+    const key = issue.element_key === null ? `id:${issue.id}` : `${issue.rule_id}|${issue.element_key}`;
+    const found = byKey.get(key);
+    if (found) {
+      found.issues.push(issue);
+    } else {
+      const group = { key, issues: [issue] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+  }
+  return groups;
 }
 
 /** 대표 attempt의 단계 idx → 그 단계에서 찾은 문제들. step이 null인 문제는 제외. */

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { loadMockReport } from '@/api/mock';
 import { passedRules } from '@/lib/report';
 import { Verdict } from './Verdict';
@@ -48,15 +49,22 @@ test('PathMetrics 데스크톱 4타일, 모바일이면 예상 시간 대체 문
   expect(screen.getByText('예상 시간은 데스크톱에서만')).toBeInTheDocument();
 });
 
-test('IssuesPanel: 본목록 2, 참고 1, 단계 번호, 심각도', () => {
+test('IssuesPanel: 본목록 2, 참고 1(접힘 · 펼치면 심각도 대신 "참고"), 단계 번호, 심각도', async () => {
   render(<IssuesPanel report={report} steps={steps} onOpen={() => {}} onShowAll={() => {}} />);
   expect(screen.getByText('구매 버튼이 이름 없는 div에 가려짐')).toBeInTheDocument();
   expect(screen.getByText('러닝화 A 링크 글자 대비 2.9 : 1')).toBeInTheDocument();
-  expect(screen.getByText('장바구니 보기 링크 높이 30px')).toBeInTheDocument(); // 참고(옅게)
   expect(screen.getByText('Step 1')).toBeInTheDocument();
   expect(screen.getByText('Step 0')).toBeInTheDocument();
   expect(screen.getAllByText('▲ High')).toHaveLength(1);
-  expect(screen.getAllByText('● Low')).toHaveLength(1);
+  // #75 UX 감사 F-02: 참고(103, low)는 기본으로 접히고, 펼치면 심각도 배지 대신 "참고"
+  expect(screen.queryByText('장바구니 보기 링크 높이 30px')).toBeNull();
+  const toggle = screen.getByRole('button', { name: /참고 1건 보기/ });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await userEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByText('장바구니 보기 링크 높이 30px')).toBeInTheDocument();
+  expect(screen.queryByText('● Low')).toBeNull();
+  expect(screen.getByText('참고', { selector: 'span' })).toBeInTheDocument();
 });
 
 test('IssuesPanel: limit을 넘으면 "전체 보기" 안내', () => {

@@ -2,12 +2,20 @@
 // esbuild로 dom-accessibility-api와 함께 번들해 window.__stepmeter 로 노출한다.
 import { computeAccessibleName, getRole } from "dom-accessibility-api";
 
+// #75: ARIA 위젯 역할(옵션 목록·메뉴 선택 항목·스위치·콤보박스 등)은 tabindex가 없거나 -1이어도 조작 대상이다.
+// cmdk CommandItem·Radix SelectItem(role=option)이 빠지면 필터·선택 과업을 끝낼 수 없다.
 const INTERACTIVE =
-  "a, button, input, select, textarea, [role=button], [role=link], [role=tab], [role=checkbox], [role=menuitem], [onclick]";
+  "a, button, input, select, textarea, [role=button], [role=link], [role=tab], [role=checkbox], [role=menuitem], " +
+  "[role=option], [role=menuitemcheckbox], [role=menuitemradio], [role=radio], [role=switch], [role=combobox], " +
+  "[role=treeitem], [role=slider], [role=spinbutton], [role=searchbox], [role=textbox], [onclick]";
 const LANDMARKS = new Set([
   "banner", "navigation", "main", "complementary", "contentinfo", "search", "form", "region",
 ]);
 const NAMED_ONLY = new Set(["form", "region"]);
+// #75: 열린 겹침 층(모달·팝오버·옵션 목록·메뉴). 에이전트가 30개를 고를 때 이 안의 요소를 먼저 둔다.
+const OVERLAY = 'dialog[open], [role=dialog], [role=alertdialog], [aria-modal="true"], [role=listbox], [role=menu]';
+const TEXT_INPUT_TYPES = new Set(["text", "email", "search", "password", "tel", "url", "number"]);
+const TEXT_INPUT_ROLES = new Set(["textbox", "searchbox", "combobox"]);
 const NEARBY_PX = 48;
 
 // 마지막 observe() 결과와 로드 직후 첫 화면 기록. 페이지 이동 시 window와 함께 사라진다.
@@ -153,6 +161,19 @@ function landmarkOf(el) {
   return null;
 }
 
+// 가장 가까운 겹침 층 조상이 있는지 (Shadow DOM·같은 출처 iframe 경계를 넘어 올라간다).
+function inOverlay(el) {
+  for (let a = up(el); a; a = up(a)) if (a.matches(OVERLAY)) return true;
+  return false;
+}
+
+// 텍스트 입력칸: input text·email·search·password·tel·url·number, textarea, 역할 textbox·searchbox·combobox.
+// el.type은 type이 없거나 모르는 값이면 "text"다.
+function isTextInput(el, role) {
+  return (el.tagName === "INPUT" && TEXT_INPUT_TYPES.has(el.type)) ||
+    el.tagName === "TEXTAREA" || TEXT_INPUT_ROLES.has(role);
+}
+
 function labelText(el) {
   let a = el;
   for (let i = 0; i < 3 && (a = up(a)); i++) {
@@ -264,15 +285,18 @@ function observe() {
   return observed.map((entry, i) => {
     const b = bboxOf(entry);
     const name = nameOf(entry.el);
+    const role = roleOf(entry.el);
     return {
       el_id: i + 1,
       tag: entry.el.tagName.toLowerCase(),
-      role: roleOf(entry.el),
+      role,
       name,
       landmark: landmarkOf(entry.el),
       label_text: name ? null : labelText(entry.el), // 이름 없는 요소 매칭 지문 (7.2)
       bbox: b,
       occluded: isOccluded(entry, b),
+      // 정렬 전용 (#75). 에이전트가 30개를 고를 때만 쓰고 LLM에 보내는 항목에서는 뺀다.
+      sort: { overlay: inOverlay(entry.el), text_input: isTextInput(entry.el, role) },
     };
   });
 }

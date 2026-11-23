@@ -35,8 +35,9 @@ export function ReportHeader({ report, task, project }: { report: Report; task?:
   return (
     <header>
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-[.12em] text-faint">Report · Run #{run.id}</p>
-      <h1 className="mb-1 text-[22px] font-bold tracking-tight">{title}</h1>
-      <p className="text-sm text-muted">
+      {/* 과업 문장·주소의 긴 토큰(URL 등)이 좁은 화면을 넘지 않게 아무 곳에서나 줄을 바꾼다 (#75 UX 감사 F-06, WCAG 1.4.10) */}
+      <h1 className="mb-1 text-[22px] font-bold tracking-tight [overflow-wrap:anywhere]">{title}</h1>
+      <p className="text-sm text-muted [overflow-wrap:anywhere]">
         {parts.join(' · ')}
         {run.base_run_id !== null && (
           <a href={`#compare-${run.base_run_id}`} className="ml-3 font-semibold text-fg underline-offset-4 hover:underline">

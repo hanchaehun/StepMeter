@@ -120,7 +120,7 @@ class LoopTests(unittest.IsolatedAsyncioTestCase):
     async def test_mismatch_is_saved_as_r09_and_call_is_logged_as_judge(self):
         await self.run_with(self.adapter('[{"step": 0, "reason": "저장 표시가 없었다"}]'))
         calls, issues = self.rows()
-        self.assertEqual(calls, [("action", "action_v2"), ("action", "action_v2"), ("judge", "judge_v1")])
+        self.assertEqual(calls, [("action", "action_v3"), ("action", "action_v3"), ("judge", "judge_v1")])
         self.assertEqual(issues, [("R09", "low", "Save 뒤 결과가 기대와 다릅니다. 저장 표시가 없었다")])
 
     async def test_fake_adapter_is_not_asked(self):

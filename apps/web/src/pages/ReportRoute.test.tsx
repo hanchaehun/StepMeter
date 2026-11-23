@@ -119,6 +119,8 @@ test('409 진행 중(running): 아직 진행 중 안내 + 진행률', async () =
   render(<ReportRoute location={at('/runs/42')} baseUrl={BASE} fetchImpl={impl} />);
   await waitFor(() => expect(screen.getByText(/아직 진행 중입니다/)).toBeInTheDocument());
   expect(screen.getByText(/40%/)).toBeInTheDocument();
+  // 측정 진행 화면 경로는 /runs/{id}/progress (App.tsx pageFromPath, #80)
+  expect(screen.getByRole('link', { name: '측정 진행 화면으로' })).toHaveAttribute('href', '/runs/42/progress');
 });
 
 test('409 진행 중(queued): 대기열 문장', async () => {

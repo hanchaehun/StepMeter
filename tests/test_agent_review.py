@@ -116,5 +116,6 @@ class AgentReviewTests(unittest.IsolatedAsyncioTestCase):
   with self.factory() as s:
    attempt=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
    self.assertEqual(attempt.end_reason,'error')
-   self.assertEqual(attempt.end_detail,'TimeoutError')
+   # #75 follow-up: the timeout detail names the running stage (model call = llm).
+   self.assertEqual(attempt.end_detail,'TimeoutError@llm')
 if __name__=='__main__':unittest.main(verbosity=2)

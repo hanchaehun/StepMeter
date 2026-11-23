@@ -1,5 +1,6 @@
 // 규칙 R01~R11 (개발계획서 6장)과 문제 제목 템플릿 (docs/wireframes/f06-report.md "문제 제목 템플릿").
 // 숫자는 템플릿에 끼워 넣기만 하고 여기서 계산하지 않는다.
+import { formatNumber } from './format';
 
 export const RULE_IDS = ['R01', 'R02', 'R03', 'R04', 'R05', 'R06', 'R07', 'R08', 'R09', 'R10', 'R11'] as const;
 export type RuleId = (typeof RULE_IDS)[number];
@@ -20,7 +21,8 @@ export interface RuleDef {
   mobileOnly?: boolean;
 }
 
-const n = (v: number | null, fallback = '?') => (v === null ? fallback : String(v));
+// 숫자는 소수 최대 2자리로 보인다 (#75 UX 감사 F-03: 4.451695969857692bit → 4.45bit)
+const n = (v: number | null, fallback = '?') => (v === null ? fallback : formatNumber(v));
 
 /** 마지막 글자의 받침 유무로 조사를 고른다. 한글이 아니면 받침 없는 쪽. */
 export function josa(word: string, pair: '이/가' | '을/를'): string {
@@ -35,13 +37,13 @@ export const RULES: Record<RuleId, RuleDef> = {
   R01: {
     name: '작은 타겟',
     title: (c) => `${c.element} 높이 ${n(c.measured)}px`,
-    measure: (c) => (c.measured === null ? null : `${c.measured}px · 권장 ${n(c.threshold, '44')}px (최소 24px)`),
+    measure: (c) => (c.measured === null ? null : `${n(c.measured)}px · 권장 ${n(c.threshold, '44')}px (최소 24px)`),
     passedReason: '24px 미만 타겟 없음',
   },
   R02: {
     name: '대비 부족',
     title: (c) => `${c.element} 글자 대비 ${n(c.measured)} : 1`,
-    measure: (c) => (c.measured === null ? null : `${c.measured} : 1 · 기준 ${n(c.threshold, '4.5')} : 1 (WCAG AA)`),
+    measure: (c) => (c.measured === null ? null : `${n(c.measured)} : 1 · 기준 ${n(c.threshold, '4.5')} : 1 (WCAG AA)`),
     passedReason: '경로 위 요소 대비 모두 기준 이상',
   },
   R03: {
@@ -62,13 +64,13 @@ export const RULES: Record<RuleId, RuleDef> = {
   R06: {
     name: '첫 화면 밖 핵심 요소',
     title: (c) => `${josa(c.element, '이/가')} 첫 화면 밖 (${n(c.measured)}px 아래)`,
-    measure: (c) => (c.measured === null ? null : `스크롤 ${c.measured}px 필요`),
+    measure: (c) => (c.measured === null ? null : `스크롤 ${n(c.measured)}px 필요`),
     passedReason: '첫 행동 대상이 화면 안',
   },
   R07: {
     name: '먼 이동 + 작은 타겟',
     title: (c) => `${c.element}까지 멀고 작음 (ID ${n(c.measured)}bit)`,
-    measure: (c) => (c.measured === null ? null : `${c.measured}bit${c.size ? ` · 크기 ${c.size.w}×${c.size.h}px` : ''}`),
+    measure: (c) => (c.measured === null ? null : `${n(c.measured)}bit${c.size ? ` · 크기 ${c.size.w}×${c.size.h}px` : ''}`),
     passedReason: '32px 미만 타겟 없음',
   },
   R08: {

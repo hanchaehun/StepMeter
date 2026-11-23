@@ -12,7 +12,7 @@ from worker.llm import LLMRateLimitError, LLMRequest
 from worker.llm.action_tool import ACTION_TOOL
 from worker.llm.claude import ClaudeAdapter
 from worker.llm.pricing import cost_usd
-from worker.schemas import ClickAction, parse_action_json
+from worker.schemas import ActionInputError, ClickAction, TypeAction, parse_action_json
 
 
 class FakeMessages:
@@ -107,9 +107,9 @@ class ClaudeAdapterTests(unittest.TestCase):
             self.assertNotIn("minimum", field)  # strict 모드는 숫자 제약을 지원하지 않는다
 
     def test_every_action_tool_property_is_required(self):
-        # 행동별 필드를 빠뜨리지 못하게 9개 필드 모두 required (2026-11-10 결정).
+        # 행동별 필드를 빠뜨리지 못하게 모든 필드 required (2026-11-10 결정). strict라 #75 submit도 required.
         schema = ACTION_TOOL["input_schema"]
-        expected = {"action", "target", "text", "option", "direction", "reason",
+        expected = {"action", "target", "text", "submit", "option", "direction", "reason",
                     "thought", "expectation", "confusion"}
         self.assertEqual(set(schema["properties"]), expected)
         self.assertEqual(set(schema["required"]), expected)
@@ -118,7 +118,47 @@ class ClaudeAdapterTests(unittest.TestCase):
         properties = ACTION_TOOL["input_schema"]["properties"]
         accepts_null = {name for name, prop in properties.items()
                         if Draft202012Validator(prop).is_valid(None)}
-        self.assertEqual(accepts_null, {"target", "text", "option", "direction", "reason", "confusion"})
+        self.assertEqual(accepts_null, {"target", "text", "submit", "option", "direction", "reason", "confusion"})
+
+    def test_submit_is_boolean_or_null_with_description(self):
+        # #75 결정: {"anyOf":[{"type":"boolean"},{"type":"null"}]}, 설명 문구 고정
+        submit = ACTION_TOOL["input_schema"]["properties"]["submit"]
+        self.assertEqual(submit["anyOf"], [{"type": "boolean"}, {"type": "null"}])
+        self.assertEqual(submit["description"], "type일 때 입력 후 Enter로 제출하려면 true, 다른 행동이면 null")
+        self.assertIn("submit", ACTION_TOOL["description"])
+        validator = Draft202012Validator(submit)
+        self.assertTrue(validator.is_valid(True) and validator.is_valid(False) and validator.is_valid(None))
+        self.assertFalse(validator.is_valid("true") or validator.is_valid(1))
+
+    def ask_action(self, **fields):
+        base = dict(target=None, text=None, submit=None, option=None, direction=None, reason=None,
+                    thought="고른다", expectation="바뀐다", confusion=None)
+        base.update(fields)
+        client = fake_client([tool_block(**base)])
+        return asyncio.run(ClaudeAdapter(client=client).ask(make_request())).text
+
+    def test_click_with_submit_false_drops_submit_and_parses(self):
+        text = self.ask_action(action="click", target=3, submit=False)
+        self.assertNotIn("submit", json.loads(text))
+        self.assertIsInstance(parse_action_json(text), ClickAction)
+
+    def test_click_with_submit_true_is_rejected_by_parser(self):
+        text = self.ask_action(action="click", target=3, submit=True)
+        self.assertIs(json.loads(text)["submit"], True)
+        with self.assertRaises(ActionInputError) as raised:
+            parse_action_json(text)
+        self.assertEqual(raised.exception.code, "invalid_fields")
+
+    def test_type_with_submit_null_parses_as_false(self):
+        action = parse_action_json(self.ask_action(action="type", target=2, text="시부야", submit=None))
+        self.assertIsInstance(action, TypeAction)
+        self.assertIs(action.submit, False)
+
+    def test_type_with_submit_true_and_false_are_kept(self):
+        self.assertIs(parse_action_json(self.ask_action(action="type", target=2, text="a", submit=True)).submit, True)
+        text = self.ask_action(action="type", target=2, text="a", submit=False)
+        self.assertIs(json.loads(text)["submit"], False)
+        self.assertIs(parse_action_json(text).submit, False)
 
     def test_null_tool_fields_are_dropped_from_action_json(self):
         client = fake_client([tool_block(

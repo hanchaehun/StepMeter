@@ -70,7 +70,7 @@ describe('metricTiles', () => {
     expect(t.map((x) => x.key)).toEqual(['est_task_time', 'click_count', 'travel_distance', 'fitts_id_sum']);
     // 7.9 → "7.9", 2 → "2", 812.5 → Math.round → "813", 5.4 → "5.4"
     expect(t.map((x) => x.value)).toEqual(['7.9', '2', '813', '5.4']);
-    expect(t[0].note).toBe('보정 전');        // est_task_time.model_version_id === null
+    expect(t[0].note).toBe('문헌값 기준 추정'); // est_task_time.model_version_id === null (ADR 0011 3번 문구)
     expect(t[2].note).toBe('편차 ±12%');      // travel_distance.spread 0.12
     expect(t[1].note).toBe('편차 ±0%');       // click_count.spread 0.0
   });

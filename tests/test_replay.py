@@ -331,6 +331,60 @@ class ReplayIntegration(unittest.IsolatedAsyncioTestCase):
                              ("partial", 0, 0))
             self.assertEqual(session.get(Run, run_id).status, "completed")
 
+    # #75: 실행 버튼이 없는 폼은 Enter(암묵적 제출)로만 "Complete"가 된다.
+    ENTER_ONLY = ('<!doctype html><title>Replay</title><main>'
+                  '<form onsubmit="event.preventDefault();document.querySelector(\'#result\').textContent=\'Complete\'">'
+                  '<input name="q" aria-label="Search"></form><p id="result"></p></main>')
+
+    async def test_replay_reproduces_submit(self):
+        self.page_path.write_text(self.ENTER_ONLY, encoding="utf-8")
+        base_id = self.create_run("agent")
+        await execute_run(base_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _model: FakeAdapter([
+                              _action("type", target=1, text="shoes", submit=True),
+                              _action("done", reason="goal_reached")]))
+        with self.factory() as session:
+            self.assertEqual(session.get(Run, base_id).status, "completed")
+        run_id = self.create_run("replay_only", base_run_id=base_id)
+        await execute_run(run_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _model: self.fail("replay_only called an LLM adapter"))
+        with self.factory() as session:
+            attempt = session.scalar(select(Attempt).where(Attempt.run_id == run_id))
+            # Without Enter the success text never appears, so a full verified replay proves submit ran.
+            self.assertEqual((attempt.replay_status, attempt.success), ("full", True))
+            first = session.scalar(select(Step).where(Step.attempt_id == attempt.id, Step.idx == 0))
+            self.assertEqual((first.action["action"], first.action["submit"]), ("type", True))
+
+    async def test_old_record_without_submit_replays_as_false(self):
+        # Typing alone completes the task; an Enter would replace the text with "Submitted".
+        self.page_path.write_text(
+            '<!doctype html><title>Replay</title><main>'
+            '<form onsubmit="event.preventDefault();document.querySelector(\'#result\').textContent=\'Submitted\'">'
+            '<input name="q" aria-label="Search" '
+            'oninput="document.querySelector(\'#result\').textContent=\'Complete\'"></form>'
+            '<p id="result"></p></main>', encoding="utf-8")
+        base_id = self.create_run("agent")
+        await execute_run(base_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _model: FakeAdapter([
+                              _action("type", target=1, text="shoes"),
+                              _action("done", reason="goal_reached")]))
+        with self.factory.begin() as session:
+            self.assertEqual(session.get(Run, base_id).status, "completed")
+            base_attempt = session.get(Run, base_id).representative_attempt_id
+            step = session.scalar(select(Step).where(Step.attempt_id == base_attempt, Step.idx == 0))
+            # A record saved before #75 has no submit key.
+            step.action = {k: v for k, v in step.action.items() if k != "submit"}
+        with self.factory() as session:
+            stored = session.scalar(select(Step).where(Step.attempt_id == base_attempt, Step.idx == 0))
+            self.assertNotIn("submit", stored.action)
+        run_id = self.create_run("replay_only", base_run_id=base_id)
+        await execute_run(run_id, self.factory, browser=self.browser)
+        with self.factory() as session:
+            attempt = session.scalar(select(Attempt).where(Attempt.run_id == run_id))
+            self.assertEqual((attempt.replay_status, attempt.success), ("full", True))
+            first = session.scalar(select(Step).where(Step.attempt_id == attempt.id, Step.idx == 0))
+            self.assertIs(first.action["submit"], False)
+
 
 if __name__ == "__main__":
     unittest.main()

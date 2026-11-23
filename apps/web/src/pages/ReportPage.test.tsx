@@ -11,14 +11,16 @@ beforeEach(() => {
 const summaryHeading = () => screen.getByRole('heading', { level: 2, name: '리포트 요약' });
 const detailHeading = () => screen.getByRole('heading', { level: 2, name: '단계 상세' });
 
-test('처음에는 리포트 요약 화면이고 문제 목록 전체(참고 포함)가 보인다', () => {
+test('처음에는 리포트 요약 화면이고 기본 문제가 보이며, 참고는 접혀 있다 (#75 UX 감사 F-02)', async () => {
   render(<ReportPage />);
   expect(summaryHeading()).toBeInTheDocument();
   expect(screen.getByRole('navigation', { name: '리포트 화면' })).toHaveTextContent('리포트 요약');
   expect(screen.getByRole('navigation', { name: '리포트 화면' })).toHaveTextContent('단계 상세');
   expect(screen.queryByRole('heading', { level: 2, name: '단계 상세' })).toBeNull();
   expect(screen.getByText('구매 버튼이 이름 없는 div에 가려짐')).toBeInTheDocument();
-  expect(screen.getByText('장바구니 보기 링크 높이 30px')).toBeInTheDocument(); // 참고도 요약 화면에
+  expect(screen.queryByText('장바구니 보기 링크 높이 30px')).toBeNull(); // 참고(103)는 접힘
+  await userEvent.click(screen.getByRole('button', { name: /참고 1건 보기/ }));
+  expect(screen.getByText('장바구니 보기 링크 높이 30px')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Passed rules' })).toBeInTheDocument();
 });
 
@@ -58,6 +60,7 @@ test('단계 상세의 화살표는 이전/다음 단계 하나뿐이고, 화면
 
 test('참고(103)를 열면 제안 생략 문구', async () => {
   render(<ReportPage />);
+  await userEvent.click(screen.getByRole('button', { name: /참고 1건 보기/ }));
   await userEvent.click(screen.getByText('장바구니 보기 링크 높이 30px'));
   expect(screen.getByText('참고 항목이라 제안은 생략합니다.')).toBeInTheDocument();
 });
@@ -123,6 +126,7 @@ test('"단계 상세" 링크는 0단계부터 연다', async () => {
 
 test('step은 null이지만 요소가 있는 참고(103)는 경로 밖 안내', async () => {
   render(<ReportPage />);
+  await userEvent.click(screen.getByRole('button', { name: /참고 1건 보기/ }));
   expect(screen.getByText('경로 밖')).toBeInTheDocument();
   await userEvent.click(screen.getByText('장바구니 보기 링크 높이 30px'));
   expect(screen.getByText(/경로 밖 요소라 단계 화면이 없습니다/)).toBeInTheDocument();

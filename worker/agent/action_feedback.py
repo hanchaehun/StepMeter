@@ -19,6 +19,11 @@ REQUIRED_FIELDS = {
         tuple(name for name, field in model.model_fields.items() if field.is_required())
     for model in ACTION_MODELS
 }
+# action name -> every field the action accepts (required and optional, e.g. type.submit #75).
+ALLOWED_FIELDS = {
+    get_args(model.model_fields['action'].annotation)[0]: frozenset(model.model_fields)
+    for model in ACTION_MODELS
+}
 
 
 def missing_fields(payload):
@@ -35,10 +40,27 @@ def missing_fields(payload):
     return name, tuple(field for field in REQUIRED_FIELDS[name] if raw.get(field) is None)
 
 
-def retry_message(code, name, missing):
+def unexpected_fields(payload):
+    """Field names (never values) the chosen action does not accept, e.g. submit on click (#75)."""
+    try:
+        raw = json.loads(payload)
+    except (TypeError, ValueError, RecursionError):
+        return ()
+    if not isinstance(raw, dict):
+        return ()
+    name = raw.get('action')
+    if not isinstance(name, str) or name not in ALLOWED_FIELDS:
+        return ()
+    return tuple(sorted(str(key) for key in raw if key not in ALLOWED_FIELDS[name]))
+
+
+def retry_message(code, name, missing, unexpected=()):
     if name and missing:
         return (f'The previous action was invalid ({code}): missing {", ".join(missing)} for {name}. '
                 'Include every required field for the chosen action.')
+    if name and unexpected:
+        return (f'The previous action was invalid ({code}): {", ".join(unexpected)} is not used by {name}. '
+                'Set fields of other actions to null (submit is only for type).')
     return (f'The previous action was invalid ({code}). '
             'Choose a valid action with every required field.')
 

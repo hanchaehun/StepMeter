@@ -4,6 +4,7 @@ import { cn } from '@/lib/cn';
 import { Screenshot } from '@/components/Screenshot';
 import { Severity } from '@/components/Severity';
 import { AttemptsPanel } from './AttemptsPanel';
+import { formatNumber } from '@/lib/format';
 
 export interface DetailState {
   issueId: number | null;
@@ -130,7 +131,7 @@ export function StepDetail({ report, steps, state, onChange }: Props) {
               <p className="text-[13px] text-faint">{`기대 · ${step.action.expectation}`}</p>
               {step.action.confusion && <p className="text-[13px] text-faint">{`헷갈림 · ${step.action.confusion}`}</p>}
               <p className="mt-2 text-[13px] text-faint">
-                {[effectLabel(step.effect_type), step.fitts_id !== null ? `난이도 ${step.fitts_id}bit` : null, step.est_seconds !== null ? `예상 ${step.est_seconds}초` : null]
+                {[effectLabel(step.effect_type), step.fitts_id !== null ? `난이도 ${formatNumber(step.fitts_id, 1)}bit` : null, step.est_seconds !== null ? `예상 ${formatNumber(step.est_seconds, 1)}초` : null]
                   .filter(Boolean)
                   .join(' · ')}
               </p>

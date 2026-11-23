@@ -118,6 +118,8 @@ def extract_text(response: Any, purpose: str) -> str:
 
     행동 선택이면 choose_action 도구 입력을 JSON 글자로 바꿔 돌려준다.
     값이 null인 항목은 뺀다 (형식 검사에서 '다른 행동의 필드'로 거절되지 않게).
+    submit(#75)은 type의 필드다. type이 아닌 행동에서 false·null이면 뺀다(뜻이 없는 기본값).
+    type이 아닌데 true면 그대로 두어 형식 검사가 '다른 행동의 필드'로 거절하게 한다(모델 실수).
     도구 답이 없으면 빈 글자를 돌려주고, 에이전트 쪽 형식 검사가 거절한다.
     """
 
@@ -125,6 +127,8 @@ def extract_text(response: Any, purpose: str) -> str:
         for block in response.content:
             if getattr(block, "type", None) == "tool_use" and block.name == ACTION_TOOL_NAME:
                 cleaned = {k: v for k, v in dict(block.input).items() if v is not None}
+                if cleaned.get("action") != "type" and cleaned.get("submit") is False:
+                    del cleaned["submit"]
                 return json.dumps(cleaned, ensure_ascii=False)
         return ""
     return "".join(

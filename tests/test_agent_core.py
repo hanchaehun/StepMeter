@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from apps.api.db.models import AccessCode, Attempt, Base, LlmCall, Metric, Project, Run, Step, Task
 from worker.agent import run as agent_run
-from worker.agent.action_feedback import missing_fields, retry_message
+from worker.agent.action_feedback import missing_fields, retry_message, unexpected_fields
 from worker.agent.run import execute_run
 from worker.agent.observation import describe, state_hash
 from worker.agent.safety import _literal_in_task
@@ -81,6 +81,18 @@ class PureTests(unittest.TestCase):
     def test_retry_message_without_names_keeps_previous_text(self):
         self.assertEqual(retry_message('invalid_fields', None, ()),
                          'The previous action was invalid (invalid_fields). Choose a valid action with every required field.')
+
+    def test_submit_is_optional_for_type_and_named_when_sent_with_another_action(self):
+        # #75: type.submit has a default (False), so it is never reported missing.
+        self.assertEqual(missing_fields(action('type', target=1, text='a')), ('type', ()))
+        self.assertEqual(unexpected_fields(action('type', target=1, text='a', submit=True)), ())
+        # submit belongs to type only; the retry names the field, never its value.
+        self.assertEqual(unexpected_fields(action('click', target=1, submit=True)), ('submit',))
+        message = retry_message('invalid_fields', 'click', (), ('submit',))
+        self.assertIn('submit is not used by click', message)
+        self.assertNotIn('True', message)
+        for payload in ('not json', '[1]', '{"action":"explode","submit":true}', None):
+            self.assertEqual(unexpected_fields(payload), ())
 
     def test_representative(self):
         rows = [Attempt(id=1,index=2,success=True), Attempt(id=2,index=1,success=True),
@@ -504,6 +516,23 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
     ERROR=['{"action":"explode"}']
     GAVE_UP=[action('fail')]
     SUCCESS=[action('click',target=1),action('done',reason='goal_reached')]
+
+    async def test_timeout_detail_names_the_stage_without_message(self):
+        # #75 follow-up: a timeout records which step stage ran, never the browser message.
+        from playwright.async_api import TimeoutError as PlaywrightTimeout
+        with patch('worker.agent.loop.PlaywrightDriver.perform',
+                   side_effect=PlaywrightTimeout('Timeout 30000ms exceeded. secret=abc')):
+            await self.run_replies([action('click', target=1)])
+        with self.factory() as s:
+            a = s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason, a.end_detail), ('error', 'TimeoutError@perform'))
+
+    async def test_builtin_timeout_outside_budget_names_the_stage(self):
+        with patch('worker.agent.loop.labeled_screenshot', side_effect=TimeoutError()):
+            await self.run_replies([action('click', target=1)])
+        with self.factory() as s:
+            a = s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason, a.end_detail), ('error', 'TimeoutError@screenshot'))
 
     async def test_all_error_attempts_fail_run(self):
         await self.run_attempts(self.ERROR,self.ERROR,self.ERROR)

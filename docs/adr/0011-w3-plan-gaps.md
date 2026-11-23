@@ -170,3 +170,32 @@ WCAG 2.5.8 AA는 24px 최소 크기/간격, 2.5.5 AAA는 44px 강화 기준이�
 경계 테스트: 23.9px 최소 위반은 high, 24/43.9px desktop 참고·mobile medium,
 44px는 후보 없음. 간격·inline 예외는 유지한다.
 원인 분석과 재분류 재현 명령은 docs/w4-metrics-review.md를 따른다.
+
+
+### 10. #75 관찰 누락: 수집 역할, 30개 정렬, 입력 후 Enter (PM 결정, 2026-11-23 반영)
+
+근거: [#75](https://github.com/hanchaehun/StepMeter/issues/75). 0차 재실행에서 shadcn-admin 정상 과업 2개가
+Haiku·Sonnet 모두 0/3이었다. 원인은 모델이 아니라 에이전트가 받는 요소 목록이었다
+(cmdk·Radix의 `role=option` 미수집, 모달 뒤 가려진 main 요소가 30칸 차지, Enter 행동 없음).
+PM이 이슈에서 수집 역할 추가와 `worker/schemas.py`·`docs/action_schema_spec.md` 변경을 승인했다.
+
+- **수집 역할:** `worker/collect/src/collect.js`의 수집 대상에 `option`, `menuitemcheckbox`, `menuitemradio`, `radio`,
+  `switch`, `combobox`, `treeitem`, `slider`, `spinbutton`, `searchbox`, `textbox` 역할 속성을 더한다. tabindex가 없거나
+  -1이어도 보이면 수집한다. `benchmark/baseline_llm.py`(LLM 베이스라인)와 `human-study/collect.js`(사람 실험 수집)의
+  목록은 비교 기준이라 바꾸지 않는다. `docs/element_snapshot_spec.md`에는 역할 목록이 없어 고칠 문구가 없다.
+- **30개 정렬:** 요소가 30개 이하면 문서 순서 그대로 보낸다. 넘으면 ① 열린 겹침 층 안의 요소(가장 가까운 조상이
+  `dialog[open]`, `[role=dialog]`, `[role=alertdialog]`, `[aria-modal="true"]`, `[role=listbox]`, `[role=menu]`)
+  ② 가려지지 않은 요소 ③ 텍스트 입력칸(input text·email·search·password·tel·url·number, textarea, 역할 textbox·searchbox·
+  combobox) ④ 기존 기준(main 안, 화면 중심 거리, 큰 순, el_id) 순이다. 겹침 층·텍스트 입력 여부는 `observe()` 행의 정렬
+  전용 필드 `sort`로 넘기고 LLM에 보내는 항목에서는 뺀다. 30개 안의 가려진 요소는 1번 결정대로 `"(가려짐)"`이다.
+- **입력 후 Enter:** `TypeAction`에 `submit: bool = False`를 더한다. `submit=true`면 입력 후 같은 요소에서 Enter를
+  한 번 누르며, 입력과 Enter는 한 번의 효과 관찰 안에서 일어난다. 비밀번호 칸 규칙(1번)은 지금처럼 먼저 돈다.
+  `submit`이 없는 예전 기록은 `False`로 재생한다. `openapi.yaml`은 "worker/schemas.py에서 생성" 블록만 다시 만들고
+  (`python -m tests.test_openapi_schema`), 화면 타입은 `npm run gen:api`로 다시 만든다. 경로·응답·다른 스키마는 그대로다.
+- **도구와 응답 정리:** `choose_action`은 strict라 `submit`을 properties와 required에 넣고 `boolean | null`로 받는다.
+  `extract_text`는 null 항목을 빼던 규칙에 더해, `type`이 아닌 행동의 `submit`이 false면 뺀다. `type`이 아닌데
+  true면 그대로 두어 형식 검사가 거절하게 한다(모델 실수). 다시 물을 때 고른 행동에 없는 필드 이름을 알려 준다.
+- **프롬프트:** `prompts/action_v3.md` = `action_v2` + `submit` 설명 한 단락. Run·LlmCall의 `prompt_version`은
+  `action_v3`다. `action_v2.md`는 기록 재현을 위해 남긴다.
+- **KLM:** 3번 표의 type에 `submit=true`면 K를 1회 더한다(#78에서 구현, 이번에 확인만 했다).
+- 재측정 결과는 [benchmark/w3.md](../../benchmark/w3.md) "#75 수정 후 재측정 (2026-11-23)"에 있다.

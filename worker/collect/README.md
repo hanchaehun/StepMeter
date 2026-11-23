@@ -16,12 +16,21 @@ python -m unittest tests.test_collect
 from worker.collect.collector import record_first_view, observe, snapshot
 
 await record_first_view(page)       # 페이지 로드 직후 1회 (이동할 때마다 다시)
-items = await observe(page)         # [{el_id, tag, role, name, landmark, label_text, bbox, occluded}]
+items = await observe(page)         # [{el_id, tag, role, name, landmark, label_text, bbox, occluded, sort}]
 snap = await snapshot(page, el_id)  # ElementSnapshot (click·type 직전)
 ```
 
 - `observe()`는 뷰포트 안의 보이는 요소를 **가려진 요소까지** 돌려준다. LLM에 보낼 목록(가려진 요소 포함·`"(가려짐)"` 표시, 최대 30개, [ADR 0010](../../docs/adr/0010-w3-integration-decisions.md))은 에이전트 코어가 이 결과를 잘라 만들고, 반환 형식은 에이전트 코어와 정한다.
 - 아직 안 하는 것: 다른 출처 iframe, 닫힌 shadow root (W2 SPA 스트레스 테스트 뒤 보완).
+- 수집 대상(`INTERACTIVE`): `a`, `button`, `input`, `select`, `textarea`, `[onclick]`, `tabindex`가 0 이상인 요소, 역할 속성
+  `button`·`link`·`tab`·`checkbox`·`menuitem`, 그리고 #75에서 더한 `option`·`menuitemcheckbox`·`menuitemradio`·`radio`·
+  `switch`·`combobox`·`treeitem`·`slider`·`spinbutton`·`searchbox`·`textbox`. 역할은 `role` 속성으로만 고른다(native
+  `<option>`은 `<select>`로 다룬다). cmdk CommandItem(tabindex 없음)·Radix SelectItem(tabindex=-1)처럼 키보드 포커스를
+  목록이 관리하는 옵션도 보이면 수집한다. `benchmark/baseline_llm.py`와 `human-study/collect.js`의 목록은 각자 고정이라 바꾸지 않았다.
+- `sort`: 에이전트가 30개를 고를 때만 쓰는 정렬 전용 필드(#75). `overlay`는 가장 가까운 조상에 열린 겹침 층
+  (`dialog[open]`, `[role=dialog]`, `[role=alertdialog]`, `[aria-modal="true"]`, `[role=listbox]`, `[role=menu]`)이 있는지,
+  `text_input`은 텍스트 입력칸(input text·email·search·password·tel·url·number, textarea, 역할 textbox·searchbox·combobox)인지다.
+  ElementSnapshot·매칭 지문에는 들어가지 않고 LLM 항목에서도 뺀다(`worker/agent/observation.py`).
 - `__stepmeter.describe(el)`: 임의 요소의 지문 필드(`tag`·`role`·`name`·`label_text`·`landmark`)를 `observe()`와 같은 계산으로 돌려준다. 사람 데이터 수집(`human-study/collect.js`)이 참가자가 누른 좌표의 실제 요소에 쓴다. `observe()` 결과와 에이전트 쪽 동작은 바꾸지 않는다 (#43).
 
 ## 번호 대상 해석

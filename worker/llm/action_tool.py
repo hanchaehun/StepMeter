@@ -8,10 +8,12 @@ strict: true면 도구 입력이 아래 스키마를 반드시 지킨다. strict
 숫자 제약을 지원하지 않으므로 넣지 않는다 (양의 정수 검사는 parse_action_json이 한다).
 
 모든 필드를 required로 두어 모델이 행동마다 필요한 필드를 빠뜨리지 못하게 한다.
-행동별 필드(target, text, option, direction, reason)와 confusion은 null을 받고, 고른 행동에
+행동별 필드(target, text, submit, option, direction, reason)와 confusion은 null을 받고, 고른 행동에
 쓰지 않는 필드는 null로 둔다. null 허용은 속성 단위 anyOf로 쓴다 ("type": [..., "null"]과
 enum을 함께 쓰면 API가 400으로 거절한다, 2026-11-10 확인). action, thought, expectation은 null을 받지 않는다.
 null 항목은 claude.extract_text가 빼므로 parse_action_json에는 행동에 맞는 필드만 간다.
+submit(#75)은 type의 선택 필드다. type이 아닌데 false로 온 submit도 extract_text가 빼고,
+type이 아닌데 true면 그대로 두어 형식 검사가 거절한다.
 """
 
 from __future__ import annotations
@@ -23,8 +25,10 @@ ACTION_TOOL = {
     "strict": True,
     "description": (
         "다음에 할 행동 하나를 고른다. action에 맞는 필드는 값을 채우고, 다른 행동의 필드는 null로 둔다. "
-        "click: target / type: target, text / select: target, option / scroll: direction / "
-        "done: reason / back, wait, fail: 모두 null. confusion은 헷갈렸을 때만 채우고 아니면 null."
+        "click: target / type: target, text, submit / select: target, option / scroll: direction / "
+        "done: reason / back, wait, fail: 모두 null. submit은 type에서 입력 후 Enter로 제출할 때만 true, "
+        "type이지만 Enter가 필요 없으면 false, 다른 행동이면 null. "
+        "confusion은 헷갈렸을 때만 채우고 아니면 null."
     ),
     "input_schema": {
         "type": "object",
@@ -36,6 +40,8 @@ ACTION_TOOL = {
             "target": {"anyOf": [{"type": "integer"}, {"type": "null"}], "description": "요소 번호"},
             "text": {"anyOf": [{"type": "string"}, {"type": "null"}],
                      "description": "type일 때 입력할 글자 전체"},
+            "submit": {"anyOf": [{"type": "boolean"}, {"type": "null"}],
+                       "description": "type일 때 입력 후 Enter로 제출하려면 true, 다른 행동이면 null"},
             "option": {"anyOf": [{"type": "integer"}, {"type": "null"}],
                        "description": "select일 때 옵션 번호"},
             "direction": {"anyOf": [{"type": "string", "enum": ["up", "down"]}, {"type": "null"}]},
@@ -46,7 +52,7 @@ ACTION_TOOL = {
             "confusion": {"anyOf": [{"type": "string"}, {"type": "null"}],
                           "description": "헷갈린 점. 없으면 null"},
         },
-        "required": ["action", "target", "text", "option", "direction", "reason",
+        "required": ["action", "target", "text", "submit", "option", "direction", "reason",
                      "thought", "expectation", "confusion"],
         "additionalProperties": False,
     },

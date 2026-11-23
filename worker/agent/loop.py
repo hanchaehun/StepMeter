@@ -6,15 +6,16 @@ from dataclasses import replace
 from pathlib import Path
 
 from playwright.async_api import Error as PlaywrightError
+from playwright.async_api import TimeoutError as PlaywrightTimeout
 from sqlalchemy import select
 
 from apps.api.db.models import Attempt, Step
 from ml.issue_clf.runtime import TARGET_SCRIPT, remember
 
 from worker.a11y.scan import scan_page
-from worker.agent.action_feedback import failure_code, missing_fields, retry_message
+from worker.agent.action_feedback import failure_code, missing_fields, retry_message, unexpected_fields
 from worker.agent.observation import describe, labeled_screenshot, state_hash
-from worker.agent.persistence import Canceled, finish_attempt, log_call, running, save_step
+from worker.agent.persistence import PROMPT_VERSION, Canceled, finish_attempt, log_call, running, save_step
 from worker.agent.safety import LoginWall, SafetyStop, blocked_reason
 from worker.agent.termination import LoopGuard, goal_already_met, verify_success
 from worker.collect.collector import observe, record_first_view, resolve_element, scroll_target_into_view
@@ -36,7 +37,7 @@ from worker.rules.r09 import PROMPT_VERSION as JUDGE_VERSION, StepRecord, judge 
 from worker.rules.r06 import FirstTargetTracker, screen_key
 from worker.schemas import ActionInputError, parse_action_json
 
-PROMPT = Path(__file__).resolve().parents[2] / 'prompts/action_v2.md'
+PROMPT = Path(__file__).resolve().parents[2] / f'prompts/{PROMPT_VERSION}.md'
 
 
 async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_path, max_steps=30, max_seconds=300, evidence_sink=None):
@@ -55,6 +56,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
     page.on('framenavigated', navigated)
     reason, success, estimated, detail = 'budget_exceeded', False, False, None
     budget = asyncio.timeout(max_seconds)
+    # Which part of the step was running, for timeout diagnosis only (end_detail 'TimeoutError@<stage>').
+    stage = 'start'
     try:
         async with budget:
             await page.goto(config['base_url'], wait_until='domcontentloaded')
@@ -66,6 +69,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
             while idx < max_steps:
                 with factory.begin() as session:
                     running(session, config['id'])
+                stage = 'observe'
                 block = await blocked_reason(page)
                 if block:
                     reason, detail = 'blocked', block
@@ -76,12 +80,14 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 document_id = await page.evaluate('(nonce) => globalThis.__stepmeterDocumentId ||= nonce', uuid.uuid4().hex)
                 context = {'task': config['description'], 'elements': rows,
                            'recent_actions': history[-5:]}
+                stage = 'screenshot'
                 screenshot = await labeled_screenshot(page, rows)
                 for retry in range(3):
-                    request = LLMRequest(purpose='action', prompt_version='action_v2',
+                    request = LLMRequest(purpose='action', prompt_version=PROMPT_VERSION,
                         system=PROMPT.read_text(encoding='utf-8'),
                         user_text=json.dumps(context, ensure_ascii=False),
                         image_jpeg=screenshot, run_id=config['id'])
+                    stage = 'llm'
                     response = await adapter.ask(request)
                     log_call(factory, config['id'], response)
                     with factory.begin() as session:
@@ -95,14 +101,16 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                         # Only field names are derived from the reply; never its values or text.
                         name, missing = (missing_fields(response.text)
                                          if error.code == 'invalid_fields' else (None, ()))
+                        unexpected = unexpected_fields(response.text) if error.code == 'invalid_fields' else ()
                         if retry == 2:
                             raise ActionInputError(failure_code(error.code, missing)) from None
-                        context['invalid_action'] = retry_message(error.code, name, missing)
+                        context['invalid_action'] = retry_message(error.code, name, missing, unexpected)
                 repeated = guard.repeated(state, action)
                 axe = None
                 identity = None
                 score_target = None
                 prepared_scroll = False
+                stage = 'prepare'
                 if hasattr(action, 'target'):
                     try:
                         handle = await resolve_element(page, action.target)
@@ -123,12 +131,16 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             before_scroll = await handle.evaluate(SCROLL_STATE)
                             await scroll_target_into_view(page, action.target)
                             prepared_scroll = before_scroll != await handle.evaluate(SCROLL_STATE)
+                            stage = 'axe'
                             axe = await scan_page(page, axe_path, {idx: handle})
+                            stage = 'prepare'
                         if config.get('issue_score') is not None:
                             score_target = await handle.evaluate(TARGET_SCRIPT)
                     finally:
                         await handle.dispose()
+                stage = 'evidence'
                 evidence = await evidence_sink.capture(page, action, axe, url, attempt_id) if evidence_sink else None
+                stage = 'perform'
                 if action.action in ('done', 'fail'):
                     result = ActionResult(None, EffectResult('no_change'),
                         await page.screenshot(type='jpeg', quality=70, caret='initial'))
@@ -140,6 +152,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             raise
                         stale_retries += 1
                         continue
+                stage = 'save'
                 est_seconds = estimate_step(action.model_dump(), first_action=klm_first,
                     previous_action=actions[-1] if actions else None,
                     auto_scrolled=prepared_scroll or result.auto_scrolled,
@@ -207,6 +220,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 if repeated:
                     reason = 'loop'
                     break
+                stage = 'settle'
                 await page.wait_for_load_state('domcontentloaded', timeout=4500)
                 await asyncio.sleep(0.5)
                 records[-1] = replace(records[-1], url_after=page.url)  # 이동이 끝난 뒤 주소
@@ -219,7 +233,7 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
         finish_attempt(factory, config['id'], attempt_id, reason, success, estimated, detail)
     except TimeoutError:
         reason = 'budget_exceeded' if budget.expired() else 'error'
-        detail = f'{max_seconds} second attempt budget exceeded' if budget.expired() else 'TimeoutError'
+        detail = f'{max_seconds} second attempt budget exceeded' if budget.expired() else f'TimeoutError@{stage}'
         finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
     except LoginWall:
         # The blocked control was never executed; the page may still already show the goal.
@@ -242,6 +256,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
         # Exception messages from browser/SDK may include credentials or payloads.
         reason = 'error'
         detail = type(error).__name__ + (':' + error.code if hasattr(error, 'code') else '')
+        if isinstance(error, PlaywrightTimeout):
+            detail += '@' + stage  # e.g. TimeoutError@perform; the message is never stored
         finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
     finally:
         page.remove_listener('framenavigated', navigated)

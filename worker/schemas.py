@@ -51,6 +51,7 @@ class TypeAction(_ActionBase):
     action: Literal["type"]
     target: PositiveIndex
     text: str = Field(max_length=4096, repr=False)
+    submit: bool = False  # true면 입력 후 Enter 한 번 (#75)
 
 
 class SelectAction(_ActionBase):

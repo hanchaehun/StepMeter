@@ -1,7 +1,7 @@
 // 측정 생성 화면 (F01). 명세: docs/wireframes/f01-measure-create.md
 // - 입력: 측정할 주소, 과업(예시 칩), 성공 조건(선택), 화면 크기, 반복 횟수(고급 설정)
 // - 테스트 계정은 이번 일정에서 구현하지 않는다 (ADR 0004). 과업 문장에 가짜 값만 적도록 안내한다 (ADR 0011 1번)
-// - 요청 순서는 src/api/measure.ts. 성공하면 /runs/{id}로 간다(측정 진행 화면 F02가 생기면 그 경로로 바꾼다)
+// - 요청 순서는 src/api/measure.ts. 성공하면 측정 진행 화면(/runs/{id}/progress, F02)으로 간다
 // - 401이면 초대 코드를 다시 묻고 입력값은 그대로 둔 채 다시 보낸다. 429면 상한 안내 + 재생만 하기
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -10,7 +10,6 @@ import { createMeasurement, createReplayOnly, DailyLimitError, type MeasureInput
 import { createMockServer, type MockScenario } from '@/api/mockServer';
 import { AccessCodeView } from '@/components/report/ReportStatus';
 import { Button } from '@/components/ui/button';
-import { estimateSeconds, formatDuration } from '@/lib/estimate';
 import { cn } from '@/lib/cn';
 
 /** 과업 예시. 라벨은 짧게, 넣는 문장은 완전하게 (명세 "칩 라벨과 넣는 문장은 다르다").
@@ -84,8 +83,10 @@ export function MeasureCreatePage({ baseUrl, mockScenario = 'ok', fetchImpl, nav
 
   const urlRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
+  /** 바꿀지 묻는 상자를 연 칩. "그대로 두기"·Esc로 닫으면 여기로 포커스를 돌려준다 (#75 UX 감사 F-05) */
+  const chipOpener = useRef<HTMLButtonElement | null>(null);
 
-  const go = (runId: number) => navigate(`/runs/${runId}${mock ? '?mock=1' : ''}`);
+  const go = (runId: number) => navigate(`/runs/${runId}/progress${mock ? '?mock=1' : ''}`);
 
   const onAuthError = (e: unknown, input: MeasureInput | null) => {
     if (e instanceof ApiError && e.status === 401) {
@@ -140,9 +141,15 @@ export function MeasureCreatePage({ baseUrl, mockScenario = 'ok', fetchImpl, nav
   };
 
   // 칩: 비어 있으면 바로 넣고, 이미 적은 과업이 있으면 바꿀지 묻는다
-  const pickChip = (text: string) => {
-    if (description.trim() && description.trim() !== text) setPendingChip(text);
-    else applyChip(text);
+  const pickChip = (text: string, opener: HTMLButtonElement) => {
+    if (description.trim() && description.trim() !== text) {
+      chipOpener.current = opener;
+      setPendingChip(text);
+    } else applyChip(text);
+  };
+  const keepDescription = () => {
+    setPendingChip(null);
+    chipOpener.current?.focus();
   };
   const applyChip = (text: string) => {
     setDescription(text);
@@ -240,17 +247,27 @@ export function MeasureCreatePage({ baseUrl, mockScenario = 'ok', fetchImpl, nav
               <p id="m-chips-hint" className="mb-2 text-sm text-muted">예시를 누르면 완전한 문장이 들어갑니다.</p>
               <div role="group" aria-labelledby="m-chips-hint" className="flex flex-wrap gap-2">
                 {TASK_EXAMPLES.map((c) => (
-                  <Button key={c.label} onClick={() => pickChip(c.text)} className="rounded-full font-medium">
+                  <Button key={c.label} onClick={(e) => pickChip(c.text, e.currentTarget)} className="rounded-full font-medium">
                     {c.label}
                   </Button>
                 ))}
               </div>
               {pendingChip && (
-                <div role="alertdialog" aria-labelledby="m-chip-q" className="mt-3 rounded-lg border border-control p-3">
+                <div
+                  role="alertdialog"
+                  aria-labelledby="m-chip-q"
+                  className="mt-3 rounded-lg border border-control p-3"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.stopPropagation();
+                      keepDescription();
+                    }
+                  }}
+                >
                   <p id="m-chip-q" className="mb-2 text-sm">적어 둔 과업을 예시 문장으로 바꿀까요?</p>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="default" onClick={() => applyChip(pendingChip)} autoFocus>바꾸기</Button>
-                    <Button onClick={() => setPendingChip(null)}>그대로 두기</Button>
+                    <Button onClick={keepDescription}>그대로 두기</Button>
                   </div>
                 </div>
               )}
@@ -312,7 +329,7 @@ export function MeasureCreatePage({ baseUrl, mockScenario = 'ok', fetchImpl, nav
             <summary className="flex min-h-[44px] cursor-pointer items-center px-3 font-semibold">고급 설정 — 측정 신뢰도 높이기</summary>
             <fieldset className="border-t border-border px-3 py-3">
               <legend className="sr-only">반복 횟수</legend>
-              <p className="mb-2 text-sm text-muted">같은 과업을 여러 번 돌려 중앙값을 씁니다. 5회는 편차 추정이 안정되지만 시간과 비용이 늘어납니다.</p>
+              <p className="mb-2 text-sm text-muted">같은 과업을 여러 번 돌려 중앙값을 씁니다. 5회는 편차 추정이 안정되지만 3회보다 오래 걸립니다.</p>
               <div className="flex flex-wrap gap-3">
                 {([3, 5] as const).map((n) => (
                   <label key={n} className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border border-control px-3">
@@ -326,7 +343,7 @@ export function MeasureCreatePage({ baseUrl, mockScenario = 'ok', fetchImpl, nav
         </fieldset>
 
         {/* 요약 열. 좁은 화면에서는 시작 버튼 바로 위 (DOM 순서), 넓은 화면에서는 오른쪽 열 */}
-        <Summary repeatN={repeatN} viewport={viewport} />
+        <Summary repeatN={repeatN} />
 
         <div className="space-y-4 lg:col-start-1 lg:row-start-2">
           {limitError && (
@@ -382,29 +399,14 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-function Summary({ repeatN, viewport }: { repeatN: number; viewport: ViewportPreset }) {
-  const seconds = estimateSeconds(repeatN);
+// #83: 예상 시간·비용은 근거가 없어 보이지 않는다(PM 11/22). 요약 열에는 숫자 없는 안내만 둔다.
+function Summary({ repeatN }: { repeatN: number }) {
   return (
     <aside aria-labelledby="m-sum" className="h-fit rounded-lg border border-border p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-      <h2 id="m-sum" className="mb-3 font-semibold">측정 예상</h2>
-      {viewport === 'mobile' ? (
-        <p className="text-sm">모바일은 시간 추정을 제공하지 않습니다. 시간은 데스크톱 기준으로만 계산합니다.</p>
-      ) : seconds === null ? (
-        <p className="text-sm">
-          <span className="text-lg font-semibold">—</span>
-          <br />
-          예상 소요 시간은 추정 근거를 준비하고 있습니다.
-        </p>
-      ) : (
-        <p>
-          <span className="text-lg font-semibold">{formatDuration(seconds)}</span>
-          <span className="block text-sm text-muted">반복 {repeatN}회 기준 · 데스크톱</span>
-        </p>
-      )}
-      {repeatN === 5 && <p className="mt-2 text-sm text-muted">예상 비용도 추정 근거를 준비하고 있습니다.</p>}
-      <hr className="my-4 border-border" />
+      <h2 id="m-sum" className="mb-3 font-semibold">측정 안내</h2>
       <ul className="space-y-1.5 text-sm text-muted">
         <li>· 반복 {repeatN}회의 중앙값을 결과로 씁니다</li>
+        {repeatN === 5 && <li>· 반복 5회는 3회보다 오래 걸립니다</li>}
         <li>· 걸리는 시간은 측정할 사이트의 응답 속도에 따라 달라집니다</li>
         <li>· 진행 중에도 취소할 수 있습니다</li>
       </ul>
@@ -428,7 +430,8 @@ function LimitNotice({ e, busy, onReplay, replayError }: { e: DailyLimitError; b
           {replayError && <p className="mt-2 text-sm text-danger">▲ {replayError.message}</p>}
         </div>
       ) : (
-        <p className="mt-2 text-sm text-muted">이 과업·화면 크기로 끝난 측정이 없어 재생만 하기는 쓸 수 없습니다.</p>
+        // #72 임시 회피: 가장 최근 완료 측정에 대표 경로가 없을 때도 여기로 온다 (src/api/measure.ts latestUsableBase)
+        <p className="mt-2 text-sm text-muted">이 과업·화면 크기로 재생할 경로(성공한 시도)가 있는 끝난 측정이 없어 재생만 하기는 쓸 수 없습니다.</p>
       )}
     </div>
   );

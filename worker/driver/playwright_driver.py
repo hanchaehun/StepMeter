@@ -117,7 +117,11 @@ class PlaywrightDriver:
                                 raise EffectObservationError('Click target is disabled')
                             await self.page.mouse.click(point['x'], point['y'])
                 elif isinstance(action, TypeAction):
-                    callback = lambda: handle.fill(action.text)
+                    async def callback():
+                        await handle.fill(action.text)
+                        if action.submit:
+                            # #75: Enter on the same element, inside the same effect observation.
+                            await handle.press('Enter')
                 else:
                     options = await enabled_select_options(handle)
                     index = action.option - 1

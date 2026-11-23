@@ -2,6 +2,7 @@ import type { Attempt, Report, Step } from '@/api/mock';
 import { elementLabel, endReasonText, stepIssueMap } from '@/lib/report';
 import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui/button';
+import { formatNumber } from '@/lib/format';
 
 interface Props {
   report: Report;
@@ -40,11 +41,11 @@ export function AttemptsPanel({ report, steps, onOpenStep, onShowSteps }: Props)
       {(hardest || slowest) && (
         <p className="mt-3 text-[13px] leading-7 text-muted">
           {hardest && (
-            <span>가장 어려운 단계 <b className="font-semibold text-fg">Step {hardest.idx} {stepName(hardest.idx)}</b> {hardest.value}bit</span>
+            <span>가장 어려운 단계 <b className="font-semibold text-fg">Step {hardest.idx} {stepName(hardest.idx)}</b> {formatNumber(hardest.value, 1)}bit</span>
           )}
           {hardest && slowest && ' · '}
           {slowest && (
-            <span>가장 오래 걸린 단계 <b className="font-semibold text-fg">Step {slowest.idx} {stepName(slowest.idx)}</b> {slowest.value}초</span>
+            <span>가장 오래 걸린 단계 <b className="font-semibold text-fg">Step {slowest.idx} {stepName(slowest.idx)}</b> {formatNumber(slowest.value, 1)}초</span>
           )}
         </p>
       )}

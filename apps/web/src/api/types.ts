@@ -780,6 +780,8 @@ export interface components {
             action: "type";
             target: number;
             text: string;
+            /** @default false */
+            submit: boolean;
         };
         WaitAction: {
             thought: string;

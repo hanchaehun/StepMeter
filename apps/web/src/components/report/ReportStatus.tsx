@@ -1,6 +1,6 @@
 // 리포트 화면의 상태 뷰 (docs/wireframes/f06-report.md "상태 전환"): 불러오는 중 / 초대 코드 / 404 / 409 / 오류.
 // 숫자 자리를 비우지 않고 이유를 쓴다. 막다른 길로 끝내지 않는다(다시 시도·돌아가기).
-// TODO(리포트 UI↔대시보드 UI): 측정 이력(F11)·측정 진행(F02)·새 측정(F01) 화면이 생기면 아래 href="#" 링크를 그 경로로 바꾼다.
+// 링크: 측정 이력 /history(F11), 측정 진행 /runs/{id}/progress(F02), 새 측정 /new(F01). #75 UX 감사 F-01로 남은 "#"을 연결했다.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { RunStatus } from '@/api/client';
 
@@ -35,7 +35,7 @@ export function NoRunIdView() {
     <Shell>
       <h2 className="mb-2 text-lg font-bold">측정 번호가 없습니다</h2>
       <p className="mb-5 text-muted">리포트 주소는 <code className="rounded bg-surface px-1">/runs/&lt;번호&gt;</code> 형식입니다. 측정 이력에서 리포트를 고르세요.</p>
-      <a href="#" className={outline}>측정 이력으로</a>
+      <a href="/history" className={outline}>측정 이력으로</a>
     </Shell>
   );
 }
@@ -54,7 +54,7 @@ export function AccessCodeView({ wrong, onSubmit }: { wrong: boolean; onSubmit: 
     <Shell>
       <Tag>초대 코드 필요</Tag>
       <h2 className="mb-2 text-lg font-bold">초대 코드를 입력하세요</h2>
-      <p className="mb-4 text-muted">StepMeter는 초대 코드로 사용자를 제한합니다(F17). 코드는 이 브라우저 세션에만 저장됩니다.</p>
+      <p className="mb-4 text-muted">StepMeter는 초대 코드로 사용자를 제한합니다. 코드는 이 브라우저 세션에만 저장됩니다.</p>
       {wrong && (
         <p className="mb-3 flex items-center gap-1.5 text-sm text-danger" role="alert">
           <span aria-hidden="true">▲</span> 초대 코드가 맞지 않습니다. 다시 확인해 주세요.
@@ -83,7 +83,7 @@ export function NotFoundView({ runId }: { runId: number }) {
       <Tag>404</Tag>
       <h2 className="mb-2 text-lg font-bold">측정 #{runId}이(가) 없습니다</h2>
       <p className="mb-5 text-muted">번호가 틀렸거나 다른 초대 코드의 측정입니다. 다른 코드의 측정은 보이지 않습니다.</p>
-      <a href="#" className={outline}>측정 이력으로</a>
+      <a href="/history" className={outline}>측정 이력으로</a>
     </Shell>
   );
 }
@@ -99,7 +99,7 @@ export function NotFinishedView({ runId, status, progress }: { runId: number; st
           <p className="mb-5 text-muted">
             {status === 'queued' ? '대기열에 있습니다.' : `진행률 ${progress ?? 0}%.`} 끝나면 리포트가 만들어집니다. 측정 진행 화면에서 기다려 주세요.
           </p>
-          <a href="#" className={primary}>측정 진행 화면으로</a>
+          <a href={`/runs/${runId}/progress`} className={primary}>측정 진행 화면으로</a>
         </>
       ) : (
         <>
@@ -108,7 +108,7 @@ export function NotFinishedView({ runId, status, progress }: { runId: number; st
             상태가 <code className="rounded bg-surface px-1">{status}</code>라 후처리를 하지 않았습니다.{' '}
             {status === 'failed' ? '서비스 장애(워커 충돌·저장 실패)입니다. 다시 측정해 주세요.' : '사용자가 취소한 측정입니다.'}
           </p>
-          <a href="#" className={primary}>다시 측정</a>
+          <a href="/new" className={primary}>다시 측정</a>
         </>
       )}
     </Shell>
