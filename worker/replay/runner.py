@@ -38,17 +38,38 @@ class RecordedStep:
     url: str
     effect_type: str
     snapshot: dict | None
+    state_hash: str
 
 
 def load_path(session, base_attempt_id: int) -> list[RecordedStep]:
     rows = session.execute(select(Step, StoredSnapshot.data).outerjoin(
         StoredSnapshot, StoredSnapshot.step_id == Step.id).where(
         Step.attempt_id == base_attempt_id).order_by(Step.idx))
-    path = [RecordedStep(step.idx, step.action, step.url, step.effect_type, snapshot)
+    path = [RecordedStep(step.idx, step.action, step.url, step.effect_type, snapshot, step.state_hash)
             for step, snapshot in rows]
     if not path or [step.idx for step in path] != list(range(len(path))):
         raise ValueError("Base representative path is empty or has nonconsecutive steps")
     return path
+
+
+def target_state_matches(recorded: RecordedStep, url: str, elements: list[dict],
+                         candidate: dict, state: str) -> bool:
+    """Accept an unchanged observation or one attributable to the target's rename."""
+    if recorded.snapshot is None:
+        return False
+    old = fingerprint(recorded.snapshot)
+    current = fingerprint(candidate)
+    old_name, current_name = old.pop("name"), current.pop("name")
+    if old != current:
+        return False
+    if old_name == current_name:
+        # A surviving exact name might belong to a different control after a
+        # rename or removal. The old snapshot only describes the clicked node.
+        return state == recorded.state_hash
+    if not old_name or any(row["name"] == old_name for row in elements):
+        return False
+    previous_names = [{**row, "name": old_name} if row is candidate else row for row in elements]
+    return state_hash(url, previous_names) == recorded.state_hash
 
 
 def _metrics(actions, effects, identities, targets, urls, scrolls, est_task_time=None):
@@ -120,11 +141,16 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
                 if hasattr(action, "target") and recorded.snapshot is None:
                     raise ValueError("Recorded target has no snapshot")
                 elements = await observe(page)
+                url = page.url
+                state = state_hash(url, elements)
                 identity = None
                 if hasattr(action, "target"):
                     found = match(recorded.snapshot, elements)
                     if found.status != "matched":
                         full, diverged_at, detail = False, recorded.idx, "target_" + found.status
+                        break
+                    if not target_state_matches(recorded, url, elements, found.element, state):
+                        full, diverged_at, detail = False, recorded.idx, "target_identity_unverified"
                         break
                     target = found.element["el_id"]
                     action = action.model_copy(update={"target": target})
@@ -134,8 +160,6 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
             except (PlaywrightError, EffectObservationError, LoginWall, SafetyStop, ValidationError, ValueError) as error:
                 full, diverged_at, detail = False, recorded.idx, type(error).__name__
                 break
-            url = page.url
-            state = state_hash(url, elements)
             try:
                 axe = None
                 if hasattr(action, "target"):

@@ -152,6 +152,40 @@ class ReplayIntegration(unittest.IsolatedAsyncioTestCase):
                              ("partial", 0, "target_ambiguous"))
             self.assertEqual(session.scalar(select(func.count(Step.id)).where(Step.attempt_id == attempt.id)), 0)
 
+    async def test_renamed_duplicate_does_not_redirect_replay_to_remaining_name(self):
+        def catalog(first_name):
+            return (
+                '<!doctype html><main>'
+                f'<button onclick="result.textContent=\'Complete: intended product\'">{first_name}</button>'
+                '<button onclick="result.textContent=\'Complete: other product\'">Next</button>'
+                '<p id="result"></p></main>'
+            )
+
+        self.page_path.write_text(catalog("Next"), encoding="utf-8")
+        base_id = await self.make_base()
+        self.page_path.write_text(catalog("Continue"), encoding="utf-8")
+        run_id = self.create_run("replay_only", base_run_id=base_id)
+
+        await execute_run(run_id, self.factory, browser=self.browser)
+
+        with self.factory() as session:
+            attempt = session.scalar(select(Attempt).where(Attempt.run_id == run_id))
+            self.assertEqual((attempt.replay_status, attempt.diverged_at_step, attempt.end_detail),
+                             ("partial", 0, "target_identity_unverified"))
+            self.assertFalse(attempt.success)
+            self.assertEqual(session.scalar(select(func.count(Step.id)).where(Step.attempt_id == attempt.id)), 0)
+
+    async def test_single_target_rename_replays_when_other_observed_names_match(self):
+        base_id = await self.make_base()
+        self.page_path.write_text(self.base_html.replace(">Next<", ">Next step<"), encoding="utf-8")
+        run_id = self.create_run("replay_only", base_run_id=base_id)
+
+        await execute_run(run_id, self.factory, browser=self.browser)
+
+        with self.factory() as session:
+            attempt = session.scalar(select(Attempt).where(Attempt.run_id == run_id))
+            self.assertEqual((attempt.replay_status, attempt.success), ("full", True))
+
     async def test_effect_change_keeps_executed_divergent_step(self):
         base_id = await self.make_base()
         self.page_path.write_text('<!doctype html><title>Replay</title><main>'
