@@ -85,15 +85,21 @@ def issue_changes(base: list[dict], target: list[dict]) -> tuple[list, list, lis
             [new[j] for j in matches.values()])
 
 
+def relative_spread(values: list[float]) -> float | None:
+    center = median(values) if len(values) >= 2 else 0
+    return (max(values) - min(values)) / center if center else None
+
+
 def metric_changes(base: dict[str, list[float]], target: dict[str, list[float]], *,
-                   replay: bool = False, comparable: bool = True) -> list[dict]:
+                   replay: bool = False, comparable: bool = True,
+                   history: dict[str, list[float]] | None = None) -> list[dict]:
     rows = []
     for key in sorted(base.keys() | target.keys()):
         a, b = base.get(key, []), target.get(key, [])
         before, after = (float(median(a)) if a else None), (float(median(b)) if b else None)
         delta = after - before if before is not None and after is not None else None
         rate = delta / before if delta is not None and before else None
-        spread = (max(a) - min(a)) / before if len(a) >= 2 and before else None
+        spread = relative_spread(a + (history or {}).get(key, []))
         threshold = None
         verdict = 'not_comparable'
         if key in ('click_count', 'travel_distance', 'est_task_time') and comparable and delta is not None:

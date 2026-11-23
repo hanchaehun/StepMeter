@@ -16,7 +16,8 @@ async def describe(elements, driver):
     def priority(row):
         b = row['bbox']
         distance = (b['x']+b['width']/2-viewport['width']/2)**2 + (b['y']+b['height']/2-viewport['height']/2)**2
-        return (row.get('landmark') != 'main', distance, -b['width']*b['height'], row['el_id'])
+        return (bool(row.get('occluded')), row.get('landmark') != 'main', distance,
+                -b['width']*b['height'], row['el_id'])
     rows = []
     for row in (sorted(elements, key=priority) if len(elements)>30 else elements)[:30]:
         item = dict(row)
