@@ -5,7 +5,8 @@
 - **범위:** 기획서 6.1의 리포트 화면 두 개, "리포트 요약"과 "단계 상세". 측정 생성(F01), 진행(F02), 비교(F07), 측정 이력(F11)은 대시보드 UI 담당의 별도 문서.
 - **근거:** 서비스 기획서 **5장 F03·F04·F05·F06·F09·F10 행**, **6.1 화면 목록 "리포트 요약"·"단계 상세" 행**, **6.2 리포트 작성 원칙**, **7장 측정 지표 표** / 개발계획서 **6장(규칙 R01–R11, 6.1 설명 생성, 6.2 이슈 점수)**, **11장·13.1(API, 동결 스키마)**, **15.4(자체 UX)**.
 - **데이터 기준:** `apps/api/openapi.yaml`의 `Report`·`Step` 스키마와 `tests/fixtures/mock/api/report.json`·`steps.json`. 둘 다 10/30 동결(계획 10/27). 이 문서는 스키마를 바꾸지 않는다.
-- **아직 정해지지 않은 것:** 모바일 엄지 도달 구역의 데이터 출처(F08). 아래 "리뷰어에게 묻는 것". 스크린샷 URL 만료, R05 구간 표시, 공용 컴포넌트는 구현하면서 해당 역할과 맞춘다("플랫폼 백엔드에 요청할 것", "결정이 필요한 사항").
+- **아직 정해지지 않은 것:** 모바일 엄지 도달 구역의 데이터 출처(F08). 아래 "리뷰어에게 묻는 것". 공용 컴포넌트는 대시보드 UI와 맞춘다("결정이 필요한 사항"). 스크린샷 URL 만료(아래 "극단값")와 R05 판별([ADR 0010](../adr/0010-w3-integration-decisions.md) 3번)은 정했다.
+- **마지막 갱신:** 2026-11-23. #68(제목·R05·예상 시간 문구)과 26aa4d5(#75 UX 감사: 문제 묶기·참고 접기, 숫자 표기, 명도 대비, 긴 제목)를 반영했다.
 
 ---
 
@@ -67,22 +68,36 @@
 
 ## 데이터 출처
 
-Report API(`GET /runs/{id}/report`) 한 번과 steps API(`GET /runs/{id}/attempts/{n}/steps`, 대표 attempt) 한 번으로 그린다. 과업 문장은 `GET /tasks/{id}`(Run의 `task_id`)로 따로 받는다.
+`GET /runs/{id}`로 상태를 먼저 보고, completed면 Report API(`GET /runs/{id}/report`)를 받은 뒤 셋을 동시에 받는다: steps API(`GET /runs/{id}/attempts/{n}/steps`, 대표 attempt), 과업 `GET /tasks/{id}`(Run의 `task_id`), 프로젝트 목록 `GET /projects`(과업의 `project_id`로 사이트 주소를 찾는다. `GET /projects/{id}`는 없다, [ADR 0011](../adr/0011-w3-plan-gaps.md) 7번). 과업·프로젝트는 못 읽어도(404·네트워크·다른 초대 코드의 프로젝트) 리포트는 열고 제목을 "과업 #번호"로 쓴다. steps를 못 읽으면 오류 화면이다.
 
 | 영역 | 필드 | 표기 규칙 |
 |---|---|---|
-| 제목 | task.task, task.url, run.viewport, run.created_at, attempts.length, run.started_at→finished_at | 모바일이면 "Mobile 390×844" |
-| Compare 링크 | run.base_run_id | null이면 링크 없음. 있으면 `/compare?base=41&target=42` |
+| 제목 | task.description, project.base_url(호스트만), run.viewport, run.created_at, attempts.length, run.started_at→finished_at | 과업을 못 읽으면 "과업 #{run.task_id}", 프로젝트를 못 읽으면 호스트 없이. 모바일이면 "Mobile 390×844". URL 같은 긴 토큰은 아무 곳에서나 줄을 바꾼다(`overflow-wrap:anywhere`, WCAG 1.4.10) |
+| Compare 링크 | run.base_run_id | null이면 링크 없음. 있으면 "Compare with #41". 비교 화면(F07)으로 연결은 대시보드 UI가 [#82](https://github.com/hanchaehun/StepMeter/issues/82)에서 한다 |
 | 재생 전용 표시 | run.mode | `replay_only`면 메타 줄에 "재생 전용 · LLM 비용 없음" |
 | Verdict 큰 글자 | attempts[].success 개수 / run.repeat_n | 하나라도 success_estimated면 "(추정)" |
-| Verdict 보조 | metrics.est_task_time, issues(is_reference=false).length, issues(is_reference=true).length, 통과 규칙 수 | 모바일이면 예상 시간 대신 "예상 시간은 데스크톱에서만" |
-| Path metrics | metrics[] key=click_count, travel_distance, fitts_id_sum, est_task_time | 값 + 단위. Overview 타일 값은 px는 정수 반올림(Math.round, 812.5→813), 나머지는 소수 1자리. More metrics는 원값. 꼬리표: spread → "편차 ±N%", model_version_id null → "보정 전", 있음 → "사람 실험 보정" |
-| Issues 행 | issue.rule_id, severity, element_key(이름 부분), measured, threshold, step, score_reason, is_reference | 제목은 규칙별 템플릿(아래). 썸네일은 step의 스크린샷을 element_snapshot.bbox 중심으로 잘라냄. step null이면 요소가 없을 때 "구간", 있으면 "경로 밖" |
+| Verdict 보조 | metrics.est_task_time, issues(is_reference=false).length, issues(is_reference=true).length, 통과 규칙 수 | "예상 소요 시간 7.9초 (문헌값 기준 추정 · 시스템 응답 시간 제외)". 보정 모델이 있으면 "사람 실험 보정 · 시스템 응답 시간 제외" ([ADR 0011](../adr/0011-w3-plan-gaps.md) 3번). 모바일이면 예상 시간 대신 "예상 시간은 데스크톱에서만" |
+| Path metrics | metrics[] key=click_count, travel_distance, fitts_id_sum, est_task_time | 값 + 단위. px는 정수 반올림(Math.round, 812.5→813), 나머지는 소수 1자리. More metrics도 같은 자릿수(아래 "숫자 표기"). 꼬리표: spread → "편차 ±N%", model_version_id null → "문헌값 기준 추정", 있음 → "사람 실험 보정" |
+| Issues 행 | issue.rule_id, severity, element_key(이름 부분), measured, threshold, step, score_reason, is_reference | 제목은 규칙별 템플릿(아래). 썸네일은 step의 스크린샷을 element_snapshot.bbox 중심으로 잘라냄. step null이면 R05(`rule_id === "R05"`)는 "구간", 그 밖은 "경로 밖"(element_key로 가르지 않는다, [ADR 0010](../adr/0010-w3-integration-decisions.md) 3번). 참고 행은 심각도 대신 "참고" |
+| 문제 묶기 | rule_id + element_key | 같은 (규칙, 요소)는 한 줄 + "×n" 버튼, 펼치면 원래 행. element_key가 null이면(R05 등) 묶지 않는다. 표시만 묶고 API·채점은 그대로 (#75 UX 감사 F-02, ADR 0011 2번의 검출 단위) |
+| 참고 구역 | issues(is_reference=true) | 기본 목록과 나눠 "▸ 참고 n건 보기 · 과업 경로 밖이거나 점수가 낮은 항목"으로 접어 둔다. 펼치면 같은 방식으로 묶은 행 (F-02) |
 | Attempts | attempts[].index, kind, replay_status, diverged_at_step, end_reason, end_detail, success, steps_count; run.representative_attempt_index | 대표에 "대표". replay면 "재생". partial이면 ◆ + "Step N에서 끊김" + end_detail |
 | 가장 어려운·오래 걸린 단계 | top_fitts_steps[0], slowest_steps[0] | More metrics에는 최대 3개 전부 |
 | Passed rules | R01~R11 − issues에 나온 rule_id | 모바일 아니면 R11 "모바일만 해당" |
 | More metrics | metrics[] 원값·spread·spread_quality; attempts 요약; run.cost_usd, model, prompt_version, started_at, finished_at | spread_quality: ok 없음 / weak "추정 약함" / pooled "이력 기준" |
 | 단계 상세 | step.idx, action(action, thought, expectation, confusion), url, screenshot_url, effect_type, fitts_id, est_seconds, element_snapshot(bbox, occluded, occluder.bbox, nearby_targets) | 아래 "오버레이" |
+| 링크 | run.id | 측정 진행 `/runs/{id}/progress`(F02), 측정 이력 `/history`(F11), 다시 측정 `/new`(F01) |
+
+### 숫자 표기 (#75 UX 감사 F-03)
+
+계산 값은 바꾸지 않고 보이는 글자만 다듬는다(`apps/web/src/lib/format.ts`).
+
+| 무엇 | 표기 | 예 |
+|---|---|---|
+| 문제 측정값(R01·R02·R06·R07) | 소수 최대 2자리, 끝의 0은 뺀다 | 4.451695969857692bit → 4.45bit |
+| 단계 난이도·예상 시간, 가장 어려운·오래 걸린 단계 | 소수 최대 1자리 | 1.24bit → 1.2bit |
+| More metrics 값 | px는 정수, 나머지는 소수 1자리 | 812.5 px → 813 px |
+| LLM 비용 | `$` + 소수 4자리 | 0.015764550000000002 → $0.0158 |
 
 ### 문제 제목 템플릿 (규칙별)
 
@@ -112,9 +127,10 @@ Report API(`GET /runs/{id}/report`) 한 번과 steps API(`GET /runs/{id}/attempt
 | 클릭 지점 | bbox 중심 | 지름 28px 빨간 원 |
 | 가린 요소 | element_snapshot.occluder.bbox (occluded=true) | 빨간 빗금 + 점선, "가린 요소: {tag} ({name 또는 이름 없음})" |
 | 근처 요소 | element_snapshot.nearby_targets[].bbox | 회색 점선 + 아래에 "근처: {name}" |
-| 문제 요소 (경로 밖) | issue.element_key로 같은 단계 스냅샷에서 찾은 bbox | 누른 요소와 같은 스타일. 못 찾으면 오버레이 없이 글로만 |
 
-스크린샷은 viewport 비율(1280:800 또는 390:844)을 유지해 영역 안에 맞춘다. 오버레이 좌표는 bbox를 같은 비율로 축소. 스크린샷이 아직 안 왔으면 같은 비율의 회색 상자 + "불러오는 중".
+경로 밖 문제(step null, R05 아님)는 단계 화면이 없어 오버레이 대신 "경로 밖 요소라 단계 화면이 없습니다" 문장을 보인다(아래 "단계 상세 화면 동작").
+
+스크린샷과 element_snapshot은 같은 순간(행동 직전, 대상을 화면 안으로 스크롤한 뒤) 찍는다(`worker/driver/playwright_driver.py` `perform`). bbox는 `getBoundingClientRect()`라 뷰포트 기준이고 스크린샷도 뷰포트만 찍으므로 스크롤 보정 없이 맞는다. 스크린샷은 viewport 비율(1280:800 또는 390:844)을 유지해 영역 안에 맞춘다. 오버레이 좌표는 bbox를 뷰포트 대비 백분율로 두어 그리는 크기·기기 픽셀 비율과 관계없이 맞는다. 스크린샷이 아직 안 왔으면 같은 비율의 회색 상자 + "불러오는 중"(화면용 글자라 보조 기술에서는 숨긴다).
 
 ## 상태 전환
 
@@ -147,11 +163,12 @@ Report API(`GET /runs/{id}/report`) 한 번과 steps API(`GET /runs/{id}/attempt
 
 | 경우 | 처리 |
 |---|---|
-| 문제 20건 이상 | 요약 화면에 전부 보여주되 같은 규칙은 묶고 건수를 붙인다 (W2) |
-| 참고 4건 이상 | 요약 화면 맨 아래에 옅게 전부 |
-| 30단계 | 타임라인 버튼이 줄바꿈. 현재 단계로 자동 스크롤 |
+| 문제 20건 이상 | 건수와 관계없이 같은 (규칙, 요소)는 한 줄 + "×n"으로 묶는다 (위 "문제 묶기") |
+| 참고 여러 건 | 건수와 관계없이 "참고 n건 보기"로 접어 둔다 (위 "참고 구역") |
+| 30단계 | 타임라인 버튼이 줄바꿈해 전부 보이므로 자동 스크롤은 하지 않는다 |
 | 반복 5회 | Attempts 5행. 첫 화면 영역이 창보다 길어지면 그냥 스크롤 |
-| 스크린샷 URL 만료 | 회색 상자 + "다시 불러오기" 버튼. 호출 범위는 백엔드와 협의. 단계를 옮기면 다시 시도한다 |
+| 스크린샷 URL 만료 | 서명 URL은 900초 뒤 만료된다(`worker/queue/runs.py` `SIGNED_URL_SECONDS`, 이슈 #51). 단계 상세 스크린샷이 깨지면 회색 상자 + "스크린샷을 불러오지 못했습니다" + "다시 불러오기" 버튼. 누르면 대표 attempt의 steps만 다시 받아 새 주소로 바꾼다(리포트 전체를 다시 받지 않아 보던 단계에 머문다). 단계를 옮기면 다시 시도한다. 문제 행 썸네일은 행 전체가 버튼이라 버튼 없이 회색 상자만 |
+| 긴 과업 문장·주소 | 제목·메타 줄에서 아무 곳에서나 줄바꿈 (F-06) |
 
 ## 단계 상세 화면 동작
 
@@ -169,7 +186,7 @@ Report API(`GET /runs/{id}/report`) 한 번과 steps API(`GET /runs/{id}/attempt
 | 종합 점수 게이지 없음 | 기획서 7장에 종합 점수가 없다. Lighthouse식 게이지는 없는 점수를 만든 것처럼 보여 뺐다 |
 | 섹션 이름 영어 (Verdict, Path metrics, Issues, Attempts, Passed rules, More metrics) | 기획서는 한국어. 화면 이름(리포트 요약·단계 상세)은 기획서 그대로 한국어, 섹션 라벨만 짧은 영어. 대시보드 UI와 통일 |
 | 이슈 점수(confidence) 숫자를 숨기고 score_reason 한 줄만 | 기획서 6.2 "점수에 가장 크게 기여한 항목을 이슈마다 한 줄로". 숫자 자체는 사용자에게 의미가 없다 |
-| 참고·통과 규칙을 접지 않고 스크롤 아래에 옅게 | F01 명세의 "숫자가 말없이 사라지면 고장으로 본다"와 같은 원칙. 접으면 통과 사실을 못 본다 |
+| 통과 규칙은 접지 않고 스크롤 아래에. 참고는 접되 건수를 보인다 | F01 명세의 "숫자가 말없이 사라지면 고장으로 본다"와 같은 원칙. 참고는 #75 UX 감사 F-02로 접었지만 "참고 n건 보기"로 건수가 남아 사라지지 않는다 |
 | 첫 화면 영역을 창 높이에 맞춤 | 기획서 근거 없음. 첫 화면에 Verdict·지표·Issues·Attempts가 잘리지 않고 들어오게 하려는 설계 |
 | 문제 제목 템플릿 | 기획서 6.1은 LLM 설명 두 문장만 정의. 목록 제목은 길이를 맞추려고 규칙별 템플릿 |
 | 전부 실패 상태의 "다시 측정" 버튼 | 기획서 11장 리스크 대응 "실패 원인 분류 후 리포트에 표시"에서 끌어옴 |
@@ -194,9 +211,9 @@ Report API(`GET /runs/{id}/report`) 한 번과 steps API(`GET /runs/{id}/attempt
 
 | 필요한 것 | 왜 |
 |---|---|
-| 스크린샷 URL 만료 시 단계 단위 재발급 | 단계 상세에서 단계를 넘기다 만료될 때 attempt 전체를 다시 받지 않으려면 필요 |
+| ~~스크린샷 URL 만료 시 단계 단위 재발급~~ | 요청하지 않음. 대표 attempt의 steps를 다시 받는 것으로 충분하다(단계 최대 30개, 화면은 그대로) |
 | 실패한 attempt의 steps도 조회 가능한지 | 전부 실패 상태에서 "Attempt 1 단계 보기"를 열 수 있으면 실패 원인을 보여줄 수 있다 |
-| Report에 task(과업 문장, URL) 포함 또는 `/tasks/{id}` 조회 | 지금은 호출 2번. 리포트 하나에 세 번 호출하면 로딩 상태가 셋이 된다 |
+| ~~Report에 task 포함 또는 `/tasks/{id}` 조회~~ | 끝남. `GET /tasks/{id}`(#49)와 `GET /projects`로 받는다(#68). 보조 정보라 실패해도 리포트는 연다 |
 
 확정 전까지는 목 JSON으로 개발한다. 타입은 `openapi-typescript`로 생성하고 손으로 만들지 않는다.
 
@@ -204,12 +221,12 @@ Report API(`GET /runs/{id}/report`) 한 번과 steps API(`GET /runs/{id}/attempt
 
 | 기준 | 적용 |
 |---|---|
-| 텍스트 대비 4.5:1 이상 | 본문 `#0a0a0a` 19.80:1, 보조 `#525252` 7.81:1, 라벨·꼬리말 `#737373` 4.74:1, 오류 `#b91c1c` 6.47:1, 통과 `#166534` 7.06:1 |
+| 텍스트 대비 4.5:1 이상 | 본문 `#0a0a0a` 19.80:1, 보조 `#525252` 7.81:1, 라벨·꼬리말 `#737373` 4.74:1, 오류 `#b91c1c` 6.47:1, 통과 `#166534` 7.06:1 (모두 흰 바탕). 회색 면(`--surface`, 스크린샷 자리표시) 위에서는 `#737373`이 4.34:1로 미달이라 `#525252`를 쓴다 (#75 UX 감사 F-04, WCAG 1.4.3) |
 | 그래픽 요소 3:1 이상 | 단계 버튼·아이콘 버튼 경계 `#737373` 또는 `#171717`. hairline `#e5e5e5`·`#d4d4d4`는 장식 전용 |
 | 타겟 24×24 이상 (권장 44×44) | 화면 전환 링크(22px 글자, 44px 높이), 아이콘 버튼, 단계 버튼 44px. Issues 행 높이 70px 이상. Attempts 점 36px 버튼 + 간격 14px (WCAG 2.5.8 간격 예외 충족). 자기 측정에서 걸리면 44px로 키운다 |
 | 이름 없는 요소 0건 | ◀ ▶ ✕ 와 점 버튼에 aria-label. 오버레이는 aria-hidden, 같은 정보를 오른쪽 글로 |
 | 색만으로 의미 전달 금지 | 심각도 ▲■● + 영어 글자, 문제 단계 빨간 점 + "⚠ 문제 1" + 범례, 재생 끊김 ◆ + 문장 |
-| 숫자 옆 기준 | "2.9 : 1 · 기준 4.5 : 1 (WCAG AA)", "30px · 권장 44px (최소 24px)", "7.9초 (문헌값 기준)", "편차 ±12% · 추정 약함" |
+| 숫자 옆 기준 | "2.9 : 1 · 기준 4.5 : 1 (WCAG AA)", "30px · 권장 44px (최소 24px)", "7.9초 (문헌값 기준 추정 · 시스템 응답 시간 제외)", "편차 ±12% · 추정 약함" |
 
 ### 색 토큰 (F01 명세 값을 그대로 채택 — F01 질문 5번의 답)
 
@@ -238,7 +255,7 @@ Tailwind `theme.extend.colors`와 shadcn/ui CSS 변수(`--foreground`, `--muted-
 | 첫 화면 구성 | Verdict + Path metrics 4개 + Issues·Attempts 2열, 창 높이에 맞춤 | "한 페이지에 보이는 정보 = 중요한 지표, 나머지는 스크롤" |
 | 문제 → 단계 연결 | 문제 행에 단계 번호, 단계 점에 빨간 테두리, 단계 상세에서 양방향 | 문제 10종이 단계·요소에 붙어 있다 |
 | 단계 상세 구성 | 기획서 6.1 그대로 별도 화면. 타임라인 위, 스크린샷 왼쪽·글 오른쪽 | 문제 10종이 단계·요소에 붙어 있어 문제 페이저를 같은 화면에 둔다. 해시 URL로 공유 가능 |
-| 접기 | 쓰지 않음 | 위 표 |
+| 접기 | 참고 구역과 같은 문제 묶음(×n)만 접는다. 통과 규칙·More metrics는 접지 않는다 | 위 표. #75 UX 감사 F-02 |
 | 썸네일 | 72×48, bbox 중심 잘라냄 | Lighthouse 요소 셀 방식 |
 
 ## 결정이 필요한 사항

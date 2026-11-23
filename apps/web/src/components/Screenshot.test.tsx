@@ -84,11 +84,42 @@ test('contain 모드는 컨테이너를 재서 px 크기를 준다 (0×0이 되�
   vi.unstubAllGlobals();
 });
 
-test('이미지가 깨지면 자리표시, src가 바뀌면 다시 이미지를 시도한다', () => {
+// 명세 "극단값": 스크린샷 URL 만료 → 회색 상자 + "다시 불러오기" 버튼. 단계를 옮기면(src가 바뀌면) 다시 시도한다
+test('이미지가 깨지면 회색 상자와 "다시 불러오기", src가 바뀌면 다시 이미지를 시도한다', () => {
   const { rerender } = render(<Screenshot src="a.jpg" viewport={{ width: 1280, height: 800 }} overlays={[]} />);
   fireEvent.error(screen.getByRole('presentation', { hidden: true }));
-  expect(screen.getByText('스크린샷 없음')).toBeInTheDocument();
+  expect(screen.getByText('스크린샷을 불러오지 못했습니다')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '다시 불러오기' })).toBeInTheDocument();
   rerender(<Screenshot src="b.jpg" viewport={{ width: 1280, height: 800 }} overlays={[]} />);
-  expect(screen.queryByText('스크린샷 없음')).toBeNull();
+  expect(screen.queryByText('스크린샷을 불러오지 못했습니다')).toBeNull();
   expect(screen.getByRole('presentation', { hidden: true })).toHaveAttribute('src', 'b.jpg');
+});
+
+test('"다시 불러오기"를 누르면 onRetry를 부르고 같은 주소로도 이미지를 다시 시도한다', async () => {
+  const onRetry = vi.fn();
+  render(<Screenshot src="a.jpg" viewport={{ width: 1280, height: 800 }} overlays={[]} onRetry={onRetry} />);
+  fireEvent.error(screen.getByRole('presentation', { hidden: true }));
+  fireEvent.click(screen.getByRole('button', { name: '다시 불러오기' }));
+  expect(onRetry).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('presentation', { hidden: true })).toHaveAttribute('src', 'a.jpg');
+  expect(screen.queryByRole('button', { name: '다시 불러오기' })).toBeNull();
+});
+
+test('retryable=false(문제 행 썸네일)면 깨져도 버튼을 두지 않는다 — 행 버튼 안에 버튼이 생기지 않게', () => {
+  render(<Screenshot src="a.jpg" viewport={{ width: 1280, height: 800 }} overlays={[]} retryable={false} />);
+  fireEvent.error(screen.getByRole('presentation', { hidden: true }));
+  expect(screen.queryByRole('button')).toBeNull();
+});
+
+test('src가 없으면(스크린샷이 원래 없음) 다시 불러오기 버튼을 두지 않는다', () => {
+  render(<Screenshot src={null} viewport={{ width: 1280, height: 800 }} overlays={[]} />);
+  expect(screen.queryByRole('button', { name: '다시 불러오기' })).toBeNull();
+});
+
+// 명세 "오버레이" 아래: 스크린샷이 아직 안 왔으면 같은 비율의 회색 상자 + "불러오는 중"
+test('이미지를 받는 동안 "불러오는 중", 다 받으면 문구를 숨긴다', () => {
+  render(<Screenshot src="a.jpg" viewport={{ width: 1280, height: 800 }} overlays={[]} />);
+  expect(screen.getByText('불러오는 중')).toBeInTheDocument();
+  fireEvent.load(screen.getByRole('presentation', { hidden: true }));
+  expect(screen.queryByText('불러오는 중')).toBeNull();
 });

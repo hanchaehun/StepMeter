@@ -21,6 +21,10 @@ interface Props {
   /** width: 너비에 맞춤(높이는 비율로). contain: 부모 상자 안에 비율 유지로 맞춤(부모를 ResizeObserver로 잰다). */
   fit?: 'width' | 'contain';
   className?: string;
+  /** 이미지가 깨졌을 때 "다시 불러오기"에서 부른다(서명 URL 재발급용). 없어도 같은 주소로 다시 시도한다 */
+  onRetry?: () => void;
+  /** false면 깨져도 버튼을 두지 않는다. 문제 행 썸네일처럼 버튼 안에 들어갈 때 (버튼 안 버튼 방지) */
+  retryable?: boolean;
 }
 
 const pct = (v: number, base: number) => `${(v / base) * 100}%`;
@@ -36,10 +40,22 @@ export function fitContain(cw: number, ch: number, vw: number, vh: number): { wi
  * 단계 스크린샷 + 오버레이. 오버레이는 bbox를 뷰포트 대비 백분율로 배치해 어떤 크기로 그려도 맞는다
  * (명세 "오버레이" 표). src가 없거나 깨지면 같은 비율의 회색 자리표시.
  */
-export function Screenshot({ src, viewport, overlays, fit = 'width', className }: Props) {
+export function Screenshot({ src, viewport, overlays, fit = 'width', className, onRetry, retryable = true }: Props) {
   const [broken, setBroken] = useState(false);
-  useEffect(() => setBroken(false), [src]); // 다른 단계로 넘어가면 다시 시도한다
+  const [loaded, setLoaded] = useState(false);
+  const [attempt, setAttempt] = useState(0); // 같은 주소로 다시 시도할 때 img를 새로 만든다
+  useEffect(() => {
+    // 다른 단계로 넘어가면 다시 시도한다
+    setBroken(false);
+    setLoaded(false);
+  }, [src]);
   const showImage = src !== null && !broken;
+  const retry = () => {
+    setBroken(false);
+    setLoaded(false);
+    setAttempt((a) => a + 1);
+    onRetry?.();
+  };
   const ratio = viewport.height / viewport.width;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,9 +74,32 @@ export function Screenshot({ src, viewport, overlays, fit = 'width', className }
   const inner = (
     <>
       {showImage ? (
-        <img src={src} alt="" className="absolute inset-0 h-full w-full object-contain" onError={() => setBroken(true)} />
+        <>
+          {/* 화면용 자리표시라 보조 기술에서는 숨긴다(문제 행 버튼의 접근 이름에 섞이지 않게) */}
+          {!loaded && <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-sm text-muted">불러오는 중</div>}
+          <img
+            key={attempt}
+            src={src}
+            alt=""
+            className="absolute inset-0 h-full w-full object-contain"
+            onLoad={() => setLoaded(true)}
+            onError={() => setBroken(true)}
+          />
+        </>
+      ) : src !== null && retryable ? (
+        // 서명 URL은 900초 뒤 만료된다(이슈 #51). 명세 "극단값": 회색 상자 + "다시 불러오기"
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-sm text-muted">
+          <span>스크린샷을 불러오지 못했습니다</span>
+          <button
+            type="button"
+            onClick={retry}
+            className="inline-flex min-h-[44px] items-center rounded-md border border-control bg-bg px-4 font-semibold text-fg hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            다시 불러오기
+          </button>
+        </div>
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-faint">스크린샷 없음</div>
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-muted">스크린샷 없음</div>
       )}
       <div data-testid="overlays" aria-hidden="true" className="absolute inset-0">
         {overlays.map((o, i) => (

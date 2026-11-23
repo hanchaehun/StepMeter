@@ -16,13 +16,15 @@ interface Props {
   steps: Step[];
   state: DetailState;
   onChange: (next: DetailState) => void;
+  /** 스크린샷이 깨졌을 때 "다시 불러오기"에서 부른다(실제 모드: steps를 다시 받아 서명 URL 재발급) */
+  onRetryScreenshot?: () => void;
 }
 
 /**
  * 단계 상세 화면 본문 (기획서 6.1 "단계 상세": 타임라인, 단계별 스크린샷 + 클릭 위치·이동 경로 오버레이, 단계별 예상 시간, 판단 이유).
  * 문제가 선택돼 있으면 그 문제의 What / How to fix를 같이 보여준다. 이전/다음은 issues[] 순서(참고 포함).
  */
-export function StepDetail({ report, steps, state, onChange }: Props) {
+export function StepDetail({ report, steps, state, onChange, onRetryScreenshot }: Props) {
   const issue = state.issueId !== null ? report.issues.find((i) => i.id === state.issueId) ?? null : null;
   const stepIdx = state.stepIdx ?? issue?.step?.idx ?? null;
   const step = stepIdx !== null ? steps.find((s) => s.idx === stepIdx) ?? null : null;
@@ -98,7 +100,7 @@ export function StepDetail({ report, steps, state, onChange }: Props) {
               경로 밖 요소라 단계 화면이 없습니다. 과업 경로 위에서 누른 요소가 아니라 스크린샷에 표시할 단계가 없습니다.
             </div>
           ) : step ? (
-            <Screenshot src={step.screenshot_url} viewport={step.element_snapshot?.viewport ?? vp} overlays={stepOverlays(step)} fit="contain" className="outline outline-1 outline-border" />
+            <Screenshot src={step.screenshot_url} viewport={step.element_snapshot?.viewport ?? vp} overlays={stepOverlays(step)} fit="contain" className="outline outline-1 outline-border" onRetry={onRetryScreenshot} />
           ) : null}
         </div>
 

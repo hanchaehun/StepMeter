@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { loadMockReport } from '@/api/mock';
 import { clearAccessCode, getAccessCode, setAccessCode } from '@/api/client';
@@ -68,6 +68,31 @@ test('실제 모드: 과업 조회가 되면 제목은 과업 문장, 부제에 
   // task.json "러닝화 A를 장바구니에 담는다", project.json base_url https://shop.example → 호스트 shop.example
   await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('러닝화 A를 장바구니에 담는다'));
   expect(screen.getByText(/shop\.example/)).toBeInTheDocument();
+});
+
+// 스크린샷 서명 URL은 900초 뒤 만료된다(worker/queue/runs.py SIGNED_URL_SECONDS, 이슈 #51).
+// 단계 상세에서 이미지가 깨지면 "다시 불러오기"로 대표 attempt의 steps만 다시 받아 새 주소로 그린다 (명세 "극단값")
+test('실제 모드: 단계 스크린샷이 깨지면 "다시 불러오기"로 steps를 다시 받아 새 주소를 쓴다', async () => {
+  setAccessCode('code-1');
+  window.history.replaceState(null, '', '/runs/42#step-1');
+  const fresh = mock.steps.map((s) => ({ ...s, screenshot_url: `${s.screenshot_url}&fresh=1` }));
+  let stepCalls = 0;
+  const routes: Record<string, () => Response> = {
+    [`${BASE}/runs/42`]: () => progress(),
+    [`${BASE}/runs/42/report`]: () => json(200, mock.report),
+    [`${BASE}/runs/42/attempts/2/steps`]: () => json(200, stepCalls++ === 0 ? mock.steps : fresh),
+  };
+  const impl = vi.fn(async (input: RequestInfo | URL) => (routes[String(input)] ?? (() => json(404, { detail: 'x' })))());
+  render(<ReportRoute location={at('/runs/42')} baseUrl={BASE} fetchImpl={impl} />);
+  const shot = await waitFor(() => screen.getByTestId('shot-frame').querySelector('img')!);
+  expect(shot).toHaveAttribute('src', mock.steps[1].screenshot_url);
+  fireEvent.error(shot);
+  await userEvent.click(screen.getByRole('button', { name: '다시 불러오기' }));
+  await waitFor(() => expect(screen.getByTestId('shot-frame').querySelector('img')).toHaveAttribute('src', fresh[1].screenshot_url));
+  expect(stepCalls).toBe(2);
+  // 리포트 전체를 다시 받지 않는다(화면이 "불러오는 중"으로 돌아가지 않고 같은 단계에 머문다)
+  expect(impl.mock.calls.filter(([u]) => String(u) === `${BASE}/runs/42/report`)).toHaveLength(1);
+  expect(window.location.hash).toBe('#step-1');
 });
 
 test('주소에 run id가 없으면 안내', () => {
