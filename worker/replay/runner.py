@@ -20,6 +20,7 @@ from worker.driver.playwright_driver import ActionResult, PlaywrightDriver
 from worker.matching.match import fingerprint, match
 from worker.metrics.cursor_distance import calculate_cursor_distance
 from worker.metrics.fitts import calculate_fitts_ids
+from worker.metrics.klm import MOTOR_ACTIONS, estimate_step
 from worker.metrics.interactions import (calculate_scroll_distance, count_interactions,
     count_no_response_clicks, count_page_transitions, count_repeated_clicks)
 from worker.metrics.persistence import save_attempt_metrics
@@ -50,7 +51,7 @@ def load_path(session, base_attempt_id: int) -> list[RecordedStep]:
     return path
 
 
-def _metrics(actions, effects, identities, targets, urls, scrolls):
+def _metrics(actions, effects, identities, targets, urls, scrolls, est_task_time=None):
     values = count_interactions(actions)
     values.update(no_response_click_count=count_no_response_clicks(actions, effects),
                   repeated_click_count=count_repeated_clicks(actions, identities),
@@ -60,11 +61,13 @@ def _metrics(actions, effects, identities, targets, urls, scrolls):
     fitts_values = calculate_fitts_ids(targets)
     if all(value is not None for value in fitts_values):
         values["fitts_id_sum"] = sum(fitts_values)
+    if est_task_time is not None:
+        values["est_task_time"] = est_task_time  # replayed steps' KLM sum; desktop only (ADR 0011 3)
     return values
 
 
 def _finish(factory, run_id, attempt_id, *, full, diverged_at, detail, success, estimated,
-            actions, effects, identities, targets, target_step_ids, urls, scrolls):
+            actions, effects, identities, targets, target_step_ids, urls, scrolls, est_task_time=None):
     with factory.begin() as session:
         persistence.running(session, run_id)
         attempt = session.get(Attempt, attempt_id)
@@ -77,7 +80,7 @@ def _finish(factory, run_id, attempt_id, *, full, diverged_at, detail, success, 
         attempt.success = bool(full and success)
         attempt.success_estimated = bool(full and estimated)
         save_attempt_metrics(session, attempt_id, _metrics(
-            actions, effects, identities, targets, urls, scrolls))
+            actions, effects, identities, targets, urls, scrolls, est_task_time))
         candidates = [replace(candidate, step_id=step_id, element_key=element_key(snapshot))
                       for snapshot, step_id, candidate in zip(
                           targets, target_step_ids,
@@ -99,6 +102,7 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
     actions, effects, identities, targets = [], [], [], []
     target_step_ids = []
     urls, scrolls = [], []
+    klm_values, klm_first = [], True  # same KLM rules as worker/agent/loop.py
     full, diverged_at, detail, success, estimated = True, None, None, False, False
     try:
         await page.goto(config["base_url"], wait_until="domcontentloaded")
@@ -153,9 +157,14 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
             metric_targets = targets + ([result.element] if result.element and action.action in
                                          ("click", "type", "select") else [])
             fitts = calculate_fitts_ids(metric_targets)[-1] if len(metric_targets) > len(targets) else None
+            est_seconds = estimate_step(action.model_dump(), first_action=klm_first,
+                                        previous_action=actions[-1] if actions else None,
+                                        auto_scrolled=result.auto_scrolled,
+                                        mobile=config["viewport"] == "mobile")
             with factory.begin() as session:
                 step_id, active = persistence.save_step(session, config["id"], attempt_id,
-                                                        recorded.idx, action, url, state, result, fitts=fitts)
+                                                        recorded.idx, action, url, state, result, fitts=fitts,
+                                                        est_seconds=est_seconds)
                 if result.element:
                     candidates = evaluate_step(result.element, step_id=step_id, action=action.action,
                         effect_type=effect, is_first_target=first.is_first_target(url, action.action),
@@ -166,6 +175,10 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
                     save_candidates(session, config["id"], candidates, confidence=1.0)
             if not active:
                 raise persistence.Canceled()
+            if est_seconds is not None:
+                klm_values.append(est_seconds)
+            if action.action in MOTOR_ACTIONS:
+                klm_first = False
             actions.append(action.action)
             effects.append(effect)
             identities.append(identity)
@@ -200,6 +213,7 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
             if position + 1 < len(path) and screen_key(page.url) != screen_key(url):
                 await record_first_view(page)
                 first.new_screen()
+                klm_first = True
         if full and not success:
             try:
                 success, estimated = await verify_success(page, config["success_condition"])
@@ -210,7 +224,8 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
         _finish(factory, config["id"], attempt_id, full=full, diverged_at=diverged_at,
                 detail=detail, success=success, estimated=estimated, actions=actions,
                 effects=effects, identities=identities, targets=targets,
-                target_step_ids=target_step_ids, urls=urls, scrolls=scrolls)
+                target_step_ids=target_step_ids, urls=urls, scrolls=scrolls,
+                est_task_time=None if config["viewport"] == "mobile" else sum(klm_values))
         return full
     finally:
         await driver.aclose()

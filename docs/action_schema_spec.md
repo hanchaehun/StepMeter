@@ -9,7 +9,7 @@
 | 행동 | 추가 필드 | 의미 |
 |---|---|---|
 | `click` | `target` | 관찰한 요소를 왼쪽 버튼으로 한 번 클릭 |
-| `type` | `target`, `text`, `submit`(선택, 기본 `false`) | 입력값 전체 교체. 빈 문자열은 지우기. `submit=true`면 입력 후 Enter 한 번, 아니면 Enter를 누르지 않음 |
+| `type` | `target`, `text`, `submit`(선택, 기본 `false`) | 입력값 전체 교체. 빈 문자열은 지우기. `submit=true`면 입력 후 Enter 한 번, 아니면 Enter를 누르지 않음. Enter 제출도 click과 같은 되돌릴 수 없는 버튼 검사를 거친다 |
 | `select` | `target`, `option` | 관찰한 native `<select>`의 옵션 하나 선택 |
 | `scroll` | `direction`: `up` / `down` | 최상위 화면을 뷰포트 높이의 80%만큼 이동 |
 | `back` | 없음 | 현재 탭의 방문 기록에서 한 단계 뒤로 이동 |

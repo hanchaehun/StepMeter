@@ -190,7 +190,10 @@ PM이 이슈에서 수집 역할 추가와 `worker/schemas.py`·`docs/action_sch
   전용 필드 `sort`로 넘기고 LLM에 보내는 항목에서는 뺀다. 30개 안의 가려진 요소는 1번 결정대로 `"(가려짐)"`이다.
 - **입력 후 Enter:** `TypeAction`에 `submit: bool = False`를 더한다. `submit=true`면 입력 후 같은 요소에서 Enter를
   한 번 누르며, 입력과 Enter는 한 번의 효과 관찰 안에서 일어난다. 비밀번호 칸 규칙(1번)은 지금처럼 먼저 돈다.
-  `submit`이 없는 예전 기록은 `False`로 재생한다. `openapi.yaml`은 "worker/schemas.py에서 생성" 블록만 다시 만들고
+  `submit`이 없는 예전 기록은 `False`로 재생한다.
+  Enter 제출도 click과 같은 되돌릴 수 없는 버튼 검사를 거친다(2026-11-23 추가): 후보는 폼이 있으면 기본 제출 버튼(`form.elements`의 첫 제출 버튼, `form=` 속성 포함, 없으면 폼의 aria-label·name·title), 폼이 없으면(textarea·contenteditable 포함) 조상 3단계 안의 button·[role=button]·input[type=submit]이고, 하나라도 걸리면 Enter 전에 `safety_stop`이다. 후보가 없으면 그대로 진행한다.
+  재생 측정도 KLM 예상 시간(단계 `est_seconds`, 시도 `est_task_time`)을 3번 규칙대로 저장해 재생 비교에서 `est_task_time`을 판정한다(2026-11-23 추가, 모바일 제외).
+  `openapi.yaml`은 "worker/schemas.py에서 생성" 블록만 다시 만들고
   (`python -m tests.test_openapi_schema`), 화면 타입은 `npm run gen:api`로 다시 만든다. 경로·응답·다른 스키마는 그대로다.
 - **도구와 응답 정리:** `choose_action`은 strict라 `submit`을 properties와 required에 넣고 `boolean | null`로 받는다.
   `extract_text`는 null 항목을 빼던 규칙에 더해, `type`이 아닌 행동의 `submit`이 false면 뺀다. `type`이 아닌데

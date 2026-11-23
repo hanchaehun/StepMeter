@@ -76,10 +76,10 @@ class ReplayIntegration(unittest.IsolatedAsyncioTestCase):
         await self.browser.close()
         await self.playwright.stop()
 
-    def create_run(self, mode, *, base_run_id=None, repeat_n=1):
+    def create_run(self, mode, *, base_run_id=None, repeat_n=1, viewport="desktop"):
         with self.factory.begin() as session:
             row = Run(task_id=self.task_id, mode=mode, base_run_id=base_run_id,
-                      viewport="desktop", repeat_n=repeat_n, model="fake", status="queued")
+                      viewport=viewport, repeat_n=repeat_n, model="fake", status="queued")
             session.add(row)
             session.flush()
             return row.id
@@ -384,6 +384,80 @@ class ReplayIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((attempt.replay_status, attempt.success), ("full", True))
             first = session.scalar(select(Step).where(Step.attempt_id == attempt.id, Step.idx == 0))
             self.assertIs(first.action["submit"], False)
+
+
+    # 재생 측정의 KLM 예상 시간 (ADR 0011 3번). 예: 새 화면에서 16자 type = 2M+P+2B+H+16K = 8.88초,
+    # 이어서 click = H+M+P+2B = 3.05초, done = 0, 합 11.93초. 화면이 바뀌면 그 화면의 첫 행동에 M을 더한다.
+    KLM_PAGE = ('<!doctype html><title>Replay</title><main><input aria-label="Name">'
+                '<button onclick="document.querySelector(&quot;#result&quot;).textContent=&quot;Complete&quot;">'
+                'Next</button><p id="result"></p></main>')
+    KLM_REPLIES = [("type", {"target": 1, "text": "abcdefghijklmnop"}), ("click", {"target": 2}),
+                   ("done", {"reason": "goal_reached"})]
+
+    async def klm_base_and_replay(self, viewport):
+        self.page_path.write_text(self.KLM_PAGE, encoding="utf-8")
+        base_id = self.create_run("agent", viewport=viewport)
+        await execute_run(base_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _model: FakeAdapter([_action(n, **f) for n, f in self.KLM_REPLIES]))
+        run_id = self.create_run("replay_only", base_run_id=base_id, viewport=viewport)
+        await execute_run(run_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _model: self.fail("replay_only called an LLM adapter"))
+        return base_id, run_id
+
+    def replay_klm(self, run_id):
+        with self.factory() as session:
+            attempt = session.scalar(select(Attempt).where(Attempt.run_id == run_id))
+            steps = [s.est_seconds for s in session.scalars(
+                select(Step).where(Step.attempt_id == attempt.id).order_by(Step.idx))]
+            total = session.scalar(select(Metric.value).where(
+                Metric.attempt_id == attempt.id, Metric.key == "est_task_time"))
+            return attempt.replay_status, steps, total
+
+    async def test_replay_stores_literature_klm_per_step_and_attempt(self):
+        _, run_id = await self.klm_base_and_replay("desktop")
+        status, steps, total = self.replay_klm(run_id)
+        self.assertEqual(status, "full")
+        self.assertEqual(len(steps), 3)
+        for got, want in zip(steps, [8.88, 3.05, 0.0]):
+            self.assertAlmostEqual(got, want, places=6)
+        self.assertAlmostEqual(total, 11.93, places=6)
+
+    async def test_mobile_replay_has_no_time_estimate(self):
+        _, run_id = await self.klm_base_and_replay("mobile")
+        status, steps, total = self.replay_klm(run_id)
+        self.assertEqual((status, steps, total), ("full", [None, None, None], None))
+
+    async def test_compare_replay_block_judges_est_task_time(self):
+        from worker.compare.service import compare_runs
+        base_id, run_id = await self.klm_base_and_replay("desktop")
+        with self.factory.begin() as session:
+            result = compare_runs(session, session.get(Run, base_id), session.get(Run, run_id))
+        row = next(m for m in result["replay"]["metric_changes"] if m["key"] == "est_task_time")
+        self.assertEqual(row["threshold"], 0.1)
+        self.assertNotEqual(row["verdict"], "not_comparable")
+        self.assertAlmostEqual(row["target"], 11.93, places=6)
+
+    async def test_new_screen_during_replay_adds_mental_step_again(self):
+        # 첫 화면 링크 click = M(새 화면) + M+P+2B = 4.0, 두 번째 화면의 첫 click도 M이 다시 붙어 4.0, done 0
+        second = Path(self.tmp.name) / "second.html"
+        second.write_text('<!doctype html><title>Second</title><main><button onclick="document.querySelector'
+                          '(&quot;#result&quot;).textContent=&quot;Complete&quot;">Finish</button>'
+                          '<p id="result"></p></main>', encoding="utf-8")
+        self.page_path.write_text('<!doctype html><title>Replay</title><main><a href="second.html">Next page</a></main>',
+                                  encoding="utf-8")
+        base_id = self.create_run("agent")
+        await execute_run(base_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _model: FakeAdapter([
+                              _action("click", target=1), _action("click", target=1),
+                              _action("done", reason="goal_reached")]))
+        run_id = self.create_run("replay_only", base_run_id=base_id)
+        await execute_run(run_id, self.factory, browser=self.browser)
+        status, steps, total = self.replay_klm(run_id)
+        self.assertEqual(status, "full")
+        for got, want in zip(steps, [4.0, 4.0, 0.0]):
+            self.assertAlmostEqual(got, want, places=6)
+        self.assertEqual(len(steps), 3)
+        self.assertAlmostEqual(total, 8.0, places=6)
 
 
 if __name__ == "__main__":

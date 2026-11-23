@@ -32,6 +32,10 @@ partial로 끝난다. `replay_only`는 여기서 멈추고, `auto`는 새 페이
 만든다. partial 뒤 에이전트를 돌린 경우 run 중앙값은 성공한 agent 시도만 사용한다.
 대상 규칙과 axe 검사도 재생한 단계에서 다시 평가한다. 종료 시 R07을 계산해
 해당 대상의 step ID와 요소 키를 붙여 저장한다.
+재생한 각 단계에는 에이전트 루프와 같은 KLM 문헌값(`worker.metrics.klm.estimate_step`)을 `est_seconds`로 저장하고,
+데스크톱이면 재생한 단계의 합을 시도 지표 `est_task_time`으로 저장한다(partial이면 재생한 단계까지).
+그 화면의 첫 행동에 M을 더하는 기준은 `first.new_screen()`을 부르는 자리와 같다. 모바일은 계산하지 않는다
+(ADR 0011 3·10번). 그래서 재생 비교의 `est_task_time`이 판정된다.
 
 현재 저장 형식에는 `<select>`의 이전 옵션 문구가 없으므로 옵션 번호가 그대로인지만
 확인할 수 있다. 마지막 행동 뒤의 URL은 기준 경로에 다음 Step이 없으면 효과 유형과

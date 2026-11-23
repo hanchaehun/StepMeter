@@ -51,6 +51,11 @@ loop는 행동 완료 후 KLM 문헌값을 계산해 save_step의 est_seconds로
 - **submit**: `type`의 `submit=true`면 드라이버가 같은 효과 관찰 안에서 `fill` 뒤 같은 요소에 Enter를 한 번 누른다.
   비밀번호 칸 규칙(`guard_target`)은 지금처럼 먼저 돈다. 재생은 기록된 `submit`을 그대로 재현하고,
   `submit`이 없는 예전 기록은 `False`로 재생한다.
+- **Enter 제출 안전 검사**: `guard_target(..., submit=True)`는 click과 같은 되돌릴 수 없는 버튼 판정
+  (`is_irreversible_label`)을 Enter가 일으킬 동작의 후보에 적용하고, 걸리면 `SafetyStop('Irreversible submit')`이다.
+  후보는 폼이 있으면 기본 제출 버튼(없으면 폼의 aria-label·name·title), 폼이 없으면 조상 3단계 안의
+  button·[role=button]·input[type=submit]이다. 드라이버는 행동 전과 실행 직전 재검사 두 곳에서 `submit`을 넘긴다
+  (ADR 0011 10번).
 - 모델이 고른 행동에 쓰지 않는 필드를 보내면(예: click에 submit=true) 다시 물을 때 그 필드 이름을 알려 준다
   (`action_feedback.unexpected_fields`). 값은 쓰지 않는다. 최종 실패 코드 형식(`invalid_fields:필드`)은 그대로다.
 - 시간 초과(시도 예산 초과가 아닌 `TimeoutError`)로 끝난 시도는 `end_detail`에 그때 돌던 단계를 붙인다:

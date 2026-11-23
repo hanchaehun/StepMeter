@@ -132,8 +132,10 @@ class PlaywrightDriver:
                         raise EffectObservationError('Native select options changed since observation')
                     native_index = options[index]['index']
                     callback = lambda: handle.select_option(index=native_index)
+                # submit=true (Enter) gets the same irreversible-control check as click (ADR 0011 10).
                 await guard_target(handle, kind, task_description=self.task_description,
-                                   text=action.text if isinstance(action, TypeAction) else None)
+                                   text=action.text if isinstance(action, TypeAction) else None,
+                                   submit=isinstance(action, TypeAction) and action.submit)
                 async def checked_action():
                     current = await resolve_element(self.page, action.target)
                     try:
@@ -143,8 +145,10 @@ class PlaywrightDriver:
                         await current.dispose()
                     if isinstance(action, SelectAction) and await enabled_select_options(handle) != options:
                         raise EffectObservationError('Native select options changed during preparation')
+                    # Re-check right before acting: the form may change during preparation.
                     await guard_target(handle, kind, task_description=self.task_description,
-                                       text=action.text if isinstance(action, TypeAction) else None)
+                                       text=action.text if isinstance(action, TypeAction) else None,
+                                       submit=isinstance(action, TypeAction) and action.submit)
                     await callback()
                 return ActionResult(element, await self.effects.observe(checked_action, target=handle), screenshot, auto_scrolled)
             finally:

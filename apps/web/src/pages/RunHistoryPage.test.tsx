@@ -111,13 +111,27 @@ test('401이면 저장된 초대 코드를 지우고 다시 묻는다', async ()
   await waitFor(() => expect(window.sessionStorage.getItem('stepmeter.accessCode')).toBeNull());
 });
 
-// #75 UX 감사 F-10: 재생으로 잰 재측정은 예상 소요 시간을 저장하지 않아 성공해도 "—"다. 주석이 "성공 없음"으로만 설명하지 않게 한다
-test('F-10: 데스크톱 표 아래 주석이 재생 재측정의 "—"를 설명하고, 모바일에서는 그 줄이 없다', async () => {
+// #75 UX 감사 F-10: 주석은 예상 소요 시간이 "—"인 경우를 그대로 적는다. 값은 측정이 끝날 때 성공한 시도로 만든 run 지표이고,
+// 예상 시간 계산은 #78(2026-11-20)부터, 재생 재측정의 저장은 2026-11-23 커밋부터다(ADR 0011 10번)
+test('F-10: 데스크톱 표 아래 주석이 "—"가 나오는 경우를 적고, 모바일에서는 그 줄이 없다', async () => {
   const server = createMockServer('ok', 0, { seed: true });
   const user = setup(server);
   await screen.findByRole('rowheader', { name: '#5' });
-  expect(screen.getByText('· 이전 경로를 재생한 재측정은 예상 소요 시간을 계산하지 않습니다(—).')).toBeInTheDocument();
+  expect(screen.getByText('· 예상 소요 시간은 데스크톱에서만 계산합니다. —는 값이 없는 경우입니다(아직 끝나지 않았거나 취소·실패한 측정, 성공한 시도가 없는 측정, 2026-11-20 이전 측정, 2026-11-23 이전의 재생 재측정).')).toBeInTheDocument();
   await user.click(screen.getByRole('radio', { name: /모바일/ }));
   await screen.findByText('· 모바일은 예상 소요 시간을 계산하지 않습니다.');
-  expect(screen.queryByText(/재생한 재측정은/)).toBeNull();
+  expect(screen.queryByText(/—는 값이 없는 경우입니다/)).toBeNull();
+});
+
+// 재생 재측정도 예상 소요 시간을 저장하면(2026-11-23 커밋) 그 줄에 숫자가 보인다. 목 예시 #3은 재생 1/1 성공, est_task_time 21.2초
+test('F-10: 예상 소요 시간 값이 있는 재생 재측정 줄은 "—"가 아니라 숫자를 보인다', async () => {
+  const server = createMockServer('ok', 0, { seed: true });
+  setup(server);
+  await screen.findByRole('rowheader', { name: '#5' });
+  const r3 = within(rowOf(3));
+  expect(r3.getByText('재측정')).toBeInTheDocument();
+  expect(r3.getByText('1 / 1')).toBeInTheDocument();
+  expect(r3.getByText('21.2초')).toBeInTheDocument();
+  // 진행 중(#5)은 아직 값이 없어 "—"
+  expect(within(rowOf(5)).getAllByText('—').length).toBeGreaterThan(0);
 });
