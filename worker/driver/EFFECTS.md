@@ -37,6 +37,14 @@ text-only differences are ignored. Removed-node evidence uses cached pre-removal
 visibility refreshed on mutations and every 25 ms. Changes to target/aria-controls
 state attributes (including class), and actual input/change state changes count (value, native selectedIndex, checkbox/radio checked); arbitrary class animation does not.
 
+Class/style/hidden changes also count when another existing element actually
+appears or disappears in the visible viewport, even without aria-controls. CSS
+paint visibility is compared with the pre-action state, including ancestors and
+open shadow roots. Delayed CSS transitions within the observation window count.
+Geometry-only movement and color changes on unrelated elements do not. Existing
+noise, offscreen and hidden-frame exclusions still apply. This fixes #77's cart
+panel omission without declaring an inert search button responsive.
+
 Policy decisions, deliberately explicit:
 - All query keys are significant by default; caller may supply reviewed
   `ignored_query_keys`. Query ordering alone is not a change. Hash navigation is

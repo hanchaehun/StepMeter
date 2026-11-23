@@ -160,12 +160,13 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 effect = result.effect.as_step_effect()['effect_type']
                 metric_targets = targets + ([result.element] if result.element and action.action in ('click','type','select') else [])
                 fid = calculate_fitts_ids(metric_targets)[-1] if len(metric_targets) > len(targets) else None
+                first_target = first.is_first_target(url, action.action) if result.element else False
                 with factory.begin() as session:
                     step_id, active = save_step(session, config['id'], attempt_id, idx, action,
                                                 url, state, result, fitts=fid, est_seconds=est_seconds)
                     if result.element:
                         candidates = evaluate_step(result.element, step_id=step_id, action=action.action,
-                            effect_type=effect, is_first_target=first.is_first_target(url, action.action),
+                            effect_type=effect, is_first_target=first_target,
                             mobile=config['viewport']=='mobile',
                             axe_target_size=axe_target_size_result(axe, idx) if axe else None)
                         if axe:
@@ -175,6 +176,10 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                             remember(config['score_evidence'], saved, score_target, step_id)
                         if evidence_sink:
                             evidence_sink.record(attempt_id, step_id, idx, action, result.element, saved, evidence)
+                            if hasattr(evidence_sink, 'record_r06'):
+                                evidence_sink.record_r06(attempt_id, step_id, idx, action.action, url,
+                                    result.element, first_target,
+                                    any(c.rule_id == 'R06' for c in candidates), evidence)
                 if not active:
                     raise Canceled()
                 if est_seconds is not None:

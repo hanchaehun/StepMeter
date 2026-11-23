@@ -16,7 +16,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from apps.api.db.models import AccessCode, Attempt, Issue, Project, Run, Step, Task
+from apps.api.db.models import AccessCode, Attempt, Issue, Metric, Project, Run, Step, Task
 from benchmark.evidence_capture import EvidenceSink
 from benchmark.serve import serve
 from ml.issue_clf.export import build_dataset
@@ -91,6 +91,30 @@ def verified_success(case, sink, attempt):
     return sink.verified(attempt.id, attempt.success is True)
 
 
+def export_timing(db, run_id, case, sink):
+    """Separate timing sidecar; preserve raw DB values and independent success checks."""
+    run = db.get(Run, run_id)
+    task = db.get(Task, run.task_id)
+    if task.description != case['description']:
+        raise ValueError('Run task does not match development case')
+    attempts = list(db.scalars(select(Attempt).where(Attempt.run_id == run_id).order_by(Attempt.index)))
+    rows = []
+    for attempt in attempts:
+        metric = db.scalars(select(Metric).where(Metric.run_id == run_id,
+            Metric.attempt_id == attempt.id, Metric.key == 'est_task_time')).one_or_none()
+        rows.append(dict(id=attempt.id, kind=attempt.kind, end_reason=attempt.end_reason,
+            success=attempt.success, success_estimated=attempt.success_estimated,
+            verified_success=verified_success(case, sink, attempt),
+            est_task_time=None if metric is None else dict(value=metric.value, unit=metric.unit,
+                                                         model_version_id=metric.model_version_id)))
+    aggregate = db.scalars(select(Metric).where(Metric.run_id == run_id,
+        Metric.attempt_id.is_(None), Metric.key == 'est_task_time')).one_or_none()
+    return dict(version=1, run_id=run_id, page_id='/'.join((case['app_id'],case['id'],case['variant'])),
+                task_description=task.description, viewport=run.viewport, model=run.model, attempts=rows,
+                run_est_task_time=None if aggregate is None else dict(value=aggregate.value,
+                    unit=aggregate.unit,model_version_id=aggregate.model_version_id))
+
+
 async def run_case(case, factory, output, model):
     location = output/case['app_id']/case['case_id']
     sink = EvidenceSink(location/'dom', case.get('check'), case.get('milestones', []))
@@ -111,7 +135,11 @@ async def run_case(case, factory, output, model):
         with factory() as db:
             run = db.get(Run,run_id)
             data = export_measurements(db,run_id,case,sink.rows)
-            (location/'provenance.json').write_text((ROOT/'builds'/case['app_id']/case['variant']/'stepmeter-build.json').read_text(encoding='utf-8'),encoding='utf-8')
+            manifest_bytes = (ROOT/'builds'/case['app_id']/case['variant']/'stepmeter-build.json').read_bytes()
+            (location/'provenance.json').write_bytes(manifest_bytes)
+            timing = export_timing(db, run_id, case, sink)
+            timing['build_manifest_sha256'] = hashlib.sha256(manifest_bytes).hexdigest()
+            (location/'timing.json').write_text(json.dumps(timing,ensure_ascii=False,indent=2),encoding='utf-8')
             attempts = list(db.scalars(select(Attempt).where(Attempt.run_id==run_id)))
             summary = {'run_id':run_id,'status':run.status,'cost_usd':run.cost_usd,
                 'attempts':[{'id':a.id,'end_reason':a.end_reason,'end_detail':a.end_detail,

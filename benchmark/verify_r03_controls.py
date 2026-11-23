@@ -25,7 +25,7 @@ async def verify():
                 before = await page.locator('.cart-preview').is_visible()
                 cart = await observer.click(page.locator('#cart'))
                 after = await page.locator('.cart-preview').is_visible()
-                if search.effect_type != 'no_change' or before or not after:
+                if search.effect_type != 'no_change' or before or not after or cart.effect_type != 'dom_mutation':
                     raise AssertionError('Synthetic source behavior changed')
                 return dict(search=dict(effect=search.effect_type, expected='genuine_no_change'),
                             cart=dict(effect=cart.effect_type, before_visible=before,

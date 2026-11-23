@@ -210,6 +210,42 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(list(s.scalars(select(Step)))),2)
             self.assertTrue(all(Path(self.tmp.name,'shots',x.screenshot_key).is_file() for x in s.scalars(select(Step))))
 
+    async def test_benchmark_timing_export_uses_task_identity_and_db_metric(self):
+        from benchmark.run_development import export_timing
+        from benchmark.evidence_capture import EvidenceSink
+        sink=EvidenceSink(Path(self.tmp.name)/'timing-dom')
+        await execute_run(self.run_id,self.factory,browser=self.browser,evidence_sink=sink,
+            adapter_factory=lambda model:FakeAdapter([action('click',target=1),action('done',reason='goal_reached')]))
+        case=dict(app_id='synthetic',case_id='baseline-next',id='next',variant='baseline',description='Click Next')
+        with self.factory() as db:
+            result=export_timing(db,self.run_id,case,sink)
+            self.assertEqual(result['page_id'],'synthetic/next/baseline')
+            self.assertEqual(result['viewport'],'desktop')
+            item=result['attempts'][0]
+            self.assertTrue(item['verified_success'])
+            metric=db.scalar(select(Metric).where(Metric.attempt_id==item['id'],Metric.key=='est_task_time'))
+            self.assertEqual(item['est_task_time'],dict(value=metric.value,unit='s',model_version_id=None))
+            aggregate=db.scalar(select(Metric).where(Metric.run_id==self.run_id,
+                Metric.attempt_id.is_(None),Metric.key=='est_task_time'))
+            self.assertEqual(result['run_est_task_time'],dict(value=aggregate.value,unit='s',model_version_id=None))
+            # Export preserves independent check failure even if the worker says success.
+            sink.completions[item['id']]=False
+            checked=export_timing(db,self.run_id,dict(case,check='false'),sink)
+            self.assertFalse(checked['attempts'][0]['verified_success'])
+
+    async def test_r06_trace_includes_first_and_later_non_issue_targets(self):
+        from benchmark.evidence_capture import EvidenceSink
+        from benchmark.review_r06 import review
+        self.html='<html lang="en"><title>Test</title><body><button>Inert</button></body></html>'
+        sink=EvidenceSink(Path(self.tmp.name)/'r06-dom')
+        await execute_run(self.run_id,self.factory,browser=self.browser,evidence_sink=sink,
+            adapter_factory=lambda model:FakeAdapter([action('click',target=1),action('click',target=1),action('fail')]))
+        payload=json.loads((sink.directory/'r06.json').read_text(encoding='utf-8'))
+        rows=payload['observations']
+        self.assertEqual([r['is_first_target'] for r in rows],[True,False])
+        self.assertEqual([r['candidate_created'] for r in rows],[False,False])
+        self.assertEqual(review(payload)['disagreements'],0)
+
     async def test_explicit_score_config_finalizes_after_attempt(self):
         from apps.api.db.models import Issue
         from ml.issue_clf.scoring import ScoreConfig

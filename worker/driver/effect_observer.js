@@ -102,7 +102,26 @@ function hasVisibleNativeIndicator(el) {
   const isModal = el => el.matches('dialog[open],[role="dialog"],[role="alertdialog"],[aria-modal="true"]') && visible(el);
   const all = () => [...roots].flatMap(root=>[...root.querySelectorAll('*')]);
   let modalCount=0;
-  const remember = () => {for(const el of all())known.set(el,{meaningful:meaningful(el),rect:el.getBoundingClientRect()});};
+  // Track CSS paint state separately from geometry: moving an iframe or an
+  // animation within/outside the viewport is not a visibility-toggle response.
+  const cssVisible = el => {
+    for(let e=el;e;e=parent(e)) {
+      const s=e.ownerDocument.defaultView.getComputedStyle(e);
+      if(s.display==='none'||s.visibility==='hidden'||s.visibility==='collapse'||Number(s.opacity)===0)return false;
+    }
+    return true;
+  };
+  let visibilityDirty=false;
+  const visibilityChanges = () => {
+    if(!visibilityDirty)return;
+    for(const el of all()) {
+      const old=known.get(el), painted=cssVisible(el);
+      if(!old||old.painted===painted||noisy(el))continue;
+      // Re-check frame clipping at the mutation; a hidden/offscreen frame is noise.
+      if(painted ? meaningful(el) : old.meaningful&&visible(el,old.rect))result.dom=true;
+    }
+  };
+  const remember = () => {for(const el of all())known.set(el,{meaningful:meaningful(el),painted:cssVisible(el),rect:el.getBoundingClientRect()});};
   const modals = () => {const count=all().filter(isModal).length;if(count!==modalCount&&active())result.modal=true;modalCount=count;};
   const removedMeaningful = el => {const old=known.get(el);return old?.meaningful&&visible(el,old.rect);};
   const normalized = text => (text||'').replace(/[\d\s:]/g,'');
@@ -113,6 +132,7 @@ function hasVisibleNativeIndicator(el) {
     if(roots.has(root))return;roots.add(root);
     const ob = new MutationObserver(records=>{
       if(!active())return;
+      if(records.some(m=>m.type==='attributes'&&['class','style','hidden'].includes(m.attributeName)))visibilityDirty=true;
       for(const m of records) {
         const el=m.target.nodeType===1?m.target:m.target.parentElement;
         if(m.type==='characterData' && meaningful(el) && normalized(m.oldValue)!==normalized(m.target.data))result.dom=true;
@@ -129,7 +149,7 @@ function hasVisibleNativeIndicator(el) {
           }
         }
       }
-      discover();modals();remember();
+      discover();visibilityChanges();modals();remember();
     });
     ob.observe(root,{subtree:true,childList:true,characterData:true,characterDataOldValue:true,attributes:true,attributeOldValue:true,attributeFilter:['aria-expanded','aria-selected','aria-checked','disabled','class','open','role','aria-modal','style','hidden']});observers.push(ob);
     const focus=e=>{if(active()&&e.target.matches?.('input,textarea,select,[contenteditable="true"]')&&meaningful(e.target))result.dom=true;};
@@ -142,6 +162,6 @@ function hasVisibleNativeIndicator(el) {
   const scroll=e=>{const el=e.target===document?document.documentElement:e.target;if(active()&&(e.target===document?visible(document.documentElement):meaningful(el)))result.dom=true;};
   document.addEventListener('scroll',scroll,true);cleanups.push(()=>document.removeEventListener('scroll',scroll,true));
   // Capture geometry before removals, including layout changes without mutations.
-  const timer=setInterval(()=>{if(active()){discover();modals();remember();}},25);
-  globalThis[key]={start:()=>{result.dom=false;result.modal=false;known.clear();remember();modalCount=all().filter(isModal).length;until=performance.now()+duration;},stop:()=>{clearInterval(timer);observers.forEach(o=>o.disconnect());cleanups.forEach(f=>f());delete globalThis[key];return result;}};
+  const timer=setInterval(()=>{if(active()){discover();visibilityChanges();modals();remember();}},25);
+  globalThis[key]={start:()=>{result.dom=false;result.modal=false;visibilityDirty=false;known.clear();remember();modalCount=all().filter(isModal).length;until=performance.now()+duration;},stop:()=>{clearInterval(timer);observers.forEach(o=>o.disconnect());cleanups.forEach(f=>f());delete globalThis[key];return result;}};
 }

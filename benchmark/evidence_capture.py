@@ -13,6 +13,7 @@ class EvidenceSink:
         self.directory = directory
         directory.mkdir(parents=True, exist_ok=False)
         self.rows = []
+        self.r06_rows = []
         self.completion_check = completion_check
         self.completions = {}
         self.milestones = milestones
@@ -117,3 +118,21 @@ class EvidenceSink:
                 'selector': selector, 'dom': filename, 'snapshot': actual_snapshot,
                 'confusion': action.confusion, 'estimated': None})
         (self.directory / 'index.json').write_text(json.dumps(self.rows, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def record_r06(self, attempt_id, step_id, idx, action, url, snapshot,
+                   is_first_target, candidate_created, evidence):
+        """Opt-in diagnostics for every target action result, including non-issues.
+
+        No truth labels or model inputs are added. In particular absence of a
+        target in this trace does not prove why it was never reached.
+        """
+        self.r06_rows.append(dict(attempt_id=attempt_id, step_id=step_id, step_index=idx,
+            action=action, url=url, selector=(evidence or {}).get('action_selector'),
+            element_key='|'.join((snapshot.tag,snapshot.role or '',snapshot.name,
+                                 snapshot.label_text or '',snapshot.landmark or '')),
+            is_first_target=is_first_target, in_first_view=snapshot.in_first_view,
+            first_view_scroll_px=snapshot.first_view_scroll_px,
+            occluded=snapshot.occluded,
+            candidate_created=candidate_created))
+        (self.directory / 'r06.json').write_text(
+            json.dumps(dict(version=1,observations=self.r06_rows),ensure_ascii=False,indent=2),encoding='utf-8')
