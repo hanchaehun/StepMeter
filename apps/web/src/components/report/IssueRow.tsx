@@ -81,7 +81,7 @@ function Thumb({ step, issue, full }: { step?: Step; issue: Issue; full: boolean
   return (
     <div className={cn(size, 'relative overflow-hidden rounded bg-bg outline outline-1 outline-hair', issue.is_reference && 'opacity-70')}>
       <div className="absolute" style={{ width: w, left: boxW / 2 - cx, top: boxH / 2 - cy }}>
-        <Screenshot src={step.screenshot_url} viewport={viewport} overlays={[{ kind: 'bbox', bbox }]} className="rounded-none" />
+        <Screenshot src={step.screenshot_url} viewport={viewport} overlays={[{ kind: 'bbox', bbox }]} className="rounded-none" retryable={false} />
       </div>
     </div>
   );

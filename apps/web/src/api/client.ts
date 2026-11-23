@@ -79,13 +79,19 @@ export async function fetchReportData(runId: number, opts: Options): Promise<Rep
   }
   const rep = report.run.representative_attempt_index;
   const [steps, task, projects] = await Promise.all([
-    rep === null ? Promise.resolve<Step[]>([]) : getJson<Step[]>(`${base}/runs/${runId}/attempts/${rep}/steps`, opts),
+    rep === null ? Promise.resolve<Step[]>([]) : fetchSteps(runId, rep, opts),
     optional(getJson<Task>(`${base}/tasks/${report.run.task_id}`, opts)),
     optional(getJson<ProjectListItem[]>(`${base}/projects`, opts)),
   ]);
   // 사이트 주소는 과업의 project_id를 GET /projects 결과에서 찾는다 (ADR 0011 7번). 다른 초대 코드의 프로젝트면 목록에 없다
   const project = task && projects ? (projects.find((p) => p.id === task.project_id) ?? null) : null;
   return { report, steps, task, project };
+}
+
+/** 한 attempt의 단계. 스크린샷 서명 URL(900초, 이슈 #51)이 만료되면 이것만 다시 불러 새 주소를 받는다 */
+export function fetchSteps(runId: number, attemptIndex: number, opts: Options): Promise<Step[]> {
+  const base = opts.baseUrl.replace(/\/$/, '');
+  return getJson<Step[]>(`${base}/runs/${runId}/attempts/${attemptIndex}/steps`, opts);
 }
 
 /** 제목용 보조 정보(과업 문장·사이트 주소). 못 읽어도 리포트는 열고 "과업 #번호"로 보인다. 취소는 그대로 던진다 */

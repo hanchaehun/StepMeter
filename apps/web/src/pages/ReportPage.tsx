@@ -56,7 +56,7 @@ function clearHash() {
  * 리포트 (F06). 기획서 6.1대로 두 화면: "리포트 요약"(Verdict, 지표, 문제 목록, 시도, 통과 규칙, 나머지 측정값)과
  * "단계 상세"(타임라인, 스크린샷 오버레이, 판단 이유). 문제 행·시도 점을 누르면 단계 상세로 간다.
  */
-export function ReportPage({ data = loadMockReport() }: { data?: ReportData }) {
+export function ReportPage({ data = loadMockReport(), onReloadSteps }: { data?: ReportData; onReloadSteps?: () => void }) {
   const { report, steps, task, project } = data;
   const [detail, setDetail] = useState<DetailState | null>(() => readHash(data));
   const detailRef = useRef<DetailState | null>(detail);
@@ -183,7 +183,7 @@ export function ReportPage({ data = loadMockReport() }: { data?: ReportData }) {
             <span className="pb-3 text-sm text-faint">타임라인 · 스크린샷 오버레이 · 판단 이유</span>
           </nav>
           <div className="pt-6">
-            <StepDetail report={report} steps={steps} state={detail} onChange={goDetail} />
+            <StepDetail report={report} steps={steps} state={detail} onChange={goDetail} onRetryScreenshot={onReloadSteps} />
           </div>
         </>
       )}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, clearAccessCode, describeError, fetchReportData, getAccessCode, setAccessCode, type RunStatus } from '@/api/client';
+import { ApiError, clearAccessCode, describeError, fetchReportData, fetchSteps, getAccessCode, setAccessCode, type RunStatus } from '@/api/client';
 import type { ReportData } from '@/api/mock';
 import { variant } from '@/fixtures/variants';
 import { ReportPage } from './ReportPage';
@@ -65,6 +65,23 @@ export function ReportRoute({ location, baseUrl, fetchImpl }: Props) {
     [baseUrl, fetchImpl],
   );
 
+  // 스크린샷 서명 URL(900초, 이슈 #51)이 만료됐을 때: 대표 attempt의 steps만 다시 받아 새 주소로 바꾼다.
+  // 리포트 전체를 다시 불러오지 않으므로 화면이 "불러오는 중"으로 돌아가지 않고 보던 단계에 머문다. 실패하면 그대로 둔다
+  const reloadSteps = useCallback(
+    async (id: number, data: ReportData) => {
+      const rep = data.report.run.representative_attempt_index;
+      const code = getAccessCode();
+      if (rep === null || !code) return;
+      try {
+        const steps = await fetchSteps(id, rep, { baseUrl: baseUrl ?? '', accessCode: code, fetchImpl });
+        setState((s) => (s.kind === 'ready' && s.data === data ? { kind: 'ready', data: { ...data, steps } } : s));
+      } catch {
+        /* 다시 깨지면 같은 "다시 불러오기"가 다시 보인다 */
+      }
+    },
+    [baseUrl, fetchImpl],
+  );
+
   useEffect(() => {
     if (mockMode || runId === null) return;
     const code = getAccessCode();
@@ -90,7 +107,7 @@ export function ReportRoute({ location, baseUrl, fetchImpl }: Props) {
     case 'loading':
       return <LoadingView runId={runId} />;
     case 'ready':
-      return <ReportPage data={state.data} />;
+      return <ReportPage data={state.data} onReloadSteps={() => void reloadSteps(runId, state.data)} />;
     case 'not-found':
       return <NotFoundView runId={runId} />;
     case 'not-finished':
