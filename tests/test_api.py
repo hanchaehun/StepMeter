@@ -748,6 +748,50 @@ class ApiTests(unittest.TestCase):
         with self.main.SessionLocal() as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(Comparison)), 1)
 
+    def test_compare_pools_earlier_equivalent_paths_without_shifting_the_base_median(self):
+        from apps.api.db.models import Issue, Metric, Run
+        from worker.compare.service import save_agent_spread
+
+        task = self.make_task()
+
+        def measured(values, *, path=(0,), viewport="desktop", finding=False):
+            run_id = self.insert_run(task, viewport=viewport)
+            attempts = [self.add_attempt(run_id, n, end_reason="success", success=True)
+                        for n in range(1, len(values) + 1)]
+            step_ids = [self.add_step(attempts[0], idx) for idx in path]
+            with self.main.SessionLocal.begin() as db:
+                db.get(Run, run_id).representative_attempt_id = attempts[0]
+                db.add_all(Metric(run_id=run_id, attempt_id=attempt_id, key="travel_distance",
+                                  value=value, unit="px")
+                           for attempt_id, value in zip(attempts, values))
+                if finding:
+                    db.add(Issue(run_id=run_id, step_id=step_ids[0], rule_id="R01",
+                                 severity="high", confidence=1, explanation="target too small"))
+            return run_id
+
+        measured([80, 110])
+        measured([1, 1000], path=(0, 1))
+        measured([1, 1000], viewport="mobile")
+        measured([1, 1000], finding=True)
+        base = measured([100, 100])
+        target = measured([150, 150])
+        with self.main.SessionLocal.begin() as db:
+            aggregate = Metric(run_id=base, key="travel_distance", value=100, unit="px")
+            db.add(aggregate)
+            save_agent_spread(db, db.get(Run, base))
+            # Pooled values 80, 100, 100, 110 yield spread 30 / 100.
+            self.assertAlmostEqual(aggregate.spread, 0.30)
+            self.assertEqual(aggregate.spread_quality, "pooled")
+
+        response = self.call("GET", f"/compare?base={base}&target={target}")
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = response.json()["agent"]["metric_changes"]
+        self.assertEqual(len(rows), 1)
+        change = rows[0]
+        self.assertEqual((change["base"], change["target"], change["delta"]), (100, 150, 50))
+        self.assertAlmostEqual(change["threshold"], 0.60)
+        self.assertEqual(change["verdict"], "unchanged")
+
     def test_compare_authorization_and_incompatible_runs(self):
         task = self.make_task()
         base = self.insert_run(task)

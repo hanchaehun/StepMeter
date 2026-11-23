@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from playwright.async_api import async_playwright
@@ -15,7 +16,7 @@ from apps.api.db.models import AccessCode, Attempt, Base, LlmCall, Metric, Proje
 from worker.agent import run as agent_run
 from worker.agent.action_feedback import missing_fields, retry_message
 from worker.agent.run import execute_run
-from worker.agent.observation import state_hash
+from worker.agent.observation import describe, state_hash
 from worker.agent.safety import _literal_in_task
 from worker.agent.termination import LoopGuard, representative
 from worker.llm.fake import FakeAdapter
@@ -40,6 +41,23 @@ def progress(session, run_id, finished=False):
 
 def action(kind, **kwargs):
     return json.dumps(dict(action=kind, thought='Synthetic test', expectation='Expected test state', **kwargs))
+
+
+class ObservationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_visible_modal_control_survives_observation_limit(self):
+        bbox = {'x': 600, 'y': 380, 'width': 80, 'height': 40}
+        background = [
+            {'el_id': i, 'tag': 'button', 'landmark': 'main', 'bbox': bbox, 'occluded': True}
+            for i in range(1, 31)
+        ]
+        confirm = {'el_id': 31, 'tag': 'button', 'landmark': None, 'bbox': bbox, 'occluded': False}
+        driver = SimpleNamespace(page=SimpleNamespace(viewport_size={'width': 1280, 'height': 800}))
+
+        observed = await describe([*background, confirm], driver)
+
+        self.assertEqual(len(observed), 30)
+        self.assertEqual(observed[0], confirm)
+        self.assertEqual(observed[1]['visibility'], '(가려짐)')
 
 
 class PureTests(unittest.TestCase):
