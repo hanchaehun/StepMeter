@@ -135,13 +135,17 @@ function hasVisibleNativeIndicator(el) {
     if(roots.has(root))return;roots.add(root);
     const ob = new MutationObserver(records=>{
       if(!active())return;
-      for(const m of records) {
-        if(m.type!=='attributes'||!['class','style','hidden'].includes(m.attributeName))continue;
-        const associated=performance.now()-lastActionAt<=100;
-        for(const el of all())if(contains(m.target,el)) {
+      // Walk only the mutated subtree (and open shadow roots); revocation scans the small candidate set.
+      // Scanning all() per record made heavy animated pages miss the 3 s window (TimeoutError).
+      const changed=new Set(records.filter(m=>m.type==='attributes'&&['class','style','hidden'].includes(m.attributeName)).map(m=>m.target));
+      const associated=performance.now()-lastActionAt<=100;
+      for(const node of changed) {
+        if(associated) {
+          const stack=[node];
+          while(stack.length){const e=stack.pop();visibilityCandidates.add(e);stack.push(...e.children);if(e.shadowRoot)stack.push(...e.shadowRoot.children);}
+        } else {
           // A later timer mutation must revoke an earlier authorization too.
-          if(associated)visibilityCandidates.add(el);
-          else visibilityCandidates.delete(el);
+          for(const el of visibilityCandidates)if(contains(node,el))visibilityCandidates.delete(el);
         }
       }
       for(const m of records) {

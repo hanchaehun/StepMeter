@@ -120,3 +120,20 @@ class VisibilityTests(unittest.IsolatedAsyncioTestCase):
         result=await self.click_script("panel.classList.add('active')")
         self.assertTrue(await self.page.locator('aside').is_visible())
         self.assertEqual(result.effect_type,'no_change')
+
+    async def test_large_dom_with_js_style_animation_does_not_time_out(self):
+        # 요소 약 3,100개 + 매 프레임 100개 요소의 style 변경(움직이는 배경 등). 장바구니 패널 표시는 반응이다(#77).
+        await self.page.set_content('''<style>.panel{display:none}.panel.on{display:block}</style>
+            <button onclick="document.querySelector('.panel').classList.add('on')">Cart</button>
+            <section class="panel">Cart contents</section><div id="big"></div><div id="anim"></div>
+            <script>
+            const big=document.getElementById('big');
+            for(let i=0;i<300;i++){let d=big;for(let k=0;k<10;k++){const c=document.createElement('div');d.appendChild(c);d=c;}d.textContent='row '+i;}
+            const a=document.getElementById('anim');const els=[];
+            for(let i=0;i<100;i++){const e=document.createElement('span');e.textContent='*';e.style.display='inline-block';a.appendChild(e);els.push(e);}
+            let t=0;(function f(){t++;els.forEach((e,i)=>e.style.transform='translateX('+((t+i)%20)+'px)');requestAnimationFrame(f)})();
+            </script>''')
+        observer = EffectObserver(self.page)
+        self.addAsyncCleanup(observer.aclose)
+        result = await observer.click(self.page.locator('button'))
+        self.assertEqual(result.effect_type, 'dom_mutation')
