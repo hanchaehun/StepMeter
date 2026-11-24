@@ -111,14 +111,17 @@ function hasVisibleNativeIndicator(el) {
     }
     return true;
   };
-  let visibilityDirty=false;
+  // Temporal association, not proof of causality: an unrelated mutation within
+  // 100 ms of an action can still coincide. Never arm the whole page/window.
+  const visibilityCandidates=new Set();
+  let lastActionAt=-Infinity;
   const visibilityChanges = () => {
-    if(!visibilityDirty)return;
-    for(const el of all()) {
+    for(const el of visibilityCandidates) {
       const old=known.get(el), painted=cssVisible(el);
       if(!old||old.painted===painted||noisy(el))continue;
       // Re-check frame clipping at the mutation; a hidden/offscreen frame is noise.
       if(painted ? meaningful(el) : old.meaningful&&visible(el,old.rect))result.dom=true;
+      visibilityCandidates.delete(el);
     }
   };
   const remember = () => {for(const el of all())known.set(el,{meaningful:meaningful(el),painted:cssVisible(el),rect:el.getBoundingClientRect()});};
@@ -132,7 +135,15 @@ function hasVisibleNativeIndicator(el) {
     if(roots.has(root))return;roots.add(root);
     const ob = new MutationObserver(records=>{
       if(!active())return;
-      if(records.some(m=>m.type==='attributes'&&['class','style','hidden'].includes(m.attributeName)))visibilityDirty=true;
+      for(const m of records) {
+        if(m.type!=='attributes'||!['class','style','hidden'].includes(m.attributeName))continue;
+        const associated=performance.now()-lastActionAt<=100;
+        for(const el of all())if(contains(m.target,el)) {
+          // A later timer mutation must revoke an earlier authorization too.
+          if(associated)visibilityCandidates.add(el);
+          else visibilityCandidates.delete(el);
+        }
+      }
       for(const m of records) {
         const el=m.target.nodeType===1?m.target:m.target.parentElement;
         if(m.type==='characterData' && meaningful(el) && normalized(m.oldValue)!==normalized(m.target.data))result.dom=true;
@@ -152,6 +163,11 @@ function hasVisibleNativeIndicator(el) {
       discover();visibilityChanges();modals();remember();
     });
     ob.observe(root,{subtree:true,childList:true,characterData:true,characterDataOldValue:true,attributes:true,attributeOldValue:true,attributeFilter:['aria-expanded','aria-selected','aria-checked','disabled','class','open','role','aria-modal','style','hidden']});observers.push(ob);
+    const action=()=>{if(active())lastActionAt=performance.now();};
+    for(const type of ['pointerdown','click','keydown','input']) {
+      root.addEventListener(type,action,true);
+      cleanups.push(()=>root.removeEventListener(type,action,true));
+    }
     const focus=e=>{if(active()&&e.target.matches?.('input,textarea,select,[contenteditable="true"]')&&meaningful(e.target))result.dom=true;};
     root.addEventListener('focusin',focus,true);cleanups.push(()=>root.removeEventListener('focusin',focus,true));
     const input=e=>{if(e.target===target&&active()&&meaningful(target)&&controlState()!==controlValue){result.dom=true;controlValue=controlState();}};
@@ -163,5 +179,5 @@ function hasVisibleNativeIndicator(el) {
   document.addEventListener('scroll',scroll,true);cleanups.push(()=>document.removeEventListener('scroll',scroll,true));
   // Capture geometry before removals, including layout changes without mutations.
   const timer=setInterval(()=>{if(active()){discover();visibilityChanges();modals();remember();}},25);
-  globalThis[key]={start:()=>{result.dom=false;result.modal=false;visibilityDirty=false;known.clear();remember();modalCount=all().filter(isModal).length;until=performance.now()+duration;},stop:()=>{clearInterval(timer);observers.forEach(o=>o.disconnect());cleanups.forEach(f=>f());delete globalThis[key];return result;}};
+  globalThis[key]={start:()=>{result.dom=false;result.modal=false;lastActionAt=-Infinity;visibilityCandidates.clear();known.clear();remember();modalCount=all().filter(isModal).length;until=performance.now()+duration;},stop:()=>{clearInterval(timer);observers.forEach(o=>o.disconnect());cleanups.forEach(f=>f());delete globalThis[key];return result;}};
 }

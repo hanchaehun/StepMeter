@@ -6,10 +6,17 @@
 ## R03 수정
 
 장바구니 버튼이 다른 요소의 class를 바꿔 패널을 표시해도, 기존 관찰기는 그 요소가
-행동 대상 또는 aria-controls 대상이 아니면 놓쳤다. class/style/hidden 변경 시
-기존 요소와 조상의 표시 상태를 비교하고 실제 뷰포트 안의 표시/숨김 전환을 반영한다.
-CSS 전환 지연·열린 shadow root도 관찰 창 안에서 처리한다.
-단순 색상·위치 변화, 타이머, 화면 밖 요소와 숨긴 프레임은 반응으로 만들지 않는다.
+행동 대상 또는 aria-controls 대상이 아니면 놓쳤다. pointerdown·click·keydown·input
+이벤트 후 100ms 이내의 class/style/hidden 변경 요소와 그 하위 요소만 표시/숨김 후보로 삼는다.
+후보의 CSS 전환 지연·열린 shadow root도 관찰 창 안에서 처리한다. 같은 하위 요소가
+100ms 구간 밖에서 다시 변경되면 후보 등록을 해제한다. 관찰 시작 자체는 후보를 만들지 않는다.
+단순 색상·위치 변화, 화면 밖 요소와 숨긴 프레임은 제외한다. 이름/role에 기대지 않고
+1초 class 배너·1.5초 display 알림·0.8초 hidden 로딩의 주기적 변경을 no_change로 검증한다.
+100ms 안에 우연히 겹친 무관한 변경은 구별하지 못하는 시간 기반 휴리스틱이다.
+
+이 PR 전에 기록된 기준 경로는 장바구니 같은 단계의 no_change가 dom_mutation으로 바뀌어
+재생이 effect_changed로 끊길 수 있다. 새 관찰기로 기준 경로를 다시 기록한 뒤 비교해야 한다.
+기존 증거를 고치거나 effect_changed를 무시하지 않는다.
 
 합성 로컬 대조군에서 Search는 실제 no_change로 유지하고 Cart 표시는 dom_mutation으로 판정한다.
 R03 규칙·공유 스키마·3초 관찰 범위는 그대로다. 이 수정만으로 전체 앱의 FP가
@@ -76,3 +83,8 @@ docker compose --profile test run --build --rm tests
 (별도 API 서버 7, GUI 화면 7, 로컬 앱 빌드 1). 이후 run 집계·진단 메타데이터 등
 최종 보완은 관련 테스트와 기존 benchmark pipeline 17개를 최종 이미지에서 재검증해 모두 통과했다.
 R03 대조 도구도 Search=no_change, Cart=dom_mutation으로 통과했다. Ruff와 git diff 검사는 통과했다.
+
+2026-11-24 리뷰 후 보완 검증: Docker의 효과 관찰 회귀 30개와 effect_changed 재생 회귀
+1개가 모두 통과했다. 주기적 class/display/hidden 변경은 각 3초 관찰로 확인했다.
+관찰 시작만으로 후보가 생성되지 않는 경우, 이전 조상 후보의 하위에서 나중에 타이머가
+변경한 경우, 무관한 형제 요소로 후보가 퍼지지 않는 경우도 검증했다. Ruff와 git diff 검사 통과.
