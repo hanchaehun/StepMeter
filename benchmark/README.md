@@ -36,3 +36,29 @@ W3 수집 label 회귀: `python -m benchmark.verify_collect_labels`.
 
 W3 과업 고정·직접 워커 실행·요소 일치 규약·특징 추출 연결과 회귀/문구 변경 버전:
 [w3.md](w3.md). 현재 구현·실행 의존성은 [W3 현황](../docs/w3-infra-status.md)에 있다.
+
+## W5 관찰·시간 분석 증거
+
+`run_development`는 기존 measurement/features/result 파일에 더해 `timing.json`에
+페이지 ID(`app/id/variant`), 과업 문장, 모델·뷰포트, 시도별 성공/독립 검증,
+DB의 시도별·run 단위 `est_task_time`(단위·모델 버전 포함), 빌드 매니페스트 SHA256을 남긴다.
+기존 `measurement.json`의 형식과 워커/DB 스키마는 바꾸지 않는다.
+사람 실험 6페이지와 연결하는 키는 `case_id`가 아니라 과업 `id`다.
+
+`dom/r06.json`은 이슈가 없는 대상 행동 결과도 첫 행동 여부·로드 시 첫 화면 포함 여부·
+first_view_scroll_px·실제 R06 후보 발생 여부와 함께 남긴다. 다음 명령으로 조건별로 분류한다.
+occluded 플래그도 보존하며, 가림 때문에 실제 조작을 하지 않은 결과와 구분한다.
+
+```sh
+python -m benchmark.review_r06 <case>/dom/r06.json --output <private>/r06-review.json
+```
+
+이 기록은 실제 관찰한 대상 행동에만 적용한다. 기록에 없는 요소가 왜 선택되지 않았는지는
+이 파일만으로 추정하지 않는다. 정답을 워커나 LLM에 전달하지 않으며 R06 판정 조건은 유지한다.
+기존 0차 실행의 FN을 분석하려면 원본 행동 경로/스냅샷이 필요하다.
+공개 #77 첨부 CSV의 FN 행에서 `attempts=0`은 해당 이슈가 잡힌 시도가 0이라는 뜻이지,
+그 과업을 실행하지 않았다는 증거가 아니다.
+
+R03 로컬 대조군: `python -m benchmark.verify_r03_controls`.
+Search는 no_change, 연결 속성 없는 Cart 패널 표시는 dom_mutation이어야 한다.
+검증 범위·미확정 내용은 [W5 작업 기록](../docs/w5-observation-timing.md)에 있다.

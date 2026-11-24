@@ -37,6 +37,23 @@ text-only differences are ignored. Removed-node evidence uses cached pre-removal
 visibility refreshed on mutations and every 25 ms. Changes to target/aria-controls
 state attributes (including class), and actual input/change state changes count (value, native selectedIndex, checkbox/radio checked); arbitrary class animation does not.
 
+Class/style/hidden changes on unrelated targets are eligible only within 100 ms
+after a captured pointerdown/click/keydown/input event during the action window.
+Only the changed element and its descendants (including open shadow roots) are
+tracked for visible appearance/disappearance, even without aria-controls. A later
+attribute mutation outside that interval revokes eligibility for its subtree.
+CSS transitions from an eligible mutation can still finish inside the observation
+window; merely starting observation does not authorize mutations. This temporal
+heuristic cannot distinguish unrelated mutations coinciding within those 100 ms.
+Geometry-only movement and color changes on unrelated elements do not. Existing
+noise, offscreen and hidden-frame exclusions still apply. This fixes #77's cart
+panel omission without declaring an inert search button responsive.
+
+Replay compatibility: baseline paths recorded before this PR may contain
+no_change for cart-panel steps now classified as dom_mutation. Replaying such a
+path can stop with effect_changed. Record a fresh baseline under the new observer
+before comparing versions; do not suppress that mismatch or rewrite old evidence.
+
 Policy decisions, deliberately explicit:
 - All query keys are significant by default; caller may supply reviewed
   `ignored_query_keys`. Query ordering alone is not a change. Hash navigation is
