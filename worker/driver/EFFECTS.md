@@ -7,11 +7,19 @@ in network history; its request keys contain origin/path and expire after 3 seco
 
 `await observer.click(locator)` prepares actionability/scrolling **before** baseline,
 then captures the exact handle. For other actions, prepare them first and call
-`await observer.observe(async_action, target=element_handle)`. The window starts
-immediately before invoking the action, is at most 3000 ms (shorter configurable
-for tests), and does not finish early after DOM evidence. Action timeout,
-cancellation, detached contexts and page closure are errors, not `no_change`.
-Always call `result.as_step_effect()` before persisting the two frozen Step fields.
+`await observer.observe(async_action, target=element_handle, prepare=async_check)`.
+Order: install observer scripts → `prepare()` (target recheck, option check, safety
+guard; not timed) → start window → `action()`. Errors from `prepare` (SafetyStop,
+EffectObservationError) propagate unchanged. The window starts immediately before
+invoking the action, is at most 3000 ms (shorter configurable for tests), and does
+not finish early after DOM evidence. Input calls (click, fill, press, select_option,
+go_back) receive a Playwright `timeout` of `action_timeout_ms` (5/6 of the window,
+2500 ms by default), so a timed-out input is cancelled in the browser instead of
+landing late (type + Enter share one such deadline; Enter gets the rest, at least 100 ms); the window's `asyncio.wait_for` remains a slightly longer safety net.
+Action timeout, cancellation, detached contexts and page closure are errors, not
+`no_change`. The agent re-observes after a Playwright `TimeoutError` from `perform`
+(ADR 0011 11). Always call `result.as_step_effect()` before persisting the two
+frozen Step fields.
 
 Priority: URL > modal count > meaningful DOM/focus/scroll > no_change. Modal
 selectors are deduplicated per node. Open shadow roots are observed. Currently
@@ -53,6 +61,11 @@ Replay compatibility: baseline paths recorded before this PR may contain
 no_change for cart-panel steps now classified as dom_mutation. Replaying such a
 path can stop with effect_changed. Record a fresh baseline under the new observer
 before comparing versions; do not suppress that mismatch or rewrite old evidence.
+
+이 커밋(ADR 0011 11번) 전에 기록된 기준 경로는 첫 화면(안정화 대기)·화면 해시(요소 60개)·반응 판정(준비를 관찰 창 밖으로)이 달라 재생이 끊길 수 있다. 버전을 비교하기 전에 기준을 다시 잰다.
+
+알려진 한계: 글자나 목록이 저절로 바뀌는 화면(공지 문구, 시계, 실시간 목록)에서는 반응 없는 클릭이 dom_mutation으로 기록돼 R03을 놓칠 수 있다.
+대기 구간에 바뀐 요소를 제외하는 방식은 보류했다. 이유: (1) 재생은 단계 사이 대기가 짧아 에이전트와 판정이 달라진다 (2) 바뀌는 대상이 부모 컨테이너로 기록돼 그 안의 진짜 반응까지 무시된다 (3) 늦게 도착한 응답이나 첫 화면 그리기를 타이머로 오인한다.
 
 Policy decisions, deliberately explicit:
 - All query keys are significant by default; caller may supply reviewed

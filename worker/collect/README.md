@@ -31,6 +31,17 @@ snap = await snapshot(page, el_id)  # ElementSnapshot (click·type 직전)
   (`dialog[open]`, `[role=dialog]`, `[role=alertdialog]`, `[aria-modal="true"]`, `[role=listbox]`, `[role=menu]`)이 있는지,
   `text_input`은 텍스트 입력칸(input text·email·search·password·tel·url·number, textarea, 역할 textbox·searchbox·combobox)인지다.
   ElementSnapshot·매칭 지문에는 들어가지 않고 LLM 항목에서도 뺀다(`worker/agent/observation.py`).
+- `state`(ADR 0011 11번): 표시용 상태. 해당하는 것만 true/false로 넣는다. `filled`(텍스트 입력칸·textarea·contenteditable에 값이 있는지),
+  `checked`(checkbox·radio, 역할 checkbox·radio·switch·menuitemcheckbox·menuitemradio의 `aria-checked`), `selected`(`aria-selected`. cmdk는 `aria-selected`를 커서가 놓인 항목에 붙이므로 `[cmdk-item]`에서는 넣지 않는다),
+  `expanded`(`aria-expanded`), `disabled`(`disabled`, `aria-disabled`). 값(value 문자열)은 넣지 않는다. 요소 동일성(`identityOf`)·
+  `state_hash`·매칭 지문·ElementSnapshot에는 들어가지 않는다. 에이전트는 이 값으로 줄 끝 표시를 만든다(`worker/agent/observation.py`).
+- `wait_for_dom_quiet(page, quiet_ms=200, min_ms=400, max_ms=1500)`(ADR 0011 11번): 첫 화면 안정화 대기. 에이전트(`worker/agent/loop.py`)와
+  재생(`worker/replay/runner.py`)이 `goto` 직후 `record_first_view` 앞에서 같은 인자로 부른다. 시작 후 400ms가 지났고, 마지막 DOM 변화(추가·삭제·
+  속성 변경) 뒤 200ms 동안 조용하고, `document.readyState`가 complete면 끝난다. 1500ms가 되면 조건과 상관없이 끝난다.
+  한계: 400ms 넘게 아무 변화가 없다가 그 뒤에 그려지는 내용은 첫 관찰에 안 잡힐 수 있다.
+- 숨긴 native select 제외(ADR 0011 11번): 요소 자신이 `aria-hidden="true"`이고 1px 이하로 잘린 경우(`overflow:hidden`,
+  `clip: rect(0 0 0 0)`, `clip-path: inset(50%)`)만 수집하지 않는다. Radix Select가 폼 안에 숨겨 둔 `<select>`가 1×1 요소로 수집돼
+  R04 오탐이 나던 문제다. 조상의 `aria-hidden`(모달이 열렸을 때의 배경)과 aria-hidden이 없는 sr-only 입력칸은 그대로 수집한다.
 - `__stepmeter.describe(el)`: 임의 요소의 지문 필드(`tag`·`role`·`name`·`label_text`·`landmark`)를 `observe()`와 같은 계산으로 돌려준다. 사람 데이터 수집(`human-study/collect.js`)이 참가자가 누른 좌표의 실제 요소에 쓴다. `observe()` 결과와 에이전트 쪽 동작은 바꾸지 않는다 (#43).
 
 ## 번호 대상 해석

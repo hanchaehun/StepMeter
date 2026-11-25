@@ -26,6 +26,8 @@ test('전부 실패: 요소 없는 문제를 누르면 단계 상세에 Attempts
 test('문제 0건: 문장으로 표시, 참고 2건, 통과 9', () => {
   render(<ReportPage data={noIssues()} />);
   expect(screen.getByText(/규칙 R01~R11에 걸린 문제가 없습니다/)).toBeInTheDocument();
+  // 참고 목록 머리글(· 과업 경로 밖이거나 점수가 낮은 항목)과 같은 뜻
+  expect(screen.getByText(/참고 2건은 과업 경로 밖이거나 점수가 낮은 항목입니다\./)).toBeInTheDocument();
   expect(screen.getByText(/문제 0건 · 참고 2건 · 통과 9/)).toBeInTheDocument();          // 11 − {R02, R10} = 9
 });
 

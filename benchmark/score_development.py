@@ -191,9 +191,9 @@ async def score_case(page, db, case, location, run_id, *, calibration_rows=None,
             feature = features.get((issue.step_id, issue.rule_id, identity))
             if feature is None:
                 raise ValueError('Missing measured features; cannot calibrate an unresolved finding')
-            # These six path rules are primary candidates before scoring.
+            # A rule can already emit a reference candidate (desktop R01 44px advice, ADR 0011 9).
             calibration_rows.append({'rule': issue.rule_id, 'target': matched,
-                                     'features': feature, 'was_reference': False})
+                                     'features': feature, 'was_reference': bool(issue.is_reference)})
         if issue.step_id is not None:
             predictions['rules_only'].add(key)
             if issue_rows is not None:

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadMockReport, type ReportData } from '@/api/mock';
-import { passedRules } from '@/lib/report';
+import { passedCount, passedRules } from '@/lib/report';
 import { ReportHeader } from '@/components/report/ReportHeader';
 import { Verdict } from '@/components/report/Verdict';
 import { PathMetrics } from '@/components/report/PathMetrics';
@@ -155,7 +155,7 @@ export function ReportPage({ data = loadMockReport(), onReloadSteps }: { data?: 
                   onClick={() => document.getElementById('below-fold')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                   className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-control bg-bg px-5 text-sm font-semibold text-fg hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <span aria-hidden="true">↓</span> 더 보기 · 통과한 규칙 {passedRules(report.issues, report.run.viewport).length}개 · 나머지 측정값
+                  <span aria-hidden="true">↓</span> 더 보기 · 통과한 규칙 {passedCount(passedRules(report.issues, report.run.viewport))}개 · 나머지 측정값
                 </button>
               </div>
             </div>

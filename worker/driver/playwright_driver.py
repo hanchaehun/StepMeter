@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 
 from worker.agent.safety import guard_target
@@ -107,21 +108,26 @@ class PlaywrightDriver:
                     raise EffectObservationError('Type target is not editable')
                 if isinstance(action, SelectAction) and not await handle.is_enabled():
                     raise EffectObservationError('Select target is disabled')
+                # Input calls get a browser-side timeout shorter than the window (cancelled there, never late).
+                timeout = self.effects.action_timeout_ms
                 if isinstance(action, ClickAction):
                     async def callback():
                         point = await click_point(self.page, action.target)
                         if point is None:
-                            await handle.click()
+                            await handle.click(timeout=timeout)
                         else:
                             if not await handle.is_enabled():
                                 raise EffectObservationError('Click target is disabled')
                             await self.page.mouse.click(point['x'], point['y'])
                 elif isinstance(action, TypeAction):
                     async def callback():
-                        await handle.fill(action.text)
+                        # fill and Enter share one deadline so their sum stays inside the window.
+                        started = time.monotonic()
+                        await handle.fill(action.text, timeout=timeout)
                         if action.submit:
                             # #75: Enter on the same element, inside the same effect observation.
-                            await handle.press('Enter')
+                            left = max(100, timeout - (time.monotonic() - started) * 1000)
+                            await handle.press('Enter', timeout=left)
                 else:
                     options = await enabled_select_options(handle)
                     index = action.option - 1
@@ -131,12 +137,14 @@ class PlaywrightDriver:
                             and self._select_options[action.target] != options):
                         raise EffectObservationError('Native select options changed since observation')
                     native_index = options[index]['index']
-                    callback = lambda: handle.select_option(index=native_index)
+                    callback = lambda: handle.select_option(index=native_index, timeout=timeout)
                 # submit=true (Enter) gets the same irreversible-control check as click (ADR 0011 10).
                 await guard_target(handle, kind, task_description=self.task_description,
                                    text=action.text if isinstance(action, TypeAction) else None,
                                    submit=isinstance(action, TypeAction) and action.submit)
-                async def checked_action():
+                # Preparation runs after observer installation and before the 3 s window starts;
+                # SafetyStop / EffectObservationError from it propagate unchanged.
+                async def prepare():
                     current = await resolve_element(self.page, action.target)
                     try:
                         if not await handle.evaluate('(el, current) => el === current', current):
@@ -149,15 +157,15 @@ class PlaywrightDriver:
                     await guard_target(handle, kind, task_description=self.task_description,
                                        text=action.text if isinstance(action, TypeAction) else None,
                                        submit=isinstance(action, TypeAction) and action.submit)
-                    await callback()
-                return ActionResult(element, await self.effects.observe(checked_action, target=handle), screenshot, auto_scrolled)
+                effect = await self.effects.observe(callback, target=handle, prepare=prepare)
+                return ActionResult(element, effect, screenshot, auto_scrolled)
             finally:
                 await handle.dispose()
         if isinstance(action, ScrollAction):
             sign = 1 if action.direction == 'down' else -1
             callback = lambda: self.page.evaluate('(s) => window.scrollBy(0, s * innerHeight * 0.8)', sign)
         elif kind == 'back':
-            callback = lambda: self.page.go_back(wait_until='commit')
+            callback = lambda: self.page.go_back(wait_until='commit', timeout=self.effects.action_timeout_ms)
         elif kind == 'wait':
             callback = lambda: asyncio.sleep(1)
         else:

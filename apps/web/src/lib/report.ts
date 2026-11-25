@@ -147,6 +147,8 @@ export interface PassedRule {
   id: RuleId;
   name: string;
   reason: string;
+  /** 통과 규칙 수에 넣는가. 해당 화면에서 아직 검사하지 않는 규칙(모바일 R11)은 false */
+  counted: boolean;
 }
 
 /** 이번 측정에서 이슈(참고 포함)가 없는 규칙. */
@@ -154,9 +156,15 @@ export function passedRules(issues: Issue[], viewport: 'desktop' | 'mobile'): Pa
   const hit = new Set(issues.map((i) => i.rule_id));
   return RULE_IDS.filter((id) => !hit.has(id)).map((id) => {
     const r = RULES[id];
-    const reason = r.mobileOnly && viewport !== 'mobile' ? '모바일만 해당' : r.passedReason;
-    return { id, name: r.name, reason };
+    if (r.mobileOnly && viewport !== 'mobile') return { id, name: r.name, reason: '모바일만 해당', counted: true };
+    if (r.notImplemented) return { id, name: r.name, reason: '이번 버전 미지원', counted: false };
+    return { id, name: r.name, reason: r.passedReason, counted: true };
   });
+}
+
+/** 통과 규칙 수 (검사하지 않은 규칙 제외). */
+export function passedCount(items: PassedRule[]): number {
+  return items.filter((r) => r.counted).length;
 }
 
 export function splitIssues(issues: Issue[]): { main: Issue[]; reference: Issue[] } {

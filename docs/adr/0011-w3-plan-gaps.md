@@ -202,3 +202,15 @@ PM이 이슈에서 수집 역할 추가와 `worker/schemas.py`·`docs/action_sch
   `action_v3`다. `action_v2.md`는 기록 재현을 위해 남긴다.
 - **KLM:** 3번 표의 type에 `submit=true`면 K를 1회 더한다(#78에서 구현, 이번에 확인만 했다).
 - 재측정 결과는 [benchmark/w3.md](../../benchmark/w3.md) "#75 수정 후 재측정 (2026-11-23)"에 있다.
+
+
+### 11. 관찰·반응 판정 보강 (PM 결정, 2026-11-25)
+
+근거: main `d1aed02` 위의 W5 품질 점검. 재측정 결과는 [benchmark/w3.md](../../benchmark/w3.md) "관찰·반응 판정 보강 후 재측정 (2026-11-25)"에 있다.
+
+- **요소 상한 60, 한 줄 형식, 상태 표시 (`action_v4`):** LLM에 보내는 요소는 최대 60개다(1번·10번의 30을 바꾼다. 고르는 순서는 10번 그대로). 요소마다 `번호|역할(없으면 태그)|이름(없으면 label_text)|영역(없으면 -)|x,y,너비x높이(정수)|표시` 한 줄로 보낸다. 표시는 가려짐·입력됨·비어 있음·선택됨·펼쳐짐·비활성이고, select는 줄 끝에 옵션 목록을 붙인다. 상태는 `observe()` 행의 `state`(true/false)로 받고, 입력값은 어디에도 넣지 않는다. cmdk 항목(`[cmdk-item]`)의 `aria-selected`는 체크 상태가 아니라 커서 위치라 선택됨으로 보이지 않는다. 이름·옵션 글자 안의 `|`는 `/`로 바꾼다. `state`는 `state_hash`·매칭 지문·ElementSnapshot에 넣지 않는다. 최근 행동에는 대상의 `target_name`(`역할:이름`)을 남긴다. Run·LlmCall의 `prompt_version`은 `action_v4`다.
+- **첫 화면 안정화 대기:** 에이전트와 재생 모두 `goto` 직후 `record_first_view` 전에 `wait_for_dom_quiet(page, quiet_ms=200, min_ms=400, max_ms=1500)`를 부른다. 시작 후 400ms가 지났고, 마지막 DOM 변화(추가·삭제·속성 변경) 뒤 200ms 동안 조용하고, `document.readyState`가 complete면 끝낸다. 1500ms가 되면 조건과 상관없이 끝낸다. 다른 대기(이동 뒤 0.5초 등)는 바꾸지 않는다. 한계: 400ms 넘게 아무 변화가 없다가 그 뒤에 그려지는 내용은 첫 관찰에 안 잡힐 수 있다.
+- **행동 준비를 관찰 창 밖으로:** 대상 재확인·옵션 확인·안전 검사는 효과 관찰 스크립트를 설치한 뒤, 3초 관찰 창을 시작하기 전에 한다. 실제 입력(click·fill·press·select_option·뒤로 가기)에는 Playwright 시간 제한 2500ms(관찰 창의 5/6)를 주어 브라우저 쪽에서 취소되게 하고, 관찰 창의 `asyncio.wait_for`는 안전망으로 남긴다. 입력 후 Enter는 fill과 하나의 마감을 나눠 써서, Enter에는 2500ms에서 fill이 쓴 시간을 뺀 나머지(최소 100ms)만 준다. 에이전트는 `perform`에서 Playwright `TimeoutError`가 나면 stale `el_id`처럼 다시 관찰해 모델이 다시 고르게 한다(같은 3회 한도, 넘으면 `error`, `TimeoutError@perform`). 재생은 지금처럼 `partial`이다.
+- **숨긴 select 제외:** 요소 자신이 `aria-hidden="true"`이고 1px 이하로 잘린 요소(Radix Select의 숨긴 native select)는 수집하지 않는다. 조상의 `aria-hidden`(모달 배경)과 aria-hidden이 없는 sr-only 입력칸은 그대로 수집한다.
+- **보정 자료의 참고 후보:** `score_development --calibration-output`은 규칙이 참고로 낸 후보(데스크톱 R01 44px 권장, 9번)를 `was_reference=true`로 남긴다. `ml/issue_clf/calibrate.py`의 비교 기준(`rules_only`)에서도 이 행을 뺀다. 그래서 이슈 점수의 정밀도 차이는 기본 목록끼리의 비교다.
+- 이 결정 전에 기록된 기준 경로는 첫 화면·화면 해시·반응 판정이 달라 재생이 끊길 수 있다. 버전 비교 전에 기준을 다시 잰다.

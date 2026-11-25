@@ -14,11 +14,12 @@ from ml.issue_clf.runtime import TARGET_SCRIPT, remember
 
 from worker.a11y.scan import scan_page
 from worker.agent.action_feedback import failure_code, missing_fields, retry_message, unexpected_fields
-from worker.agent.observation import describe, labeled_screenshot, state_hash
+from worker.agent.observation import describe, labeled_screenshot, prompt_line, state_hash, target_name
 from worker.agent.persistence import PROMPT_VERSION, Canceled, finish_attempt, log_call, running, save_step
 from worker.agent.safety import LoginWall, SafetyStop, blocked_reason
 from worker.agent.termination import LoopGuard, goal_already_met, verify_success
-from worker.collect.collector import observe, record_first_view, resolve_element, scroll_target_into_view
+from worker.collect.collector import (observe, record_first_view, resolve_element, scroll_target_into_view,
+                                     wait_for_dom_quiet)
 from worker.driver.effects import EffectResult
 from worker.driver.playwright_driver import ActionResult, PlaywrightDriver, SCROLL_STATE
 from worker.llm.base import LLMRequest
@@ -61,6 +62,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
     try:
         async with budget:
             await page.goto(config['base_url'], wait_until='domcontentloaded')
+            # Late-rendering first screens: same call as worker/replay/runner.py (ADR 0011 11).
+            await wait_for_dom_quiet(page)
             await record_first_view(page)
             navigation['changed'] = False
             urls.append(page.url)
@@ -78,7 +81,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 rows = await describe(elements, driver)
                 state, url = state_hash(page.url, elements), page.url
                 document_id = await page.evaluate('(nonce) => globalThis.__stepmeterDocumentId ||= nonce', uuid.uuid4().hex)
-                context = {'task': config['description'], 'elements': rows,
+                # action_v4: one line per element (prompts/action_v4.md); labels are drawn on the same rows.
+                context = {'task': config['description'], 'elements': [prompt_line(r) for r in rows],
                            'recent_actions': history[-5:]}
                 stage = 'screenshot'
                 screenshot = await labeled_screenshot(page, rows)
@@ -148,7 +152,10 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                     try:
                         result = await driver.perform(action)
                     except PlaywrightError as error:
-                        if 'stale el_id' not in str(error) or stale_retries >= 3:
+                        # A browser-side input timeout is cancelled there; observe again like a stale
+                        # number and let the model choose again (shared limit, then TimeoutError@perform).
+                        retry = isinstance(error, PlaywrightTimeout) or 'stale el_id' in str(error)
+                        if not retry or stale_retries >= 3:
                             raise
                         stale_retries += 1
                         continue
@@ -192,7 +199,9 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 targets = metric_targets
                 if len(metric_targets) > len(target_step_ids):
                     target_step_ids.append(step_id)
-                history.append({'action': action.model_dump(), 'effect': effect})
+                # Numbers are reassigned on every observation; the role:name says what was actually used.
+                history.append({'action': action.model_dump(), 'effect': effect,
+                                **({'target_name': target_name(result.element)} if result.element else {})})
                 records.append(StepRecord(step_id, idx, action.action, result.element.name if result.element else None,
                                           action.expectation, effect, url, page.url))
                 idx += 1

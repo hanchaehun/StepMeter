@@ -13,7 +13,7 @@
 
 ## `worker.agent.run.run(run_id)` 실행 규약 요약
 
-- **시작·어댑터**: `run`을 `WHERE status='queued'` 조건으로 `running`, `started_at=now()`, `prompt_version="action_v3"`으로 바꾸고, 시도(attempt)마다 `make_adapter(run.model)`과 `prompts/action_v3.md`를 쓴다(버전은 `worker/agent/persistence.py`의 `PROMPT_VERSION` 하나). LLM 호출마다 DB `LlmCall` 행을 추가하고 `run.cost_usd`에 더한다.
+- **시작·어댑터**: `run`을 `WHERE status='queued'` 조건으로 `running`, `started_at=now()`, `prompt_version="action_v4"`으로 바꾸고, 시도(attempt)마다 `make_adapter(run.model)`과 `prompts/action_v4.md`를 쓴다(버전은 `worker/agent/persistence.py`의 `PROMPT_VERSION` 하나). LLM 호출마다 DB `LlmCall` 행을 추가하고 `run.cost_usd`에 더한다.
 - **`select` 옵션**: `observe()` 항목 중 `tag == "select"`인 요소는 활성 `<option>` 텍스트 목록(1번부터)을 함께 읽어 LLM 프롬프트에 보여준다.
 - **루프·종료 판정**: 매 단계 `Step.state_hash`는 `sha256(URL 경로 + 보이는 요소 이름·텍스트 정렬 목록)`으로 계산하며, 같은 `(state_hash, action)`이 3회 반복되면 `end_reason="loop"`로 끝내고 `r05.evaluate()` 후보를 만든다. `done(goal_reached)` 시 `task.success_condition`(`url_contains`, `text_present`)을 확인하고, 조건이 `null`이면 `success=True, success_estimated=True`로 기록한다. `done(safety_stop)`, `fail`(모델의 포기), 위험 조작 차단(`SafetyStop`), 비밀번호 칸 차단(`LoginWall`)으로 끝날 때도 성공 조건이 있으면 먼저 현재 페이지로 확인해, 이미 충족됐으면 `end_reason="success"`, `success=True, success_estimated=False`로 끝낸다. 충족되지 않았거나 확인 자체가 실패하면 원래대로 `safety_stop`·`gave_up`·`blocked`(`login_wall`)이고, 조건이 `null`이면 추정 성공으로 바꾸지 않는다. 드라이버/효과 관찰 예외(`EffectObservationError` 등)는 `end_reason="error"`, `end_detail`에 사유를 남긴다.
 - **병렬 실행**: 에이전트 attempt는 재생이 끝난 뒤 최대 `STEPMETER_MAX_PARALLEL_ATTEMPTS`개(1~3, 기본 3) 동시에 돈다. 호출 한도(`LLMRateLimitError`)로 끝난 attempt가 나오면 실행 중인 attempt가 모두 끝난 뒤 남은 attempt를 하나씩 돌린다 (계획서 4.6).
@@ -24,7 +24,7 @@
 결정 내용은 [ADR 0011](../../docs/adr/0011-w3-plan-gaps.md)에 있다.
 
 - 비밀번호 칸이 보이기만 하면 진행한다. 비밀번호 칸 클릭은 허용하고, 입력은 과업 문장에 그대로 있는 비어 있지 않은 값만 허용한다. 그렇지 않으면 `blocked`·`end_detail=login_wall`로 끝낸다. CAPTCHA·봇 확인은 차단하고 카드 칸과 되돌릴 수 없는 버튼은 `safety_stop`이다 (ADR 0011 1번).
-- 행동 프롬프트는 `action_v3`이며 읽는 파일, Run과 LlmCall의 `prompt_version`이 일치한다(#75에서 v2 → v3).
+- 행동 프롬프트는 `action_v4`이며 읽는 파일, Run과 LlmCall의 `prompt_version`이 일치한다(#75에서 v2 → v3, ADR 0011 11번에서 v3 → v4: 요소 한 줄 형식·상태 표시·최대 60개·최근 행동의 `target_name`).
 - W4 연결 완료: 단계마다 `Step.est_seconds`, 시도 합계 `est_task_time`을 저장한다. 모바일은 저장하지 않는다(아래 W4 절, ADR 0011 3번).
 - 모델이 요소 목록에 없는 번호를 고르면 형식 오류처럼 최대 2번 다시 묻는다. 끝내 번호가 없으면 `ActionInputError:invalid_target`로 기록한다 (ADR 0011 6번).
 - 시도가 끝나면 `r07.evaluate()`를 불러 대상 step ID와 요소 키를 붙여 후보를 저장한다 (ADR 0011 6번).
@@ -39,6 +39,15 @@ loop는 행동 완료 후 KLM 문헌값을 계산해 save_step의 est_seconds로
 중단·취소 때 미실행 행동은 합계에 넣지 않는다. 모바일은 시간 지표를 저장하지 않는다.
 자동 준비 스크롤은 ActionResult.auto_scrolled와 axe 준비 전후 비교로 전달한다.
 #75에서 type에 submit(입력 후 Enter)이 추가됐다. KLM은 submit=true면 K를 1회 더한다(`estimate_step`, 확인함).
+
+## 관찰 보강 (ADR 0011 11번, 2026-11-25)
+
+- **최대 60개**: `observation.LIMIT`이 30에서 60으로 바뀌었다. 고르는 순서는 아래 #75 정렬 그대로다.
+- **한 줄 형식** (`observation.prompt_line`): 모델에 보내는 `elements`는 `번호|역할(없으면 태그)|이름(없으면 label_text)|영역(없으면 -)|x,y,너비x높이(정수)|표시` 줄의 목록이다. 표시는 가려짐·입력됨·비어 있음·선택됨·펼쳐짐·비활성을 쉼표로 잇고, select는 줄 끝에 `|옵션: 1=..., 2=...`를 붙인다. 번호 라벨 스크린샷은 같은 행에 그린다. 입력값은 줄에 들어가지 않는다. 이름·label_text·옵션 글자 안의 `|`는 `/`로 바꾼다(`worker/rules/r09.py`와 같다).
+- **최근 행동의 대상 이름**: 대상이 있는 행동의 `recent_actions` 항목에 `target_name`(`역할:이름`)을 남긴다. 번호는 관찰마다 다시 매겨지므로 방금 누른 요소를 이름으로 알린다.
+- **첫 화면 안정화**: `goto` 직후 `wait_for_dom_quiet`(DOM 변화가 200ms 없을 때까지, 최대 1.5초) 뒤에 `record_first_view`를 부른다. 재생도 같다.
+- **행동 시간 초과**: `perform`에서 Playwright `TimeoutError`가 나면 stale `el_id`와 같이 다시 관찰해 모델이 다시 고른다(같은 3회 한도). 한도를 넘으면 `error`, `TimeoutError@perform`이다.
+- 프롬프트는 `action_v4`다(`prompts/README.md`).
 
 ## #75 관찰 누락 보완 (2026-11-23)
 

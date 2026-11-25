@@ -48,14 +48,14 @@ class ObservationTests(unittest.IsolatedAsyncioTestCase):
         bbox = {'x': 600, 'y': 380, 'width': 80, 'height': 40}
         background = [
             {'el_id': i, 'tag': 'button', 'landmark': 'main', 'bbox': bbox, 'occluded': True}
-            for i in range(1, 31)
+            for i in range(1, 61)
         ]
-        confirm = {'el_id': 31, 'tag': 'button', 'landmark': None, 'bbox': bbox, 'occluded': False}
+        confirm = {'el_id': 61, 'tag': 'button', 'landmark': None, 'bbox': bbox, 'occluded': False}
         driver = SimpleNamespace(page=SimpleNamespace(viewport_size={'width': 1280, 'height': 800}))
 
         observed = await describe([*background, confirm], driver)
 
-        self.assertEqual(len(observed), 30)
+        self.assertEqual(len(observed), 60)
         self.assertEqual(observed[0], confirm)
         self.assertEqual(observed[1]['visibility'], '(가려짐)')
 
@@ -562,6 +562,54 @@ class SyntheticIntegration(unittest.IsolatedAsyncioTestCase):
         with self.factory() as s:
             a = s.scalar(select(Attempt))
             self.assertEqual((a.end_reason, a.end_detail), ('error', 'TimeoutError@perform'))
+
+    async def test_recent_actions_name_the_clicked_target_and_elements_are_lines(self):
+        # action_v4: 최근 행동에 "역할:이름"을 남겨, 번호가 다시 매겨져도 방금 누른 것을 안다.
+        self.html = ('<html lang="en"><title>Filter</title><body><main>'
+                     '<button onclick="this.setAttribute(\'aria-expanded\',\'true\')" aria-expanded="false">Status</button>'
+                     '</main></body></html>')
+        adapter = FakeAdapter([action('click', target=1), action('fail')])
+        await execute_run(self.run_id, self.factory, browser=self.browser, adapter_factory=lambda _: adapter)
+        first, second = (json.loads(r.user_text) for r in adapter.received[:2])
+        self.assertEqual(first['elements'], ['1|button|Status|main|' + first['elements'][0].split('|')[4] + '|'])
+        self.assertEqual(second['recent_actions'][0]['target_name'], 'button:Status')
+        self.assertTrue(second['elements'][0].endswith('|펼쳐짐'))
+        self.assertEqual(adapter.received[0].prompt_version, 'action_v4')
+
+    async def test_perform_timeout_once_reobserves_and_continues(self):
+        # PM 결정: perform의 Playwright TimeoutError는 stale el_id처럼 다시 관찰해 모델이 다시 고른다.
+        from playwright.async_api import TimeoutError as PlaywrightTimeout
+        from worker.driver.playwright_driver import PlaywrightDriver
+        real, calls = PlaywrightDriver.perform, []
+        async def flaky(driver, chosen):
+            calls.append(chosen.action)
+            if len(calls) == 1:
+                raise PlaywrightTimeout('Timeout 2500ms exceeded.')
+            return await real(driver, chosen)
+        with patch('worker.agent.loop.PlaywrightDriver.perform', flaky):
+            await self.run_replies([action('click', target=1), action('click', target=1),
+                                    action('done', reason='goal_reached')])
+        with self.factory() as s:
+            a = s.scalar(select(Attempt))
+            # click(시간 초과, 저장 안 함) → 다시 관찰 → click → done. 저장된 step은 click·done 2개, 모델 호출 3회.
+            self.assertEqual((a.end_reason, a.success, a.steps_count), ('success', True, 2))
+            self.assertEqual(s.scalar(select(func.count()).select_from(LlmCall)), 3)
+        self.assertEqual(calls, ['click', 'click'])
+
+    async def test_perform_timeout_four_times_in_a_row_is_error(self):
+        # 다시 관찰은 stale el_id와 같은 3회 한도를 쓴다: 1번 + 다시 3번 = 4번 연속이면 error.
+        from playwright.async_api import TimeoutError as PlaywrightTimeout
+        calls = []
+        async def timeout(driver, chosen):
+            calls.append(chosen.action)
+            raise PlaywrightTimeout('Timeout 2500ms exceeded.')
+        with patch('worker.agent.loop.PlaywrightDriver.perform', timeout):
+            await self.run_replies([action('click', target=1)])
+        with self.factory() as s:
+            a = s.scalar(select(Attempt))
+            self.assertEqual((a.end_reason, a.end_detail), ('error', 'TimeoutError@perform'))
+            self.assertEqual(s.scalar(select(func.count()).select_from(Step)), 0)
+        self.assertEqual(len(calls), 4)
 
     async def test_builtin_timeout_outside_budget_names_the_stage(self):
         with patch('worker.agent.loop.labeled_screenshot', side_effect=TimeoutError()):

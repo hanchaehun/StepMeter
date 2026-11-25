@@ -19,6 +19,8 @@ export interface RuleDef {
   measure?: (c: TitleCtx) => string | null;
   passedReason: string;
   mobileOnly?: boolean;
+  /** worker/rules에 아직 규칙이 없다. 해당 화면에서도 통과로 세지 않는다 */
+  notImplemented?: boolean;
 }
 
 // 숫자는 소수 최대 2자리로 보인다 (#75 UX 감사 F-03: 4.451695969857692bit → 4.45bit)
@@ -93,6 +95,7 @@ export const RULES: Record<RuleId, RuleDef> = {
     title: (c) => `${josa(c.element, '이/가')} 가상 키보드에 가릴 수 있음`,
     passedReason: '입력 중 다음 행동 대상이 하단 40% 밖',
     mobileOnly: true,
+    notImplemented: true,
   },
 };
 

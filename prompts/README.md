@@ -40,5 +40,6 @@ suffix는 LLM 답변이 아닌 DB 원본에서 붙인다. 기존 이슈 ID로 �
 | `action_v1` | W2 | 처음 버전 | 개발계획서 4.4 |
 | `action_v2` | W3 | 비밀번호 칸 규칙: 과업에 적힌 값만 넣고, 값이 없는데 로그인·가입이 필요하면 `fail` | ADR 0011 1번 |
 | `action_v3` | 2026-11-23 | `type`의 `submit`(입력 후 Enter) 설명 한 단락. Enter로만 실행되는 칸이고 실행 버튼이 보이지 않을 때 `submit: true`, `type`이 아니면 `null` | #75, ADR 0011 10번 |
+| `action_v4` | 2026-11-25 | 요소 목록의 실제 한 줄 형식(`번호\|역할\|이름\|영역\|x,y,너비x높이\|표시`)과 예시 줄, 상태 표시(가려짐·입력됨·비어 있음·선택됨·펼쳐짐·비활성), select 옵션, 최근 행동의 `target_name`. 요소는 최대 60개 | ADR 0011 11번 |
 
 지금 쓰는 버전은 `worker/agent/persistence.py`의 `PROMPT_VERSION`이다. 예전 파일은 기록 재현을 위해 지우지 않는다.
