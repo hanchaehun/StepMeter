@@ -120,7 +120,9 @@ class LoopTests(unittest.IsolatedAsyncioTestCase):
     async def test_mismatch_is_saved_as_r09_and_call_is_logged_as_judge(self):
         await self.run_with(self.adapter('[{"step": 0, "reason": "저장 표시가 없었다"}]'))
         calls, issues = self.rows()
-        self.assertEqual(calls, [("action", "action_v4"), ("action", "action_v4"), ("judge", "judge_v1")])
+        # 이슈가 생겼으니 run 끝에 설명 생성(explain)도 한 번 묻는다. 이 답은 설명 형식이 아니라 템플릿 설명이 남는다.
+        self.assertEqual(calls, [("action", "action_v4"), ("action", "action_v4"), ("judge", "judge_v1"),
+                                 ("explain", "explain_v1")])
         self.assertEqual(issues, [("R09", "low", "Save 뒤 결과가 기대와 다릅니다. 저장 표시가 없었다")])
 
     async def test_fake_adapter_is_not_asked(self):
