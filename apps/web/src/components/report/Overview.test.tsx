@@ -17,7 +17,7 @@ test('ReportHeader: 과업 문장, 호스트, Compare 링크', () => {
   render(<ReportHeader report={report} task={data.task} project={data.project} />);
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('러닝화 A를 장바구니에 담는다'); // task.description
   expect(screen.getByText(/shop\.example/)).toBeInTheDocument();                                   // project.base_url
-  expect(screen.getByRole('link', { name: 'Compare with #41' })).toBeInTheDocument();              // run.base_run_id 41
+  expect(screen.getByRole('link', { name: 'Compare with #41' })).toHaveAttribute('href', '/compare?base=41&target=42'); // base_run_id 41, run.id 42 (#82 3번)
 });
 
 test('ReportHeader: 과업·프로젝트가 없으면(실제 API 모드) 과업 번호만', () => {

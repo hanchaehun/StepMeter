@@ -35,4 +35,5 @@ test('F-01: / 는 실제 API 모드에서 측정 목록, 목 모드에서 리포
   expect(pageFromPath('/', false)).toEqual({ kind: 'report' });
   expect(pageFromPath('/runs/3', true)).toEqual({ kind: 'report' });
   expect(pageFromPath('/runs/3/progress', true)).toEqual({ kind: 'progress', runId: 3 });
+  expect(pageFromPath('/compare', true)).toEqual({ kind: 'compare' });
 });

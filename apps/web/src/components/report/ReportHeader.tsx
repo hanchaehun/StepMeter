@@ -40,7 +40,8 @@ export function ReportHeader({ report, task, project }: { report: Report; task?:
       <p className="text-sm text-muted [overflow-wrap:anywhere]">
         {parts.join(' · ')}
         {run.base_run_id !== null && (
-          <a href={`#compare-${run.base_run_id}`} className="ml-3 font-semibold text-fg underline-offset-4 hover:underline">
+          // 비교 화면(F07, #82 3번): 기준은 이 측정의 base_run_id, 비교 대상은 이 측정
+          <a href={`/compare?base=${run.base_run_id}&target=${run.id}`} className="ml-3 font-semibold text-fg underline-offset-4 hover:underline">
             Compare with #{run.base_run_id}
           </a>
         )}
