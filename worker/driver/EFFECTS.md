@@ -16,6 +16,7 @@ not finish early after DOM evidence. Input calls (click, fill, press, select_opt
 go_back) receive a Playwright `timeout` of `action_timeout_ms` (5/6 of the window,
 2500 ms by default), so a timed-out input is cancelled in the browser instead of
 landing late (type + Enter share one such deadline; Enter gets the rest, at least 100 ms); the window's `asyncio.wait_for` remains a slightly longer safety net.
+클릭의 조작 가능 확인과 누를 지점 계산은 준비 단계에서 하고, 관찰 창 안에서는 입력 전달만 한다.
 Action timeout, cancellation, detached contexts and page closure are errors, not
 `no_change`. The agent re-observes after a Playwright `TimeoutError` from `perform`
 (ADR 0011 11). Always call `result.as_step_effect()` before persisting the two

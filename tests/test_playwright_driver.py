@@ -124,6 +124,26 @@ class DriverTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.effect.effect_type, 'dom_mutation')
         self.assertEqual(await self.page.locator('p').text_content(), 'Shown')
 
+    async def test_slow_click_point_is_outside_the_observation_window(self):
+        # PM 결정: 누를 지점 계산(click_point)과 조작 가능 확인도 준비 단계다. 3.5초 걸려도 시간 초과가 아니고,
+        # 누르면 글자가 나타나므로 dom_mutation이다.
+        import asyncio
+        from unittest.mock import patch
+        from worker.driver import playwright_driver
+        real_point = playwright_driver.click_point
+        async def slow_point(*args, **kwargs):
+            await asyncio.sleep(3.5)
+            return await real_point(*args, **kwargs)
+        driver = PlaywrightDriver(self.page)  # 기본 관찰 창 3000ms
+        self.addAsyncCleanup(driver.aclose)
+        await self.page.set_content('<button onclick="document.body.insertAdjacentHTML(\'beforeend\',\'<p>Shown</p>\')">Show</button>')
+        rows = await observe(self.page)
+        with patch('worker.driver.playwright_driver.click_point', slow_point):
+            result = await driver.perform(ClickAction(action='click', target=rows[0]['el_id'],
+                                                      thought='Show', expectation='Text appears'))
+        self.assertEqual(result.effect.effect_type, 'dom_mutation')
+        self.assertEqual(await self.page.locator('p').text_content(), 'Shown')
+
     async def test_type_submit_fill_and_enter_share_one_deadline(self):
         # PM 결정: fill과 press('Enter')는 하나의 마감(2500ms)을 나눠 쓴다. press에는 남은 시간(최소 100ms)만 준다.
         # fill이 2.0초 걸리면 press의 timeout은 600ms 이하다(바깥 3초 안전망을 넘지 않는다).

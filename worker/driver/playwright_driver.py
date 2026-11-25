@@ -110,14 +110,21 @@ class PlaywrightDriver:
                     raise EffectObservationError('Select target is disabled')
                 # Input calls get a browser-side timeout shorter than the window (cancelled there, never late).
                 timeout = self.effects.action_timeout_ms
+                prepared = {}
                 if isinstance(action, ClickAction):
+                    # Actionability (visible, enabled, stable, hit target) and the click point are
+                    # preparation; inside the window only the input is dispatched.
+                    async def prepare_input():
+                        prepared['point'] = await click_point(self.page, action.target)
+                        if prepared['point'] is None:
+                            await handle.click(trial=True)
+                        elif not await handle.is_enabled():
+                            raise EffectObservationError('Click target is disabled')
                     async def callback():
-                        point = await click_point(self.page, action.target)
+                        point = prepared['point']
                         if point is None:
-                            await handle.click(timeout=timeout)
+                            await handle.click(force=True, timeout=timeout)
                         else:
-                            if not await handle.is_enabled():
-                                raise EffectObservationError('Click target is disabled')
                             await self.page.mouse.click(point['x'], point['y'])
                 elif isinstance(action, TypeAction):
                     async def callback():
@@ -157,6 +164,8 @@ class PlaywrightDriver:
                     await guard_target(handle, kind, task_description=self.task_description,
                                        text=action.text if isinstance(action, TypeAction) else None,
                                        submit=isinstance(action, TypeAction) and action.submit)
+                    if isinstance(action, ClickAction):
+                        await prepare_input()
                 effect = await self.effects.observe(callback, target=handle, prepare=prepare)
                 return ActionResult(element, effect, screenshot, auto_scrolled)
             finally:

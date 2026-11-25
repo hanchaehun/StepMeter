@@ -207,6 +207,9 @@ class EffectObserver:
         if handle is None:
             raise EffectObservationError('Click target disappeared')
         try:
-            return await self.observe(lambda: handle.click(timeout=self.action_timeout_ms), target=handle)
+            # Playwright's actionability wait (visible, enabled, stable, hit target) is preparation:
+            # run it as a trial before the window, then dispatch without waiting again.
+            return await self.observe(lambda: handle.click(force=True, timeout=self.action_timeout_ms),
+                                      target=handle, prepare=lambda: handle.click(trial=True))
         finally:
             await handle.dispose()
