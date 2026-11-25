@@ -2,19 +2,21 @@ import { ReportRoute } from '@/pages/ReportRoute';
 import { MeasureCreatePage } from '@/pages/MeasureCreatePage';
 import { MeasureProgressPage } from '@/pages/MeasureProgressPage';
 import { RunHistoryPage } from '@/pages/RunHistoryPage';
+import { ComparePage } from '@/pages/ComparePage';
 import { apiBaseUrl } from '@/api/client';
 import type { MockScenario } from '@/api/mockServer';
 
 // 라우터 라이브러리 없이 주소로 화면을 고른다.
-// /new = 측정 생성(F01), /runs/{id}/progress = 측정 진행(F02), /history = 측정 목록(F11),
+// /new = 측정 생성(F01), /runs/{id}/progress = 측정 진행(F02), /history = 측정 목록(F11), /compare?base=&target= = 비교(F07),
 // 나머지 = 리포트(ReportRoute가 /runs/{id}를 읽는다)
 // rootIsHistory: 실제 API 모드에서 / 는 측정 목록이다(#75 UX 감사 F-01: "측정 번호가 없습니다" 막다른 첫 화면 대신).
 // 목 모드의 / 는 지금처럼 데모 리포트다(infra/scripts/check_web.py).
-export type Page = { kind: 'new' } | { kind: 'progress'; runId: number } | { kind: 'history' } | { kind: 'report' };
+export type Page = { kind: 'new' } | { kind: 'progress'; runId: number } | { kind: 'history' } | { kind: 'compare' } | { kind: 'report' };
 export function pageFromPath(pathname: string, rootIsHistory = false): Page {
   if (rootIsHistory && /^\/?$/.test(pathname)) return { kind: 'history' };
   if (/^\/new\/?$/.test(pathname)) return { kind: 'new' };
   if (/^\/history\/?$/.test(pathname)) return { kind: 'history' };
+  if (/^\/compare\/?$/.test(pathname)) return { kind: 'compare' };
   const m = /^\/runs\/(\d+)\/progress\/?$/.exec(pathname);
   if (m) return { kind: 'progress', runId: Number(m[1]) };
   return { kind: 'report' };
@@ -25,8 +27,8 @@ function mockScenario(search: string): MockScenario {
   return v === 'limit' || v === 'unauthorized' ? v : 'ok';
 }
 
-// #75 UX 감사 F-09: 갈 곳 없는 링크(href="#")는 메뉴에 두지 않는다. 비교(Compare)는 비교 화면(#82)이 생기면 더한다.
-// Report는 링크가 아니라 리포트 화면에 있을 때만 현재 위치로 보인다.
+// #75 UX 감사 F-09: 갈 곳 없는 링크(href="#")는 메뉴에 두지 않는다.
+// Report·Compare는 링크가 아니라 그 화면에 있을 때만 현재 위치로 보인다. 비교는 두 측정을 골라야 열 수 있어서다(#82 3번: 측정 목록·리포트에서 진입).
 const NAV = [
   { label: 'New run', href: '/new', page: 'new' },
   { label: 'History', href: '/history', page: 'history' },
@@ -54,9 +56,9 @@ export default function App() {
               {n.label}
             </a>
           ))}
-          {page.kind === 'report' && (
+          {(page.kind === 'report' || page.kind === 'compare') && (
             <span aria-current="page" className={navCls}>
-              Report
+              {page.kind === 'report' ? 'Report' : 'Compare'}
             </span>
           )}
         </nav>
@@ -65,6 +67,8 @@ export default function App() {
         <MeasureCreatePage baseUrl={mock ? null : base} mockScenario={mockScenario(window.location.search)} />
       ) : page.kind === 'history' ? (
         <RunHistoryPage baseUrl={mock ? null : base} search={window.location.search} />
+      ) : page.kind === 'compare' ? (
+        <ComparePage baseUrl={mock ? null : base} search={window.location.search} />
       ) : page.kind === 'progress' ? (
         <MeasureProgressPage runId={page.runId} baseUrl={mock ? null : base} />
       ) : (

@@ -135,3 +135,22 @@ test('F-10: 예상 소요 시간 값이 있는 재생 재측정 줄은 "—"가 
   // 진행 중(#5)은 아직 값이 없어 "—"
   expect(within(rowOf(5)).getAllByText('—').length).toBeGreaterThan(0);
 });
+
+// 비교 진입(#82 3·4번): 완료된 측정만 고를 수 있고, 두 개를 고르면 먼저 만든 측정이 기준이다.
+// seedHistory: #1(11-18 완료), #3(11-20 완료), #4(취소), #5(진행 중)
+test('비교: 완료된 측정 두 줄을 고르면 먼저 만든 측정을 기준으로 비교 화면에 간다', async () => {
+  const user = setup(createMockServer('ok', 0, { seed: true }));
+  await screen.findByRole('rowheader', { name: '#5' });
+  expect(screen.getByRole('checkbox', { name: /측정 #4/ })).toBeDisabled(); // 취소
+  expect(screen.getByRole('checkbox', { name: /측정 #5/ })).toBeDisabled(); // 진행 중
+  expect(screen.getByRole('button', { name: '비교' })).toBeDisabled();
+
+  await user.click(screen.getByRole('checkbox', { name: /측정 #3/ }));
+  await user.click(screen.getByRole('checkbox', { name: /측정 #1/ }));
+  const link = screen.getByRole('link', { name: /^비교/ });
+  expect(link).toHaveAttribute('href', '/compare?base=1&target=3');
+  expect(screen.getByText('기준 #1 · 비교 대상 #3')).toBeInTheDocument();
+
+  await user.click(screen.getByRole('checkbox', { name: /측정 #1/ }));
+  expect(screen.getByRole('button', { name: '비교' })).toBeDisabled();
+});

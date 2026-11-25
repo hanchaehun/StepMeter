@@ -63,3 +63,12 @@ npm run gen:api    # apps/api/openapi.yaml → src/api/types.ts (손으로 고�
   - 리포트 제목·주소 줄은 `overflow-wrap:anywhere`(F-06). 진행 화면의 알림 영역(role=status)은 하나이며 단계가 바뀔 때만 글자가 바뀐다(F-07).
   - 헤더 메뉴에서 갈 곳 없는 Report·Compare 링크를 뺐다. Report는 리포트 화면에서만 현재 위치로 보이고, Compare는 비교 화면(#82)이 생기면 더한다(F-09).
   - 측정 목록 주석에 예상 소요 시간이 "—"인 경우를 적었다(F-10). 2026-11-23부터 재생 재측정도 값을 저장한다. 초대 코드 안내의 "(F17)"을 뺐다(F-11).
+
+## 비교 화면 (F07, #82)
+
+- 주소 `/compare?base=&target=` → `GET /compare`. 범위는 #82 결정(B안 + 끊긴 지점 한 줄)이고, 순서는 개발계획서 7.5다: 문제 변화(새로 생김·해결됨 목록, 유지는 건수) → 재생 비교(+ `diverged_at_step` 한 줄) → 에이전트 비교 → 경로 정렬(추가·삭제 개수만). `null`인 블록은 숨긴다.
+- 판정은 API의 `verdict`를 그대로 쓴다. `threshold`는 "판정 기준"으로 쓰고, 재생 비교의 클릭 수만 회 단위(±1회), 나머지는 %다(7.4). `not_comparable`이거나 `threshold`가 `null`이면 "비교 불가", `agent.spread_weak`면 "편차 추정 약함"이다.
+- 판정 지표는 클릭 수·커서 이동 거리·예상 소요 시간 3개다. 나머지는 "참고 지표(판정 안 함)"로 접어서 값만 보인다. 문장 변환은 `src/lib/compare.ts`.
+- 진입: 측정 목록에서 완료된 측정 두 줄을 고르면 먼저 만든 측정이 기준이 된다. 리포트 머리의 "Compare with #N"은 `/compare?base=N&target=이 측정`이다. 409가 오면 서버 메시지를 그대로 보인다.
+- 목 모드: 목 서버의 `/compare`는 아는 측정끼리면 완료·과업·뷰포트를 확인해 409를 내고, 모르는 번호는 `tests/fixtures/mock/api/comparison.json`을 번호만 바꿔 돌려준다(예: `/compare?base=41&target=42`).
+- 재생 확인 화면(후보 3개 묻기)·대응 관계 저장은 ADR 0011 4번에 따라 만들지 않았다.

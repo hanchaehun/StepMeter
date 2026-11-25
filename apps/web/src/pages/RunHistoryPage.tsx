@@ -1,12 +1,14 @@
 // 측정 목록 (F11). ADR 0011 4번: 목록은 필수, 추이 차트는 선택 → 이번에는 목록만.
 // 프로젝트 → 과업 → 화면 크기를 고르면 그 과업의 측정을 최신순으로 보인다(GET /tasks/{id}/runs?viewport=).
 // 같은 뷰포트끼리만 보인다(7.1). 고른 값은 주소(?project=&task=&viewport=)에 남겨 새로 고침·공유해도 유지한다.
+// 비교(#82 3번·4번): 완료된 측정 두 줄을 고르면 /compare로 간다. 먼저 만든 측정이 기준(base)이다.
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, clearAccessCode, describeError, getAccessCode, setAccessCode } from '@/api/client';
 import { listProjects, listTaskRuns, listTasks, type RunHistoryItem, type ViewportPreset } from '@/api/history';
 import { createMockServer } from '@/api/mockServer';
 import { AccessCodeView } from '@/components/report/ReportStatus';
+import { orderPair } from '@/lib/compare';
 import { cn } from '@/lib/cn';
 
 const STATUS_LABEL = { queued: '대기', running: '진행 중', completed: '완료', failed: '오류', canceled: '취소' } as const;
@@ -192,7 +194,7 @@ export function RunHistoryPage({ baseUrl, search, fetchImpl }: Props) {
               link={newLink}
             />
           ) : (
-            <RunTable items={runs.data!} viewport={viewport} suffix={suffix} />
+            <RunTable key={`${task.id}-${viewport}`} items={runs.data!} viewport={viewport} suffix={suffix} />
           )}
         </>
       )}
@@ -200,10 +202,36 @@ export function RunHistoryPage({ baseUrl, search, fetchImpl }: Props) {
   );
 }
 
+/** 고른 두 측정 → 비교 화면 주소. 기준은 먼저 만든 측정 */
+export function compareHref(a: RunHistoryItem['run'], b: RunHistoryItem['run'], suffix = ''): string {
+  const { base, target } = orderPair(a, b);
+  const extra = suffix.startsWith('?') ? `&${suffix.slice(1)}` : '';
+  return `/compare?base=${base.id}&target=${target.id}${extra}`;
+}
+
 function RunTable({ items, viewport, suffix }: { items: RunHistoryItem[]; viewport: ViewportPreset; suffix: string }) {
   const cols = METRIC_COLUMNS.filter((c) => viewport === 'desktop' || !c.desktopOnly);
+  // 과업·화면 크기가 바뀌면 key가 바뀌어 고른 것이 비워진다
+  const [picked, setPicked] = useState<number[]>([]);
+  const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < 2 ? [...p, id] : p));
+  const pickedRuns = items.filter((i) => picked.includes(i.run.id)).map((i) => i.run);
+  const pair = pickedRuns.length === 2 ? orderPair(pickedRuns[0], pickedRuns[1]) : null;
   return (
     <div>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        {pair ? (
+          <a href={compareHref(pair.base, pair.target, suffix)} className={btnPrimary}>
+            비교<span className="sr-only"> · 기준 #{pair.base.id}, 비교 대상 #{pair.target.id}</span>
+          </a>
+        ) : (
+          <button type="button" disabled className={cn(btnPrimary, 'cursor-not-allowed opacity-60')}>비교</button>
+        )}
+        <p className="text-sm text-muted" aria-live="polite">
+          {pair
+            ? `기준 #${pair.base.id} · 비교 대상 #${pair.target.id}`
+            : `완료된 측정 두 개를 고르면 비교할 수 있습니다. (${pickedRuns.length} / 2)`}
+        </p>
+      </div>
       {/* 좁은 화면에서는 표 상자 안에서만 가로로 스크롤한다.
           relative: 표 안의 sr-only(absolute) 글자가 이 상자를 벗어나 페이지를 넓히지 않게 한다 */}
       <div className="relative overflow-x-auto rounded-lg border border-border" tabIndex={0} role="region" aria-labelledby="h-caption">
@@ -211,6 +239,7 @@ function RunTable({ items, viewport, suffix }: { items: RunHistoryItem[]; viewpo
           <caption id="h-caption" className="sr-only">측정 목록, 최신순</caption>
           <thead className="bg-surface text-left">
             <tr>
+              <th scope="col" className={th}>비교</th>
               <th scope="col" className={th}>측정</th>
               <th scope="col" className={th}>요청 시각</th>
               <th scope="col" className={th}>방식</th>
@@ -229,6 +258,19 @@ function RunTable({ items, viewport, suffix }: { items: RunHistoryItem[]; viewpo
               const done = r.status === 'completed';
               return (
                 <tr key={r.id} className="border-t border-hair">
+                  <td className={cn(td, 'py-0')}>
+                    {/* 완료된 측정만 고를 수 있다(#82 4번). 두 개를 고르면 나머지는 막는다. 누르는 영역 44×44 */}
+                    <label className="inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center has-[:disabled]:cursor-not-allowed">
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(r.id)}
+                        disabled={!done || (!picked.includes(r.id) && picked.length >= 2)}
+                        onChange={() => toggle(r.id)}
+                        className="h-5 w-5 accent-[var(--primary)]"
+                      />
+                      <span className="sr-only">측정 #{r.id} 비교에 고르기{done ? '' : ' (완료된 측정만 고를 수 있음)'}</span>
+                    </label>
+                  </td>
                   <th scope="row" className={cn(td, 'font-semibold')}>#{r.id}</th>
                   <td className={td}><time dateTime={r.created_at}>{timeFmt.format(new Date(r.created_at))}</time></td>
                   <td className={td}>{MODE_LABEL[r.mode]}</td>

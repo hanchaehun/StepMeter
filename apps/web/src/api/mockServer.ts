@@ -1,6 +1,7 @@
 // 측정 생성 화면의 목 API (백엔드 없이 개발할 때와 테스트에서 쓴다). fetch와 같은 모양이다.
 // 경로와 응답 형식은 apps/api/openapi.yaml을 따른다. 상태는 만든 객체 안에만 있다.
 // scenario: 'ok' | 'unauthorized'(항상 401) | 'limit'(POST /tasks/{id}/runs가 429, replay_only는 통과)
+import comparisonJson from '@mock/comparison.json';
 import type { components } from './types';
 
 type Project = components['schemas']['Project'];
@@ -8,6 +9,7 @@ type Task = components['schemas']['Task'];
 type Run = components['schemas']['Run'];
 type RunHistoryItem = components['schemas']['RunHistoryItem'];
 type RunProgress = components['schemas']['RunProgress'];
+type Comparison = components['schemas']['Comparison'];
 
 export type MockScenario = 'ok' | 'unauthorized' | 'limit';
 
@@ -184,6 +186,20 @@ export function createMockServer(scenario: MockScenario = 'ok', delayMs = 0, opt
       if (!run) return json({ detail: 'not found' }, 404);
       if (opts.advance) advanceDemo(run);
       return json(progressOf(run), 200);
+    }
+    if (path === '/compare' && method === 'GET') {
+      // 아는 측정끼리면 API처럼 확인한다(완료·같은 과업·같은 뷰포트가 아니면 409). 모르는 번호(데모 리포트 #41·#42 등)는
+      // 목 JSON(tests/fixtures/mock/api/comparison.json)을 번호만 바꿔 돌려준다
+      const baseId = Number(query.get('base'));
+      const targetId = Number(query.get('target'));
+      const a = s.runs.find((r) => r.id === baseId);
+      const b = s.runs.find((r) => r.id === targetId);
+      if (a && b) {
+        if (a.status !== 'completed' || b.status !== 'completed') return json({ detail: 'both runs must be completed' }, 409);
+        if (a.task_id !== b.task_id || a.viewport !== b.viewport) return json({ detail: 'runs differ in task or viewport' }, 409);
+      }
+      const c = structuredClone(comparisonJson) as Comparison;
+      return json({ ...c, base_run_id: baseId, target_run_id: targetId }, 200);
     }
     if ((m = /^\/runs\/(\d+)\/cancel$/.exec(path)) && method === 'POST') {
       const run = s.runs.find((r) => r.id === Number(m![1]));
