@@ -12,7 +12,7 @@ const LANDMARKS = new Set([
   "banner", "navigation", "main", "complementary", "contentinfo", "search", "form", "region",
 ]);
 const NAMED_ONLY = new Set(["form", "region"]);
-// #75: 열린 겹침 층(모달·팝오버·옵션 목록·메뉴). 에이전트가 30개를 고를 때 이 안의 요소를 먼저 둔다.
+// #75: 열린 겹침 층(모달·팝오버·옵션 목록·메뉴). 에이전트가 60개를 고를 때 이 안의 요소를 먼저 둔다.
 const OVERLAY = 'dialog[open], [role=dialog], [role=alertdialog], [aria-modal="true"], [role=listbox], [role=menu]';
 const TEXT_INPUT_TYPES = new Set(["text", "email", "search", "password", "tel", "url", "number"]);
 const TEXT_INPUT_ROLES = new Set(["textbox", "searchbox", "combobox"]);
@@ -144,9 +144,20 @@ function hasVisibleNativeIndicator(el) {
   });
 }
 
+// 요소 자신이 보조 기술에서 숨겨졌고 1px 이하로 잘린 경우만 뺀다 (Radix Select의 native select).
+// 조상의 aria-hidden(모달 배경)이나 sr-only 입력칸은 빼지 않는다.
+function isAriaHiddenAndClipped(el) {
+  if (el.getAttribute("aria-hidden") !== "true") return false;
+  const cs = getComputedStyle(el);
+  const r = el.getBoundingClientRect();
+  return r.width <= 1 && r.height <= 1 &&
+    (cs.overflow === "hidden" || cs.clip === "rect(0px, 0px, 0px, 0px)" || cs.clipPath === "inset(50%)");
+}
+
 const isVisible = (el, box) =>
   box.width > 0 &&
   box.height > 0 &&
+  !isAriaHiddenAndClipped(el) &&
   (el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) ||
    hasVisibleNativeIndicator(el));
 
@@ -172,6 +183,31 @@ function inOverlay(el) {
 function isTextInput(el, role) {
   return (el.tagName === "INPUT" && TEXT_INPUT_TYPES.has(el.type)) ||
     el.tagName === "TEXTAREA" || TEXT_INPUT_ROLES.has(role);
+}
+
+const CHECKABLE_ROLES = new Set(["checkbox", "radio", "switch", "menuitemcheckbox", "menuitemradio"]);
+
+// action_v4: 해당하는 상태만 true/false로 넣는다. 값(value 문자열)은 넣지 않는다.
+// identityOf·지문·snapshot()에는 쓰지 않는다 (입력해도 같은 요소로 남아야 한다).
+function stateOf(el, role) {
+  const state = {};
+  if ((el.tagName === "INPUT" && TEXT_INPUT_TYPES.has(el.type)) || el.tagName === "TEXTAREA") {
+    state.filled = el.value !== "";
+  } else if (el.isContentEditable) {
+    state.filled = (el.textContent || "").trim() !== "";
+  }
+  if (el.matches('input[type="checkbox"],input[type="radio"]')) state.checked = el.checked;
+  else if (CHECKABLE_ROLES.has(role)) state.checked = el.getAttribute("aria-checked") === "true";
+  // cmdk puts aria-selected on the cursor item, not the checked one: leave selected out for [cmdk-item].
+  if (el.hasAttribute("aria-selected") && !el.hasAttribute("cmdk-item")) {
+    state.selected = el.getAttribute("aria-selected") === "true";
+  }
+  if (el.hasAttribute("aria-expanded")) state.expanded = el.getAttribute("aria-expanded") === "true";
+  const native = el.matches("button,input,select,textarea");
+  if (native || el.hasAttribute("aria-disabled")) {
+    state.disabled = (native && el.matches(":disabled")) || el.getAttribute("aria-disabled") === "true";
+  }
+  return state;
 }
 
 function labelText(el) {
@@ -295,7 +331,9 @@ function observe() {
       label_text: name ? null : labelText(entry.el), // 이름 없는 요소 매칭 지문 (7.2)
       bbox: b,
       occluded: isOccluded(entry, b),
-      // 정렬 전용 (#75). 에이전트가 30개를 고를 때만 쓰고 LLM에 보내는 항목에서는 뺀다.
+      // 입력됨·선택됨·펼쳐짐·비활성 표시용 (action_v4). state_hash·매칭 지문에는 들어가지 않는다.
+      state: stateOf(entry.el, role),
+      // 정렬 전용 (#75). 에이전트가 60개를 고를 때만 쓰고 LLM에 보내는 항목에서는 뺀다.
       sort: { overlay: inOverlay(entry.el), text_input: isTextInput(entry.el, role) },
     };
   });

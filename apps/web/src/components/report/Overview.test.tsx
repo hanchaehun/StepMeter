@@ -93,3 +93,14 @@ test('PassedRules 8개', () => {
   expect(screen.getAllByRole('listitem')).toHaveLength(8);
   expect(screen.getByText('모바일만 해당')).toBeInTheDocument();
 });
+
+test('모바일: R11은 "이번 버전 미지원"으로 보이고 통과 수는 7', () => {
+  // 11 − {R04, R02, R01} = 8, 그중 R11은 규칙이 아직 없어 통과로 세지 않는다
+  const r = structuredClone(report);
+  r.run.viewport = 'mobile';
+  render(<PassedRules items={passedRules(r.issues, 'mobile')} />);
+  expect(screen.getByText('이번 버전 미지원')).toBeInTheDocument();
+  expect(screen.getByText(/^7 · /)).toBeInTheDocument();
+  render(<Verdict report={r} />);
+  expect(screen.getByText(/통과 7$/)).toBeInTheDocument();
+});

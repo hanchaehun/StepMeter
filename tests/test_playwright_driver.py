@@ -104,6 +104,71 @@ class DriverTests(unittest.IsolatedAsyncioTestCase):
             effects.append(step.effect_type)
         self.assertEqual(count_no_response_clicks(actions, effects), 1)
 
+    async def test_slow_preparation_is_outside_the_observation_window(self):
+        # PM 결정: 재확인·옵션 확인·안전 검사(준비)는 3초 관찰 창에 들어가지 않는다.
+        # 준비가 3.5초 걸려도 시간 초과가 아니고, 누르면 글자가 나타나므로 dom_mutation이다.
+        import asyncio
+        from unittest.mock import patch
+        from worker.driver import playwright_driver
+        real_guard = playwright_driver.guard_target
+        async def slow_guard(*args, **kwargs):
+            await asyncio.sleep(3.5)
+            return await real_guard(*args, **kwargs)
+        driver = PlaywrightDriver(self.page)  # 기본 관찰 창 3000ms
+        self.addAsyncCleanup(driver.aclose)
+        await self.page.set_content('<button onclick="document.body.insertAdjacentHTML(\'beforeend\',\'<p>Shown</p>\')">Show</button>')
+        rows = await observe(self.page)
+        with patch('worker.driver.playwright_driver.guard_target', slow_guard):
+            result = await driver.perform(ClickAction(action='click', target=rows[0]['el_id'],
+                                                      thought='Show', expectation='Text appears'))
+        self.assertEqual(result.effect.effect_type, 'dom_mutation')
+        self.assertEqual(await self.page.locator('p').text_content(), 'Shown')
+
+    async def test_slow_click_point_is_outside_the_observation_window(self):
+        # PM 결정: 누를 지점 계산(click_point)과 조작 가능 확인도 준비 단계다. 3.5초 걸려도 시간 초과가 아니고,
+        # 누르면 글자가 나타나므로 dom_mutation이다.
+        import asyncio
+        from unittest.mock import patch
+        from worker.driver import playwright_driver
+        real_point = playwright_driver.click_point
+        async def slow_point(*args, **kwargs):
+            await asyncio.sleep(3.5)
+            return await real_point(*args, **kwargs)
+        driver = PlaywrightDriver(self.page)  # 기본 관찰 창 3000ms
+        self.addAsyncCleanup(driver.aclose)
+        await self.page.set_content('<button onclick="document.body.insertAdjacentHTML(\'beforeend\',\'<p>Shown</p>\')">Show</button>')
+        rows = await observe(self.page)
+        with patch('worker.driver.playwright_driver.click_point', slow_point):
+            result = await driver.perform(ClickAction(action='click', target=rows[0]['el_id'],
+                                                      thought='Show', expectation='Text appears'))
+        self.assertEqual(result.effect.effect_type, 'dom_mutation')
+        self.assertEqual(await self.page.locator('p').text_content(), 'Shown')
+
+    async def test_type_submit_fill_and_enter_share_one_deadline(self):
+        # PM 결정: fill과 press('Enter')는 하나의 마감(2500ms)을 나눠 쓴다. press에는 남은 시간(최소 100ms)만 준다.
+        # fill이 2.0초 걸리면 press의 timeout은 600ms 이하다(바깥 3초 안전망을 넘지 않는다).
+        import asyncio
+        from unittest.mock import patch
+        from playwright.async_api import ElementHandle
+        real_fill, real_press, seen = ElementHandle.fill, ElementHandle.press, []
+        async def slow_fill(handle, value, **kwargs):
+            await asyncio.sleep(2.0)
+            return await real_fill(handle, value, **kwargs)
+        async def recording_press(handle, key, **kwargs):
+            seen.append(kwargs.get('timeout'))
+            return await real_press(handle, key, **kwargs)
+        driver = PlaywrightDriver(self.page)  # 기본 관찰 창 3000ms, 입력 시간 제한 2500ms
+        self.addAsyncCleanup(driver.aclose)
+        await self.page.set_content('<form onsubmit="event.preventDefault()"><input aria-label="Search"></form>')
+        rows = await observe(self.page)
+        with patch.object(ElementHandle, 'fill', slow_fill), patch.object(ElementHandle, 'press', recording_press):
+            await driver.perform(TypeAction(action='type', target=rows[0]['el_id'], text='shoes', submit=True,
+                                            thought='Search', expectation='Results'))
+        self.assertEqual(len(seen), 1)
+        self.assertIsNotNone(seen[0])
+        self.assertLessEqual(seen[0], 600)
+        self.assertGreaterEqual(seen[0], 100)
+
     async def test_automatic_preparation_scroll_is_reported(self):
         from worker.metrics.klm import estimate_step
         await self.page.set_content('<div style="height:1600px"></div><button>Far</button>')

@@ -41,7 +41,7 @@ export function IssuesPanel({ report, steps, onOpen, onShowAll, limit = Infinity
       </div>
       {main.length === 0 && (
         <p className="border-t border-hair py-4 text-muted">
-          과업 경로에서 규칙 R01~R11에 걸린 문제가 없습니다.{reference.length > 0 && ` 참고 ${reference.length}건은 과업 경로 밖 요소입니다.`}
+          과업 경로에서 규칙 R01~R11에 걸린 문제가 없습니다.{reference.length > 0 && ` 참고 ${reference.length}건은 과업 경로 밖이거나 점수가 낮은 항목입니다.`}
         </p>
       )}
       {shownMain.map((g) => (

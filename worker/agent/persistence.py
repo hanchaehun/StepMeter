@@ -7,8 +7,8 @@ from apps.api.db.models import Attempt, ElementSnapshot, LlmCall, Run, Step
 from worker.queue.runs import update_progress, save_screenshot
 
 # 행동 프롬프트 버전. loop.py가 prompts/{PROMPT_VERSION}.md를 읽고 Run·LlmCall에 같은 값을 남긴다.
-# action_v3: type.submit(입력 후 Enter) 설명 추가 (#75, prompts/README.md 이력)
-PROMPT_VERSION = 'action_v3'
+# action_v4: 요소 한 줄 형식·상태 표시·최근 행동의 target_name (prompts/README.md 이력)
+PROMPT_VERSION = 'action_v4'
 
 
 class Canceled(Exception):

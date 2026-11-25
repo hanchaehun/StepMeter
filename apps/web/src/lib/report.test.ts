@@ -9,6 +9,7 @@ import {
   spreadQualityText,
   endReasonText,
   passedRules,
+  passedCount,
   splitIssues,
   stepIssueMap,
 } from './report';
@@ -103,6 +104,12 @@ describe('passedRules', () => {
     const p = passedRules(report.issues, 'desktop');
     expect(p.map((x) => x.id)).toEqual(['R03', 'R05', 'R06', 'R07', 'R08', 'R09', 'R10', 'R11']);
     expect(p.find((x) => x.id === 'R11')!.reason).toBe('모바일만 해당');
+    expect(passedCount(p)).toBe(8);
+  });
+  test('모바일: R11 규칙은 아직 없으므로 "이번 버전 미지원"이고 통과 수에 들어가지 않는다 (11 − 3 − R11 = 7)', () => {
+    const p = passedRules(report.issues, 'mobile');
+    expect(p.find((x) => x.id === 'R11')!.reason).toBe('이번 버전 미지원');
+    expect(passedCount(p)).toBe(7);
   });
 });
 

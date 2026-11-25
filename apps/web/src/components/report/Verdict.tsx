@@ -1,10 +1,10 @@
 import type { Report } from '@/api/mock';
-import { passedRules, splitIssues, verdictText } from '@/lib/report';
+import { passedCount, passedRules, splitIssues, verdictText } from '@/lib/report';
 
 export function Verdict({ report }: { report: Report }) {
   const v = verdictText(report);
   const { main, reference } = splitIssues(report.issues);
-  const passed = passedRules(report.issues, report.run.viewport).length;
+  const passed = passedCount(passedRules(report.issues, report.run.viewport));
   const est = report.metrics.find((m) => m.key === 'est_task_time');
   const mobile = report.run.viewport === 'mobile';
 

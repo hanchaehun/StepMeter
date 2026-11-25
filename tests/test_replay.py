@@ -110,6 +110,25 @@ class ReplayIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(session.scalar(select(Metric.value).where(
                 Metric.run_id == run_id, Metric.attempt_id.is_(None), Metric.key == "click_count")), 1)
 
+    async def test_late_rendered_page_base_replays_full(self):
+        # ADR 0011 11번: 첫 화면은 DOM이 잠잠해진 뒤 관찰한다(에이전트·재생 공통).
+        # 버튼이 300ms 뒤에야 그려지는 화면에서 기록한 기준 경로를 같은 버전으로 재생하면 full이다.
+        self.page_path.write_text(
+            '<!doctype html><title>Replay</title><main><p id="result">Loading</p></main><script>'
+            'setTimeout(()=>{const b=document.createElement("button");b.textContent="Next";'
+            'b.onclick=()=>{document.querySelector("#result").textContent="Complete"};'
+            'document.querySelector("main").prepend(b);document.querySelector("#result").textContent=""},300)'
+            '</script>', encoding="utf-8")
+        base_id = await self.make_base()
+        run_id = self.create_run("replay_only", base_run_id=base_id)
+        await execute_run(run_id, self.factory, browser=self.browser,
+                          adapter_factory=lambda _model: self.fail("replay_only called an LLM adapter"))
+        with self.factory() as session:
+            base = session.scalar(select(Attempt).where(Attempt.run_id == base_id))
+            self.assertEqual((base.end_reason, base.success), ("success", True))
+            attempt = session.scalar(select(Attempt).where(Attempt.run_id == run_id))
+            self.assertEqual((attempt.kind, attempt.replay_status, attempt.success), ("replay", "full", True))
+
     async def test_missing_target_records_partial_before_action_and_falls_back_from_start(self):
         base_id = await self.make_base()
         self.page_path.write_text("<!doctype html><title>Replay</title><p>Complete</p>", encoding="utf-8")

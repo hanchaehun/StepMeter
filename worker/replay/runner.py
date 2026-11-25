@@ -14,7 +14,7 @@ from worker.agent import persistence
 from worker.agent.observation import state_hash
 from worker.agent.safety import LoginWall, SafetyStop
 from worker.agent.termination import verify_success
-from worker.collect.collector import observe, record_first_view, resolve_element
+from worker.collect.collector import observe, record_first_view, resolve_element, wait_for_dom_quiet
 from worker.driver.effects import EffectObservationError, EffectResult
 from worker.driver.playwright_driver import ActionResult, PlaywrightDriver
 from worker.matching.match import fingerprint, match
@@ -127,6 +127,8 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
     full, diverged_at, detail, success, estimated = True, None, None, False, False
     try:
         await page.goto(config["base_url"], wait_until="domcontentloaded")
+        # Late-rendering first screens: same call as worker/agent/loop.py (ADR 0011 11).
+        await wait_for_dom_quiet(page)
         await record_first_view(page)
         urls.append(page.url)
         scrolls.append(await page.evaluate("scrollY"))

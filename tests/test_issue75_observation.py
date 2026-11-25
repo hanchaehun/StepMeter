@@ -3,10 +3,10 @@
 기대값은 #75 결정에서 정한다(구현을 보고 만들지 않았다).
 - 수집 역할: option, menuitemcheckbox, menuitemradio, radio, switch, combobox, treeitem, slider,
   spinbutton, searchbox, textbox 역할 요소는 tabindex가 없거나 -1이어도 수집한다.
-- 30개 정렬: 30개 이하면 문서 순서. 넘으면 ① 열린 겹침 층(가장 가까운 조상이 dialog[open],
+- 30개 정렬(상한은 ADR 0011 11번에서 60개로 바뀌었다): 상한 이하면 문서 순서. 넘으면 ① 열린 겹침 층(가장 가까운 조상이 dialog[open],
   [role=dialog], [role=alertdialog], [aria-modal="true"], [role=listbox], [role=menu]) 안의 요소
   ② 가려지지 않은 요소 ③ 텍스트 입력칸 ④ main 안 → 화면 중심 거리 → 큰 순 → el_id.
-  정렬 전용 필드는 LLM 항목에 넣지 않는다. 30개 안의 가려진 요소는 "(가려짐)"(ADR 0010).
+  정렬 전용 필드는 LLM 항목에 넣지 않는다. 상한 안의 가려진 요소는 "(가려짐)"(ADR 0010).
 - submit=true면 입력 후 같은 요소에서 Enter 한 번. 비밀번호 규칙(ADR 0011 1번)은 그대로 먼저 돈다.
 
 모든 화면은 1280×800이고 아래 고정 CSS로 위치를 정했다.
@@ -22,8 +22,8 @@ from worker.driver.playwright_driver import PlaywrightDriver
 from worker.schemas import TypeAction
 
 VIEWPORT = {'width': 1280, 'height': 800}
-# 화면 키 전 이전 observe 행의 키 (ADR 0010 형식). #75 정렬 전용 필드는 LLM 항목에 없어야 한다.
-OBSERVE_KEYS = {'el_id', 'tag', 'role', 'name', 'landmark', 'label_text', 'bbox', 'occluded'}
+# 화면 키 전 이전 observe 행의 키 (ADR 0010 형식)와 상태 표시용 state(action_v4). #75 정렬 전용 필드는 LLM 항목에 없어야 한다.
+OBSERVE_KEYS = {'el_id', 'tag', 'role', 'name', 'landmark', 'label_text', 'bbox', 'occluded', 'state'}
 
 STYLE = '''<style>
 body{margin:0;font:14px sans-serif}
@@ -33,7 +33,7 @@ main button{position:absolute;width:100px;height:40px;margin:0}
 
 
 def main_buttons(count, columns=10, top=0):
-    """main 안 버튼. 열 간격 120px, 행 간격 60px. 40개(10×4)는 y 100–320, 60개(10×6)는 y 100–440."""
+    """main 안 버튼. 열 간격 120px, 행 간격 60px. 40개(10×4)는 y 100–320, 60개(10×6)는 y 100–440, 70개(10×7)는 y 100–500."""
     return ''.join(
         f'<button style="left:{20 + (i % columns) * 120}px;top:{top + (i // columns) * 60}px">B{i + 1}</button>'
         for i in range(count))
@@ -61,52 +61,52 @@ class ObservationOrderTests(unittest.IsolatedAsyncioTestCase):
     def names(self, rows):
         return [row['name'] for row in rows]
 
-    async def test_modal_email_and_invite_are_in_30_before_occluded_main_buttons(self):
-        # 초대 창(aria-modal, landmark 없음) 뒤에 반투명 막이 main 버튼 40개를 덮는다 (#75 확인 사실 2).
-        body = (f'<main>{main_buttons(40)}</main>'
+    async def test_modal_email_and_invite_are_in_60_before_occluded_main_buttons(self):
+        # 초대 창(aria-modal, landmark 없음) 뒤에 반투명 막이 main 버튼 70개를 덮는다 (#75 확인 사실 2).
+        body = (f'<main>{main_buttons(70)}</main>'
                 '<div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10"></div>'
                 '<div role="dialog" aria-modal="true" aria-labelledby="t" style="position:fixed;left:440px;top:250px;'
                 'width:400px;height:200px;background:#fff;z-index:11">'
                 '<h2 id="t">Invite user</h2><label>Email <input type="email"></label><button>Invite</button></div>')
         elements, rows = await self.rows(body)
-        self.assertEqual(len(elements), 42)
-        self.assertEqual(len(rows), 30)
+        self.assertEqual(len(elements), 72)
+        self.assertEqual(len(rows), 60)
         self.assertIn('Email', self.names(rows))
         self.assertIn('Invite', self.names(rows))
-        # 겹침 층 2개 다음은 가려진 main 버튼 28개. 30개 안의 가려진 요소는 "(가려짐)"이다 (ADR 0010).
+        # 겹침 층 2개 다음은 가려진 main 버튼 58개. 60개 안의 가려진 요소는 "(가려짐)"이다 (ADR 0010).
         self.assertEqual(self.names(rows[:2]), ['Email', 'Invite'])
         hidden = [row for row in rows if row['occluded']]
-        self.assertEqual(len(hidden), 28)
+        self.assertEqual(len(hidden), 58)
         self.assertTrue(all(row.get('visibility') == '(가려짐)' for row in hidden))
         self.assertTrue(all(set(row) <= OBSERVE_KEYS | {'visibility'} for row in rows))
 
-    async def test_popover_options_without_tabindex_are_collected_and_in_30(self):
+    async def test_popover_options_without_tabindex_are_collected_and_in_60(self):
         # cmdk 팝오버 형태: role=dialog 안 listbox의 role=option 5개, tabindex 없음 (#75 확인 사실 1, /tasks Status).
         options = ''.join(f'<div role="option" style="height:32px">{n}</div>'
                           for n in ('Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'))
-        body = (f'<main>{main_buttons(40)}</main>'
+        body = (f'<main>{main_buttons(70)}</main>'
                 '<div role="dialog" style="position:fixed;left:20px;top:460px;width:220px;background:#fff">'
                 f'<div role="listbox" aria-label="Status">{options}</div></div>')
         elements, rows = await self.rows(body)
         collected = [e for e in elements if e['role'] == 'option']
         self.assertEqual([e['name'] for e in collected], ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'])
-        self.assertEqual(len(elements), 45)
+        self.assertEqual(len(elements), 75)
         self.assertEqual(self.names(rows[:5]), ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'])
 
-    async def test_body_end_listbox_options_with_negative_tabindex_are_collected_and_in_30(self):
+    async def test_body_end_listbox_options_with_negative_tabindex_are_collected_and_in_60(self):
         # Radix Select 포털 형태: body 끝 role=listbox 안 role=option 4개, tabindex=-1 (#75 확인 사실 1, Role 선택).
         options = ''.join(f'<div role="option" tabindex="-1" style="height:32px">{n}</div>'
                           for n in ('Superadmin', 'Admin', 'Manager', 'Cashier'))
-        body = (f'<main>{main_buttons(40)}</main>'
+        body = (f'<main>{main_buttons(70)}</main>'
                 f'<div role="listbox" style="position:fixed;left:600px;top:460px;width:200px;background:#fff">'
                 f'{options}</div>')
         elements, rows = await self.rows(body)
         self.assertEqual([e['name'] for e in elements if e['role'] == 'option'],
                          ['Superadmin', 'Admin', 'Manager', 'Cashier'])
-        self.assertEqual(len(rows), 30)
+        self.assertEqual(len(rows), 60)
         self.assertEqual(self.names(rows[:4]), ['Superadmin', 'Admin', 'Manager', 'Cashier'])
 
-    async def test_header_search_input_is_in_30_with_60_main_buttons(self):
+    async def test_header_search_input_is_in_60_with_60_main_buttons(self):
         # 미치 머리글 검색창 형태: header(banner)의 검색 input + main 버튼 60개, 가린 것 없음 (#75 확인 사실 2).
         body = ('<header style="position:absolute;left:0;top:0;width:1280px;height:80px">'
                 '<input type="search" aria-label="Search places" style="position:absolute;left:900px;top:20px;width:300px;height:36px">'
@@ -117,9 +117,9 @@ class ObservationOrderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((search['landmark'], search['occluded']), ('banner', False))
         # 겹침 층·가려진 요소가 없으니 텍스트 입력칸이 맨 앞이다.
         self.assertEqual(rows[0]['name'], 'Search places')
-        self.assertEqual(len(rows), 30)
+        self.assertEqual(len(rows), 60)
 
-    async def test_30_or_fewer_elements_keep_document_order_and_fields(self):
+    async def test_60_or_fewer_elements_keep_document_order_and_fields(self):
         body = ('<header><a href="#home">Home</a></header>'
                 '<main><button style="position:static">Go</button><input aria-label="Name"></main>')
         elements, rows = await self.rows(body)

@@ -46,6 +46,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(unknown, [])
                     self.assertEqual(rows[0]['target'], '#customCheck')
                     self.assertEqual(rows[0]['features'], feature)
+                    self.assertIs(rows[0]['was_reference'], False)
                     result = compare({'split': 'development', 'review_status': 'approved',
                         'feature_version': FEATURE_VERSION, 'truth': {'sb-admin-2/small': truth},
                         'cases': {'sb-admin-2/small': rows}}, [ScoreConfig((1,0,0,0,0,0), 1)])
@@ -54,5 +55,36 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
                     (location/'features.json').write_text(json.dumps(features), encoding='utf-8')
                     with self.assertRaises(ValueError):
                         await score_case(page, self.session, case, location, self.run.id, calibration_rows=[])
+                finally:
+                    await browser.close()
+
+    async def test_rule_reference_candidate_keeps_was_reference(self):
+        # Desktop R01 44px advice is emitted by the rule as low + is_reference=True (ADR 0011 9).
+        issue = save_candidates(self.session, self.run.id, [Candidate(
+            'R01', 'low', 'Below 44px advice', 36, 44, is_reference=True, step_id=self.step.id)],
+            confidence=1)[0]
+        feature = Features(.3, .8, .2, None, 'button', 1296, True, 0, 1/3, False).as_dict()
+        case = {'app_id': 'sb-admin-2', 'case_id': 'small', 'label_case': 'small'}
+        with tempfile.TemporaryDirectory() as tmp:
+            location = Path(tmp)
+            (location/'dom').mkdir()
+            (location/'dom/1.html').write_text(
+                '<button id="toggle" data-stepmeter-evidence-id="9">x</button>', encoding='utf-8')
+            (location/'dom/index.json').write_text(json.dumps([{
+                'issue_id': issue.id, 'target_id': '9', 'dom': '1.html',
+                'screen': '/login.html', 'selector': '#toggle'}]), encoding='utf-8')
+            (location/'features.json').write_text(json.dumps({
+                'feature_version': FEATURE_VERSION, 'run_id': self.run.id,
+                'app_id': 'sb-admin-2', 'case_id': 'small', 'rows': [{
+                    'step_id': self.step.id, 'rule_id': 'R01',
+                    'target_key': '/login.html|#toggle', 'features': feature}]}), encoding='utf-8')
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch()
+                try:
+                    page = await browser.new_page(java_script_enabled=False)
+                    rows = []
+                    await score_case(page, self.session, case, location, self.run.id, calibration_rows=rows)
+                    self.assertEqual(len(rows), 1)
+                    self.assertIs(rows[0]['was_reference'], True)
                 finally:
                     await browser.close()

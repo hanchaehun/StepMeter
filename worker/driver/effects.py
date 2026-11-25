@@ -59,7 +59,9 @@ class EffectObserver:
     """One observer per page, created before polling begins; serialized actions.
 
     The window starts immediately before invoking action. Prepare scroll and
-    actionability before observe(). Failed actions/closed pages propagate errors.
+    actionability before observe(); pass target rechecks as `prepare`, which runs
+    after observer installation and before the window. Failed actions/closed
+    pages propagate errors.
     """
     def __init__(self, page, *, window_ms=3000, ignored_query_keys=(), hash_routes=False,
                  analytics_domains=None):
@@ -67,6 +69,10 @@ class EffectObserver:
             raise ValueError('window_ms must be in (0, 3000]')
         self.page = page
         self.window_ms = window_ms
+        # Browser-side timeout for the input call itself (2500 ms for the 3 s window), so a
+        # timed-out click is cancelled in the browser instead of landing late. The window's
+        # asyncio.wait_for stays as a slightly longer safety net.
+        self.action_timeout_ms = window_ms * 5 / 6
         self.ignored_query_keys = ignored_query_keys
         self.hash_routes = hash_routes
         self.network = NetworkFilter(analytics_domains)
@@ -123,7 +129,8 @@ class EffectObserver:
             self.page.remove_listener('frameattached', self._attached_listener)
             self.pending.clear()
 
-    async def observe(self, action, *, target=None):
+    async def observe(self, action, *, target=None, prepare=None):
+        """Install → prepare() (untimed) → start window → action(). Errors from prepare propagate."""
         if self.closed or self.busy:
             raise EffectObservationError('Observer closed or action already active')
         self.busy = True
@@ -142,7 +149,9 @@ class EffectObserver:
                 await frame.evaluate(script, {'key': key, 'target': target if frame == target_frame else None,
                                               'duration': self.window_ms})
                 frames.append(frame)
-            # Installation does not consume the observation window.
+            # Installation and preparation (target recheck, safety guard) do not consume the window.
+            if prepare is not None:
+                await prepare()
             await asyncio.gather(*(frame.evaluate('(key) => globalThis[key].start()', key) for frame in frames))
             self.started = time.monotonic()
             self.deadline = self.started + self.window_ms / 1000
@@ -198,6 +207,9 @@ class EffectObserver:
         if handle is None:
             raise EffectObservationError('Click target disappeared')
         try:
-            return await self.observe(lambda: handle.click(), target=handle)
+            # Playwright's actionability wait (visible, enabled, stable, hit target) is preparation:
+            # run it as a trial before the window, then dispatch without waiting again.
+            return await self.observe(lambda: handle.click(force=True, timeout=self.action_timeout_ms),
+                                      target=handle, prepare=lambda: handle.click(trial=True))
         finally:
             await handle.dispose()

@@ -31,7 +31,8 @@ def compare(payload, configurations):
             raise ValueError('Six scored path rules only')
         if any(row['rule'] not in RULES for row in truth[key]):
             raise ValueError('Non-scored truth rule')
-        rules_only[key] = [{'rule': r['rule'], 'target': r['target']} for r in rows]
+        # The comparison baseline is the primary list before scoring; rule references are not in it.
+        rules_only[key] = [{'rule': r['rule'], 'target': r['target']} for r in rows if not r['was_reference']]
     baseline = score(labels, {'split': 'development', 'cases': rules_only})
     results = []
     for config in configurations:

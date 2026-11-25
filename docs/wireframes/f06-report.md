@@ -83,7 +83,7 @@
 | 참고 구역 | issues(is_reference=true) | 기본 목록과 나눠 "▸ 참고 n건 보기 · 과업 경로 밖이거나 점수가 낮은 항목"으로 접어 둔다. 펼치면 같은 방식으로 묶은 행 (F-02) |
 | Attempts | attempts[].index, kind, replay_status, diverged_at_step, end_reason, end_detail, success, steps_count; run.representative_attempt_index | 대표에 "대표". replay면 "재생". partial이면 ◆ + "Step N에서 끊김" + end_detail |
 | 가장 어려운·오래 걸린 단계 | top_fitts_steps[0], slowest_steps[0] | More metrics에는 최대 3개 전부 |
-| Passed rules | R01~R11 − issues에 나온 rule_id | 모바일 아니면 R11 "모바일만 해당" |
+| Passed rules | R01~R11 − issues에 나온 rule_id | 모바일 아니면 R11 "모바일만 해당". 모바일이면 R11 "이번 버전 미지원"(규칙이 아직 없다)으로 보이고 통과 규칙 수에 넣지 않는다 |
 | More metrics | metrics[] 원값·spread·spread_quality; attempts 요약; run.cost_usd, model, prompt_version, started_at, finished_at | spread_quality: ok 없음 / weak "추정 약함" / pooled "이력 기준" |
 | 단계 상세 | step.idx, action(action, thought, expectation, confusion), url, screenshot_url, effect_type, fitts_id, est_seconds, element_snapshot(bbox, occluded, occluder.bbox, nearby_targets) | 아래 "오버레이" |
 | 링크 | run.id | 측정 진행 `/runs/{id}/progress`(F02), 측정 이력 `/history`(F11), 다시 측정 `/new`(F01) |
