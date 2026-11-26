@@ -210,7 +210,8 @@ async def explain_run(factory, run_id: int, adapter) -> int:
         result, updates = await generate(adapter, issues, run_id=run_id)
     except Canceled:
         raise
-    except Exception:
+    except Exception as error:
+        log.warning("explain run=%s: 설명 호출 실패(%s), 템플릿 설명 유지", run_id, type(error).__name__)
         return 0
     finally:
         if old_max is not None:

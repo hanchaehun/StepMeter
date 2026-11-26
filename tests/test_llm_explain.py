@@ -182,6 +182,22 @@ class DbTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await explain_run(self.factory, self.run_id, Broken('')), 0)
         self.assertIsNone(self.rows()[self.ids[2]].suggestion)
 
+    async def test_llm_failure_is_logged_with_error_type(self):
+        class Broken(Stub):
+            async def ask(self, request):
+                raise RuntimeError('message-body-not-logged')
+        with self.assertLogs('worker.llm.explain', 'WARNING') as logs:
+            self.assertEqual(await explain_run(self.factory, self.run_id, Broken('')), 0)
+        rows = self.rows()
+        self.assertEqual([rows[i].explanation for i in self.ids],
+                         ['axe-core가 텍스트 대비 기준 위반을 확인했습니다.' + R02_TARGET,
+                          '대상이 없는 R02',
+                          '행동 대상의 조작 지점이 다른 요소에 가려져 있습니다.'])
+        self.assertEqual(len(logs.records), 1)
+        self.assertEqual(logs.records[0].levelname, 'WARNING')
+        self.assertIn('RuntimeError', logs.output[0])
+        self.assertNotIn('message-body-not-logged', logs.output[0])  # 오류 메시지 본문은 남기지 않는다
+
 
 class RunHookTests(unittest.IsolatedAsyncioTestCase):
     """execute_run이 에이전트 측정 끝에 explain_run을 한 번 부르고 completed로 끝낸다."""
