@@ -1,6 +1,7 @@
 // 측정 생성 화면(F01) 테스트.
 // 기대값 근거: 요청 경로·본문은 apps/api/openapi.yaml(createProject·createTask·createRun, RunCreate 기본값),
 // 상태 전환·오류 문구는 docs/wireframes/f01-measure-create.md, 과업 안내는 ADR 0011 1번, 상한은 Project.daily_run_limit 기본 10.
+// 측정 모델은 #76 결정(외부 테스트·홀드아웃·발표 측정은 claude-sonnet-5-5). 재생 전용(replay_only)은 LLM을 쓰지 않아 model을 보내지 않는다.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -50,7 +51,7 @@ test('과업 칸 옆에 가짜 값 안내가 있고 과업 칸과 연결된다 (
   expect(screen.getByLabelText('과업').getAttribute('aria-describedby')).toContain(hint.id);
 });
 
-test('첫 측정: 프로젝트·과업을 만들고 mode=agent, 반복 3회·데스크톱으로 요청한 뒤 /runs/{id}/progress로 이동', async () => {
+test('첫 측정: 프로젝트·과업을 만들고 mode=agent, 반복 3회·데스크톱·Sonnet 모델(#76)로 요청한 뒤 /runs/{id}/progress로 이동', async () => {
   const server = createMockServer();
   const { user, navigate } = setup(server);
   await user.type(screen.getByLabelText('측정할 주소'), 'https://shop.example.com');
@@ -67,7 +68,7 @@ test('첫 측정: 프로젝트·과업을 만들고 mode=agent, 반복 3회·데
   ]);
   expect(server.requests[1].body).toEqual({ name: 'shop.example.com', base_url: 'https://shop.example.com' });
   expect(server.requests[3].body).toEqual({ description: '장바구니에 상품을 담는다', success_condition: null });
-  expect(server.requests[4].body).toEqual({ viewport: 'desktop', repeat_n: 3, mode: 'agent' });
+  expect(server.requests[4].body).toEqual({ viewport: 'desktop', repeat_n: 3, mode: 'agent', model: 'claude-sonnet-5-5' });
 });
 
 test('성공 조건·모바일·5회를 고르면 그대로 보낸다', async () => {
@@ -83,10 +84,10 @@ test('성공 조건·모바일·5회를 고르면 그대로 보낸다', async ()
 
   await waitFor(() => expect(navigate).toHaveBeenCalled());
   expect(server.requests[3].body).toEqual({ description: '가입한다', success_condition: { text_present: '환영합니다' } });
-  expect(server.requests[4].body).toEqual({ viewport: 'mobile', repeat_n: 5, mode: 'agent' });
+  expect(server.requests[4].body).toEqual({ viewport: 'mobile', repeat_n: 5, mode: 'agent', model: 'claude-sonnet-5-5' });
 });
 
-test('같은 주소·과업이고 같은 화면 크기의 완료 측정이 있으면 프로젝트·과업을 다시 쓰고 mode를 생략(auto)', async () => {
+test('같은 주소·과업이고 같은 화면 크기의 완료 측정이 있으면 프로젝트·과업을 다시 쓰고 mode를 생략(auto), 모델은 Sonnet(#76)', async () => {
   const server = createMockServer();
   server.projects.push({ id: 7, name: 'example.com', base_url: 'https://example.com/', daily_run_limit: 10, created_at: '2026-11-19T00:00:00Z' });
   server.tasks.push({ id: 3, project_id: 7, description: '가입한다', success_condition: null });
@@ -104,7 +105,7 @@ test('같은 주소·과업이고 같은 화면 크기의 완료 측정이 있�
     'GET /tasks/3/runs?viewport=desktop',
     'POST /tasks/3/runs',
   ]);
-  expect(server.requests[3].body).toEqual({ viewport: 'desktop', repeat_n: 3 });
+  expect(server.requests[3].body).toEqual({ viewport: 'desktop', repeat_n: 3, model: 'claude-sonnet-5-5' });
 });
 
 test('예시 칩: 빈 칸이면 바로 넣고, 적어 둔 과업이 있으면 바꿀지 묻는다', async () => {
@@ -196,6 +197,7 @@ test('429: 끝난 측정이 있으면 재생만 하기로 replay_only를 보낸�
     path: '/tasks/1/runs',
     body: { viewport: 'desktop', mode: 'replay_only', base_run_id: 1 },
   });
+  expect(server.requests.at(-1)?.body).not.toHaveProperty('model'); // 재생 전용은 LLM을 쓰지 않는다
 });
 
 test('#72 임시 회피: 가장 최근 완료 측정에 대표 경로가 없으면 mode=agent로 보낸다', async () => {
@@ -209,7 +211,7 @@ test('#72 임시 회피: 가장 최근 완료 측정에 대표 경로가 없으�
   await user.click(screen.getByRole('button', { name: '측정 시작' }));
 
   await waitFor(() => expect(navigate).toHaveBeenCalledWith('/runs/2/progress'));
-  expect(server.requests.at(-1)).toEqual({ method: 'POST', path: '/tasks/3/runs', body: { viewport: 'desktop', repeat_n: 3, mode: 'agent' } });
+  expect(server.requests.at(-1)).toEqual({ method: 'POST', path: '/tasks/3/runs', body: { viewport: 'desktop', repeat_n: 3, mode: 'agent', model: 'claude-sonnet-5-5' } });
 });
 
 test('#72 임시 회피: 기준이 될 최근 완료 측정이 대표 경로 없음이면, 더 예전 측정에 경로가 있어도 mode=agent', async () => {
@@ -224,7 +226,7 @@ test('#72 임시 회피: 기준이 될 최근 완료 측정이 대표 경로 없
   await user.click(screen.getByRole('button', { name: '측정 시작' }));
 
   await waitFor(() => expect(navigate).toHaveBeenCalled());
-  expect(server.requests.at(-1)?.body).toEqual({ viewport: 'desktop', repeat_n: 3, mode: 'agent' });
+  expect(server.requests.at(-1)?.body).toEqual({ viewport: 'desktop', repeat_n: 3, mode: 'agent', model: 'claude-sonnet-5-5' });
 });
 
 test('#72 임시 회피: 429에서 최근 완료 측정에 대표 경로가 없으면 재생만 하기를 주지 않는다', async () => {

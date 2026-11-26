@@ -16,6 +16,7 @@ from worker.agent.loop import execute_attempt
 from worker.agent.persistence import Canceled, running, start
 from worker.agent.termination import representative
 from worker.compare.service import save_agent_spread
+from worker.llm.explain import explain_run
 from worker.llm.select import make_adapter
 from worker.metrics.persistence import save_run_medians
 from worker.metrics.postprocess import finalize_run_metrics
@@ -98,6 +99,8 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             Path(score_path).read_text(encoding='utf-8'))) if score_path else None)
         config['score_evidence'] = {}
 
+        adapters = []  # 설명 생성에 마지막 attempt의 어댑터를 다시 쓴다 (adapter_factory를 더 부르지 않는다)
+
         async def attempt_once(index):
             """attempt 하나를 돌리고, 호출 한도(LLMRateLimitError)로 끝났으면 True."""
             with factory.begin() as session:
@@ -107,6 +110,7 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 session.flush()
                 attempt_id = attempt.id
             adapter = adapter_factory(config['model'])
+            adapters.append(adapter)
             context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
                                                 device_scale_factor=3 if config['viewport']=='mobile' else 1,
                                                 is_mobile=config['viewport']=='mobile',
@@ -165,6 +169,11 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 # ADR 0010 #8: every attempt errored -> system failure, not a UX result.
                 row.status, row.finished_at = 'failed', datetime.now(timezone.utc)
                 return
+        # 설명 생성(개발계획서 6.1): 이슈가 모두 저장된 뒤 한 번. LLM 호출은 잠금 밖에서 한다 (worker/llm/explain.py)
+        if agent_needed and adapters:
+            await explain_run(factory, run_id, adapters[-1])
+        with factory.begin() as session:
+            row = running(session, run_id)
             if not update_progress(session, run_id, finished=True):
                 raise Canceled()
             row.status, row.finished_at = 'completed', datetime.now(timezone.utc)
