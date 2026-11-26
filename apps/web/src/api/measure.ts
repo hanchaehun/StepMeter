@@ -18,8 +18,13 @@ type Run = components['schemas']['Run'];
 // 생성 타입은 default가 있는 칸도 필수로 만든다. API는 생략을 받으므로(기본값 적용) 요청 본문은 Partial로 쓴다
 type RunCreate = Partial<components['schemas']['RunCreate']>;
 type RunHistoryItem = components['schemas']['RunHistoryItem'];
+type LlmModel = components['schemas']['LlmModel'];
 export type SuccessCondition = components['schemas']['SuccessCondition'];
 export type ViewportPreset = components['schemas']['ViewportPreset'];
+
+// 측정 모델: 외부 테스트·홀드아웃·발표 측정은 Sonnet. #76 결정, API 기본값은 Haiku(openapi 동결)라 화면이 model을 보낸다.
+// 재생 전용(createReplayOnly)은 LLM을 쓰지 않아 보내지 않는다
+const MEASURE_MODEL: LlmModel = 'claude-sonnet-5-5';
 
 export interface MeasureInput {
   url: string;
@@ -97,7 +102,7 @@ export async function createMeasurement(input: MeasureInput, opts: Options): Pro
     task = await requestJson<Task>('POST', `${base}/projects/${project.id}/tasks`, body, opts);
   }
 
-  const runBody: RunCreate = { viewport: input.viewport, repeat_n: input.repeatN };
+  const runBody: RunCreate = { viewport: input.viewport, repeat_n: input.repeatN, model: MEASURE_MODEL };
   if (baseRunId === null) runBody.mode = 'agent';
   try {
     const run = await requestJson<Run>('POST', `${base}/tasks/${task.id}/runs`, runBody, opts);
