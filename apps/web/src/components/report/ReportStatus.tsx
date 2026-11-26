@@ -2,7 +2,7 @@
 // 숫자 자리를 비우지 않고 이유를 쓴다. 막다른 길로 끝내지 않는다(다시 시도·돌아가기).
 // 링크: 측정 이력 /history(F11), 측정 진행 /runs/{id}/progress(F02), 새 측정 /new(F01). #75 UX 감사 F-01로 남은 "#"을 연결했다.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { RunStatus } from '@/api/client';
+import { normalizeAccessCode, type RunStatus } from '@/api/client';
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -42,23 +42,39 @@ export function NoRunIdView() {
 
 export function AccessCodeView({ wrong, onSubmit }: { wrong: boolean; onSubmit: (code: string) => void }) {
   const [code, setCode] = useState('');
+  const [invalid, setInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (wrong) inputRef.current?.focus(); // 틀렸다는 알림 뒤 바로 다시 입력할 수 있게
   }, [wrong]);
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (code.trim()) onSubmit(code.trim());
+    if (!code.trim()) return;
+    const normalized = normalizeAccessCode(code);
+    if (normalized === null) {
+      // 한글 입력 상태로 쳤거나 둥근 따옴표가 섞이면 서버에 보낼 수 없다. 보내기 전에 여기서 알린다
+      setInvalid(true);
+      inputRef.current?.focus();
+      return;
+    }
+    setInvalid(false);
+    onSubmit(normalized);
   };
   return (
     <Shell>
       <Tag>초대 코드 필요</Tag>
       <h2 className="mb-2 text-lg font-bold">초대 코드를 입력하세요</h2>
       <p className="mb-4 text-muted">StepMeter는 초대 코드로 사용자를 제한합니다. 코드는 이 브라우저 세션에만 저장됩니다.</p>
-      {wrong && (
+      {invalid ? (
         <p className="mb-3 flex items-center gap-1.5 text-sm text-danger" role="alert">
-          <span aria-hidden="true">▲</span> 초대 코드가 맞지 않습니다. 다시 확인해 주세요.
+          <span aria-hidden="true">▲</span> 초대 코드에는 영문·숫자·기호만 쓸 수 있습니다. 한/영 상태를 확인하고 직접 입력해 주세요.
         </p>
+      ) : (
+        wrong && (
+          <p className="mb-3 flex items-center gap-1.5 text-sm text-danger" role="alert">
+            <span aria-hidden="true">▲</span> 초대 코드가 맞지 않습니다. 다시 확인해 주세요.
+          </p>
+        )
       )}
       <form onSubmit={submit} className="flex gap-3">
         <label className="sr-only" htmlFor="access-code">초대 코드</label>

@@ -202,3 +202,11 @@ test('네트워크 오류: 오류 화면 + 다시 시도', async () => {
   await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
   await waitFor(() => expect(screen.getByText('3회 중 2회 성공')).toBeInTheDocument());
 });
+
+test('세션에 보낼 수 없는 코드가 남아 있으면 오류 화면 대신 코드 입력 화면 (다시 시도가 같은 오류만 되풀이하지 않게)', async () => {
+  window.sessionStorage.setItem('stepmeter.accessCode', '챙ㄷ-1');
+  const { impl } = fetchSeq(okSeq());
+  render(<ReportRoute location={at('/runs/42')} baseUrl={BASE} fetchImpl={impl} />);
+  expect(screen.getByLabelText('초대 코드')).toBeInTheDocument();
+  expect(impl).not.toHaveBeenCalled();
+});

@@ -104,9 +104,24 @@ async function optional<T>(p: Promise<T>): Promise<T | null> {
   }
 }
 
+/**
+ * 초대 코드를 헤더(X-Access-Code)에 넣을 수 있는 모양으로 정리한다.
+ * 붙여넣기로 따라오는 보이지 않는 글자(제로폭 공백·BOM)와 앞뒤 공백을 떼고,
+ * 남은 글자가 인쇄 가능한 ASCII가 아니면(한글, 둥근 따옴표 등) null. fetch는 그런 헤더를 보내지 못하고 TypeError를 던진다.
+ */
+export function normalizeAccessCode(raw: string): string | null {
+  const code = raw.replace(/[​-‍⁠﻿]/g, '').trim();
+  return /^[\x20-\x7E]+$/.test(code) ? code : null;
+}
+
 export function getAccessCode(): string | null {
   try {
-    return window.sessionStorage.getItem(ACCESS_CODE_KEY);
+    const stored = window.sessionStorage.getItem(ACCESS_CODE_KEY);
+    if (stored === null) return null;
+    const code = normalizeAccessCode(stored);
+    // 보낼 수 없는 코드가 남아 있으면 지워서 코드 입력 화면으로 돌아가게 한다 ("다시 시도"가 같은 오류만 되풀이하지 않게)
+    if (code === null) window.sessionStorage.removeItem(ACCESS_CODE_KEY);
+    return code;
   } catch {
     return null;
   }
