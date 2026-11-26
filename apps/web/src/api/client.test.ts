@@ -1,7 +1,7 @@
 import taskJson from '@mock/task.json';
 import projectsJson from '@mock/projects.json';
 import { loadMockReport } from './mock';
-import { ApiError, clearAccessCode, describeError, fetchReportData, getAccessCode, setAccessCode } from './client';
+import { ApiError, clearAccessCode, describeError, fetchReportData, getAccessCode, normalizeAccessCode, setAccessCode } from './client';
 
 // 순서: /runs/{id} → /runs/{id}/report → (동시에) steps·/tasks/{task_id}·/projects. 기대값은 목 JSON에서 사람이 읽은 값.
 const mock = loadMockReport();
@@ -200,4 +200,29 @@ describe('access code storage', () => {
     clearAccessCode();
     expect(getAccessCode()).toBeNull();
   });
+});
+
+// 브라우저 fetch는 헤더 값에 ISO-8859-1 밖 글자가 있으면 TypeError를 던진다(Fetch 명세 header value).
+// 초대 코드는 인쇄 가능한 ASCII(0x20~0x7E)만 받는다. 기대값은 입력 문자열을 사람이 보고 정했다.
+describe('normalizeAccessCode', () => {
+  test('앞뒤 공백, 붙여넣기로 따라온 제로폭 공백·BOM은 뗀다', () => {
+    expect(normalizeAccessCode('  code-1  ')).toBe('code-1');
+    expect(normalizeAccessCode('​code-1﻿')).toBe('code-1');
+    expect(normalizeAccessCode('code‍-1')).toBe('code-1');
+  });
+  test('한글·둥근 따옴표·전각 문자가 섞이면 null', () => {
+    expect(normalizeAccessCode('챙ㄷ-1')).toBeNull();
+    expect(normalizeAccessCode('“code-1”')).toBeNull(); // “code-1”
+    expect(normalizeAccessCode('ｃｏｄｅ')).toBeNull();
+  });
+  test('비었으면 null', () => {
+    expect(normalizeAccessCode('   ')).toBeNull();
+    expect(normalizeAccessCode('​')).toBeNull();
+  });
+});
+
+test('저장된 코드가 보낼 수 없는 글자면 getAccessCode는 null을 주고 지운다', () => {
+  window.sessionStorage.setItem('stepmeter.accessCode', '챙ㄷ-1');
+  expect(getAccessCode()).toBeNull();
+  expect(window.sessionStorage.getItem('stepmeter.accessCode')).toBeNull();
 });
