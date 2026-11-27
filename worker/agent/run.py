@@ -76,8 +76,11 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
             if replay:
                 base = session.get(Run, row.base_run_id) if row.base_run_id else None
                 if (base is None or base.status != 'completed' or base.task_id != row.task_id
-                        or base.viewport != row.viewport or base.representative_attempt_id is None):
+                        or base.viewport != row.viewport
+                        or (row.mode == 'replay_only' and base.representative_attempt_id is None)):
                     raise ValueError('Replay requires a completed matching base with a representative path')
+                # #72, 1차 시도가 모두 실패한 기준은 재생할 경로가 없어 에이전트로만 잰다
+                replay = base.representative_attempt_id is not None
                 base_attempt_id = base.representative_attempt_id
             if row.mode == 'replay_only':
                 row.prompt_version = None

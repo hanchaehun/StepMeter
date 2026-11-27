@@ -179,4 +179,40 @@ class AgentReviewTests(unittest.IsolatedAsyncioTestCase):
    a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
    self.assertEqual(a.end_reason,'success')
    self.assertEqual(s.scalar(select(Step.effect_type).where(Step.attempt_id==a.id,Step.idx==0)),'dom_mutation')
+ async def test_visible_new_iframe_is_a_reaction(self):
+  # 누르면 iframe을 새로 만들어 보여 주는 달력(포인트나인): 보이는 화면 변화다(시도 오류가 아님)
+  self.path.with_name('cal.html').write_text('<!doctype html><p>calendar 28</p>')
+  self.path.write_text('<!doctype html><button onclick="var f=document.createElement(\'iframe\');f.src=\'cal.html\';f.style.cssText=\'width:300px;height:200px\';document.body.appendChild(f)">날짜</button><p>complete</p>')
+  await self.run_replies([action('click',target=1),DONE])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+   self.assertEqual(s.scalar(select(Step.effect_type).where(Step.attempt_id==a.id,Step.idx==0)),'dom_mutation')
+ async def test_hidden_new_iframe_does_not_end_attempt(self):
+  # 보이지 않는 iframe이 새로 붙으면 프레임 판정으로는 변화가 아니고, 문서를 불러온 성공 응답이 있으므로 ADR 0011 네트워크 규칙대로 반응이다
+  self.path.with_name('cal.html').write_text('<!doctype html><p>calendar 28</p>')
+  self.path.write_text('<!doctype html><button onclick="var f=document.createElement(\'iframe\');f.src=\'cal.html\';f.style.display=\'none\';document.body.appendChild(f)">날짜</button><p>complete</p>')
+  await self.run_replies([action('click',target=1),DONE])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+   self.assertEqual(s.scalar(select(Step.effect_type).where(Step.attempt_id==a.id,Step.idx==0)),'dom_mutation')
+ async def test_auto_remeasure_without_base_path_runs_agent(self):
+  # #72: 기준 측정에 대표 경로가 없으면(1차 시도가 모두 실패) auto 재측정은 오류 대신 재생을 건너뛰고 에이전트로 잰다
+  with self.factory.begin() as s:
+   base=Run(task_id=self.task_id,mode='agent',viewport='desktop',repeat_n=1,model='fake',status='completed'); s.add(base); s.flush()
+   r=s.get(Run,self.run_id); r.mode='auto'; r.base_run_id=base.id
+  await self.run_replies([DONE])
+  with self.factory() as s:
+   self.assertEqual(s.get(Run,self.run_id).status,'completed')
+   self.assertEqual([a.kind for a in s.scalars(select(Attempt).where(Attempt.run_id==self.run_id).order_by(Attempt.index))],['agent'])
+ async def test_replay_only_without_base_path_still_fails(self):
+  # #72: replay_only는 따라갈 경로가 없으니 지금처럼 실패한다
+  with self.factory.begin() as s:
+   base=Run(task_id=self.task_id,mode='agent',viewport='desktop',repeat_n=1,model='fake',status='completed'); s.add(base); s.flush()
+   r=s.get(Run,self.run_id); r.mode='replay_only'; r.base_run_id=base.id
+  with self.assertRaises(ValueError):
+   await self.run_replies([DONE])
+  with self.factory() as s:
+   self.assertEqual(s.get(Run,self.run_id).status,'failed')
 if __name__=='__main__':unittest.main(verbosity=2)

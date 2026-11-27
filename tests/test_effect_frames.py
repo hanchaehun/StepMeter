@@ -44,11 +44,11 @@ class FrameEffectTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.observer.observe(action)).effect_type, 'dom_mutation')
 
     async def test_new_frame_with_modal_is_explicitly_incomplete(self):
+        # 보이는 iframe이 새로 붙으면 화면 변화다. 새 iframe에는 관찰기가 없어 그 안의 모달은 modal_change가 아니다 (EFFECTS.md)
         await self.page.set_content('<main>stable</main>')
         async def action():
             await self.page.evaluate('const f=document.createElement("iframe"); f.srcdoc="<dialog open>new modal</dialog>"; document.body.append(f)')
-        with self.assertRaisesRegex(EffectObservationError, 'Frame attached'):
-            await self.observer.observe(action)
+        self.assertEqual((await self.observer.observe(action)).effect_type, 'dom_mutation')
 
     async def test_moving_frame_offscreen_then_removing_child_is_noise(self):
         await self.prepare('top:0px')
