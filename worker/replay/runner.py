@@ -14,7 +14,8 @@ from worker.agent import persistence
 from worker.agent.observation import state_hash
 from worker.agent.safety import LoginWall, SafetyStop
 from worker.agent.termination import verify_success
-from worker.collect.collector import observe, record_first_view, resolve_element, wait_for_dom_quiet
+from worker.collect.collector import (observe, record_first_view, resolve_element, wait_for_dom_quiet,
+                                     wait_for_first_elements)
 from worker.driver.effects import EffectObservationError, EffectResult
 from worker.driver.playwright_driver import ActionResult, PlaywrightDriver
 from worker.matching.match import fingerprint, match
@@ -130,6 +131,9 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
         # Late-rendering first screens: same call as worker/agent/loop.py (ADR 0011 11).
         await wait_for_dom_quiet(page)
         await record_first_view(page)
+        # Whole page hidden while loading: record again once elements show (same as loop.py).
+        if await wait_for_first_elements(page):
+            await record_first_view(page)
         urls.append(page.url)
         scrolls.append(await page.evaluate("scrollY"))
         for position, recorded in enumerate(path):
@@ -238,6 +242,8 @@ async def execute_replay(page, factory, config, attempt_id: int, base_attempt_id
                     break
             if position + 1 < len(path) and screen_key(page.url) != screen_key(url):
                 await record_first_view(page)
+                if await wait_for_first_elements(page):
+                    await record_first_view(page)
                 first.new_screen()
                 klm_first = True
         if full and not success:

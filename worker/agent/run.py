@@ -25,6 +25,9 @@ from worker.replay.runner import execute_replay
 
 ROOT = Path(__file__).resolve().parents[2]
 VIEWPORTS = {'desktop': {'width': 1280, 'height': 800}, 'mobile': {'width': 390, 'height': 844}}
+# #96: UA로 PC/모바일 페이지를 나누는 사이트가 모바일 페이지를 주게 한다
+MOBILE_USER_AGENT = ('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) '
+                     'Chrome/{version} Mobile Safari/537.36')
 MAX_PARALLEL = 3  # 계획서 4.6 "LLM API 호출 한도 안에서 최대 3개를 동시에 실행"
 # #55: LLM 어댑터가 429(호출 한도)면 던지는 예외 이름. execute_attempt가 attempt.end_detail에 예외 이름을 적는다
 RATE_LIMITED = 'LLMRateLimitError'
@@ -40,6 +43,21 @@ def max_parallel_attempts():
     except ValueError:
         return MAX_PARALLEL
     return min(MAX_PARALLEL, max(1, value))
+
+
+def context_options(viewport, browser):
+    """재생과 에이전트 시도가 같이 쓰는 브라우저 컨텍스트 설정.
+
+    엔진이 Chromium이라 모바일은 안드로이드 크롬 UA에 실제 브라우저 버전(browser.version)을 넣는다.
+    데스크톱은 UA를 바꾸지 않고 버전도 읽지 않는다.
+    """
+    mobile = viewport == 'mobile'
+    # 라벨 스크린샷이 data: 이미지를 페이지 안에서 읽으므로, 측정 대상의 CSP가 측정을 막지 않게 한다 (#95)
+    options = dict(viewport=VIEWPORTS[viewport], device_scale_factor=3 if mobile else 1,
+                   is_mobile=mobile, has_touch=mobile, bypass_csp=True)
+    if mobile:
+        options['user_agent'] = MOBILE_USER_AGENT.format(version=browser.version)
+    return options
 
 
 async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=None, axe_path=None, evidence_sink=None):
@@ -81,12 +99,7 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 session.add(attempt)
                 session.flush()
                 replay_attempt_id = attempt.id
-            # 라벨 스크린샷이 data: 이미지를 페이지 안에서 읽으므로, 측정 대상의 CSP가 측정을 막지 않게 한다 (#95)
-            context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
-                                                device_scale_factor=3 if config['viewport']=='mobile' else 1,
-                                                is_mobile=config['viewport']=='mobile',
-                                                has_touch=config['viewport']=='mobile',
-                                                bypass_csp=True)
+            context = await browser.new_context(**context_options(config['viewport'], browser))
             try:
                 page = await context.new_page()
                 page.set_default_timeout(10000)
@@ -113,12 +126,7 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 attempt_id = attempt.id
             adapter = adapter_factory(config['model'])
             adapters.append(adapter)
-            # 라벨 스크린샷이 data: 이미지를 페이지 안에서 읽으므로, 측정 대상의 CSP가 측정을 막지 않게 한다 (#95)
-            context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
-                                                device_scale_factor=3 if config['viewport']=='mobile' else 1,
-                                                is_mobile=config['viewport']=='mobile',
-                                                has_touch=config['viewport']=='mobile',
-                                                bypass_csp=True)
+            context = await browser.new_context(**context_options(config['viewport'], browser))
             try:
                 page = await context.new_page()
                 page.set_default_timeout(10000)

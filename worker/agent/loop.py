@@ -1,6 +1,7 @@
 """One isolated attempt. Only adapter.ask is model-dependent; tests inject FakeAdapter."""
 import json
 import asyncio
+import logging
 import uuid
 from dataclasses import replace
 from pathlib import Path
@@ -19,8 +20,8 @@ from worker.agent.persistence import PROMPT_VERSION, Canceled, finish_attempt, l
 from worker.agent.safety import LoginWall, SafetyStop, blocked_reason
 from worker.agent.termination import LoopGuard, goal_already_met, verify_success
 from worker.collect.collector import (observe, record_first_view, resolve_element, scroll_target_into_view,
-                                     wait_for_dom_quiet)
-from worker.driver.effects import EffectResult
+                                     wait_for_dom_quiet, wait_for_first_elements)
+from worker.driver.effects import EffectObservationError, EffectResult
 from worker.driver.playwright_driver import ActionResult, PlaywrightDriver, SCROLL_STATE
 from worker.llm.base import LLMRequest
 from worker.metrics.cursor_distance import calculate_cursor_distance
@@ -39,6 +40,19 @@ from worker.rules.r06 import FirstTargetTracker, screen_key
 from worker.schemas import ActionInputError, parse_action_json
 
 PROMPT = Path(__file__).resolve().parents[2] / f'prompts/{PROMPT_VERSION}.md'
+log = logging.getLogger(__name__)
+
+# The driver refuses these targets before sending any input, so the page is unchanged and it is
+# safe to observe again; the model is told why and chooses again (shared stale_retries limit).
+UNUSABLE_TARGET = {
+    'Type target is not editable': ('The previous action did not run: that field cannot be typed into '
+        '(it is read-only). Choose another way, for example click it to open a picker and select '
+        'from the options that appear.'),
+    'Select target is disabled': ('The previous action did not run: that dropdown is disabled. '
+        'Choose another element.'),
+    'Click target is disabled': ('The previous action did not run: that element is disabled. '
+        'Choose another element.'),
+}
 
 
 async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_path, max_steps=30, max_seconds=300, evidence_sink=None):
@@ -65,10 +79,14 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
             # Late-rendering first screens: same call as worker/replay/runner.py (ADR 0011 11).
             await wait_for_dom_quiet(page)
             await record_first_view(page)
+            # Whole page hidden while loading: record again once elements show (same as runner.py).
+            if await wait_for_first_elements(page):
+                await record_first_view(page)
             navigation['changed'] = False
             urls.append(page.url)
             scrolls.append(await page.evaluate('scrollY'))
             idx, stale_retries = 0, 0
+            unusable = None  # why the previous action did not run, told on the next observation
             while idx < max_steps:
                 with factory.begin() as session:
                     running(session, config['id'])
@@ -84,6 +102,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 # action_v4: one line per element (prompts/action_v4.md); labels are drawn on the same rows.
                 context = {'task': config['description'], 'elements': [prompt_line(r) for r in rows],
                            'recent_actions': history[-5:]}
+                if unusable:
+                    context['invalid_action'], unusable = unusable, None
                 stage = 'screenshot'
                 screenshot = await labeled_screenshot(page, rows)
                 for retry in range(3):
@@ -151,6 +171,14 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 else:
                     try:
                         result = await driver.perform(action)
+                    except EffectObservationError as error:
+                        # Refused before any input (read-only field, disabled control): the step did
+                        # not run and is not saved. Observe again and say why; past the limit, end as before.
+                        if str(error) not in UNUSABLE_TARGET or stale_retries >= 3:
+                            raise
+                        stale_retries += 1
+                        unusable = UNUSABLE_TARGET[str(error)]
+                        continue
                     except PlaywrightError as error:
                         # A browser-side input timeout is cancelled there; observe again like a stale
                         # number and let the model choose again (shared limit, then TimeoutError@perform).
@@ -241,6 +269,8 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
                 current_document = await page.evaluate('globalThis.__stepmeterDocumentId || null')
                 if current_document != document_id or screen_key(page.url) != screen_key(url):
                     await record_first_view(page)
+                    if await wait_for_first_elements(page):
+                        await record_first_view(page)
                     first.new_screen()
                     klm_first = True
                     navigation['changed'] = False
@@ -272,6 +302,9 @@ async def execute_attempt(page, factory, config, attempt_id, adapter, *, axe_pat
         detail = type(error).__name__ + (':' + error.code if hasattr(error, 'code') else '')
         if isinstance(error, PlaywrightTimeout):
             detail += '@' + stage  # e.g. TimeoutError@perform; the message is never stored
+        elif isinstance(error, EffectObservationError):
+            # Only fixed wording from worker/driver, never page or model text; other messages stay unlogged.
+            log.warning('attempt %s %s@%s: %s', attempt_id, type(error).__name__, stage, error)
         finish_attempt(factory, config['id'], attempt_id, reason, detail=detail)
     finally:
         page.remove_listener('framenavigated', navigated)

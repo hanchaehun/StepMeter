@@ -76,6 +76,27 @@ async def record_first_view(page: Page) -> None:
     await page.evaluate("() => __stepmeter.recordFirstView()")
 
 
+async def wait_for_first_elements(page: Page, max_ms: int = 3000, step_ms: int = 250) -> bool:
+    """로딩 중 페이지 전체를 숨기는 사이트용(예: body opacity 0). record_first_view 바로 뒤에 부른다.
+
+    observe(page)가 처음부터 요소를 돌려주면 바로 False. 0개면 step_ms 간격으로 다시 observe 하다가
+    요소가 나오면 True(부른 쪽이 record_first_view를 다시 부른다), max_ms가 지나도 0개면 False.
+    정말로 첫 화면 밖에만 요소가 있는 페이지는 max_ms만 기다리고 그대로 둔다.
+    중간에 PlaywrightError(페이지 이동 등)가 나면 False.
+    """
+    deadline = time.monotonic() + max_ms / 1000
+    try:
+        if await observe(page):
+            return False
+        while (remaining := deadline - time.monotonic()) > 0:
+            await asyncio.sleep(min(step_ms / 1000, remaining))
+            if await observe(page):
+                return True
+    except PlaywrightError:
+        return False
+    return False
+
+
 async def observe(page: Page) -> list[dict[str, Any]]:
     """뷰포트 안의 보이는 상호작용 요소 (가려진 요소 포함, `occluded`로 표시).
 
