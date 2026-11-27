@@ -34,6 +34,8 @@ Detached/reloaded contexts and newly attached frames fail closed unless a
 higher-priority main-frame URL change was observed. A new frame may show a modal
 before an observer could attach, so returning `dom_mutation` would claim incomplete
 classification. Caller must retry a fresh observation or report that error.
+예외: 관찰 창 안에 새 문서로 이동한 하위 iframe(예약 사이트의 달력 iframe)은 오류로 치지 않는다. 그 iframe 요소가 화면 안에 보이면 화면 변화(dom_mutation)로 보고, 안 보이면 프레임 판정으로는 변화가 아니며 기존 네트워크 규칙(ADR 0011, 아래)이 그대로 적용된다.
+iframe 요소를 찾을 수 없으면(떨어져 나감) 그대로 오류이고, 주 프레임이 같은 주소로 새로고침되는 경우도 그대로 오류다.
 Cross-origin frame ancestry and rotated/skewed/3D frame transforms are explicitly
 incomplete, not silently treated as visible or no_change. Arbitrary clip-path,
 rounded-corner clipping and pixel-level occlusion are not modeled by this observer.

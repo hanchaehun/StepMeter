@@ -79,6 +79,7 @@ class EffectObserver:
         self.pending = {}
         self.count = 0
         self.urls = []
+        self.navigated_frames = set()  # subframes that loaded a new document inside the window
         self.new_frames = False
         self.deadline = 0.0
         self.started = 0.0
@@ -107,8 +108,33 @@ class EffectObserver:
             self.count += 1
 
     def _navigation(self, frame):
-        if frame == self.page.main_frame and self.started <= time.monotonic() <= self.deadline:
-            self.urls.append(frame.url)
+        if self.started <= time.monotonic() <= self.deadline:
+            if frame == self.page.main_frame:
+                self.urls.append(frame.url)
+            else:
+                self.navigated_frames.add(frame)
+
+    async def _frame_shown(self, frame):
+        """Whether a subframe's element is visible and overlaps the viewport; None if it is gone."""
+        try:
+            element = await frame.frame_element()
+        except Exception:
+            return None  # detached from the page
+        try:
+            if not await element.is_visible():
+                return False
+            box = await element.bounding_box()
+            size = self.page.viewport_size or await self.page.evaluate(
+                '() => ({width: innerWidth, height: innerHeight})')
+            return bool(box) and (box['x'] < size['width'] and box['x'] + box['width'] > 0
+                                  and box['y'] < size['height'] and box['y'] + box['height'] > 0)
+        except Exception:
+            return None  # visibility could not be read; stay fail-closed
+        finally:
+            try:
+                await element.dispose()
+            except Exception:
+                pass
 
     def _attached(self, frame):
         if self.busy and (not self.started or time.monotonic() <= self.deadline):
@@ -139,6 +165,7 @@ class EffectObserver:
         before = self.page.url
         self.count = 0
         self.urls.clear()
+        self.navigated_frames.clear()
         self.new_frames = False
         self.pending.clear()
         script = Path(__file__).with_name('effect_observer.js').read_text(encoding='utf-8')
@@ -166,13 +193,22 @@ class EffectObserver:
             for frame in frames:
                 try:
                     result = await frame.evaluate('(key) => globalThis[key]?.stop() ?? null', key)
-                    if result is None:
-                        lost_context = True
-                    else:
+                    if result is not None:
                         lost_context |= result.get('incomplete', False)
                         dom |= result['dom']
                         modal |= result['modal']
+                        continue
                 except Exception:
+                    pass
+                if frame != self.page.main_frame and frame in self.navigated_frames:
+                    # A subframe given a new document inside the window (e.g. a booking calendar
+                    # iframe): its observer is gone, so judge what the user sees, the frame element.
+                    shown = await self._frame_shown(frame)
+                    if shown is None:
+                        lost_context = True
+                    elif shown:
+                        dom = True
+                else:
                     lost_context = True
             opts = dict(ignored_query_keys=self.ignored_query_keys, hash_routes=self.hash_routes)
             if any(url_identity(before, **opts) != url_identity(url, **opts) for url in self.urls):
@@ -192,6 +228,7 @@ class EffectObserver:
             self.deadline = self.started = 0
             self.pending.clear()
             self.urls.clear()
+            self.navigated_frames.clear()
             for frame in frames:
                 try:
                     await frame.evaluate('(key) => globalThis[key]?.stop()', key)

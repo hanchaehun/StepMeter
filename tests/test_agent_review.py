@@ -153,4 +153,30 @@ class AgentReviewTests(unittest.IsolatedAsyncioTestCase):
    a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
    self.assertEqual(a.end_reason,'success')
    self.assertEqual(s.scalar(select(func.count(Issue.id)).where(Issue.run_id==self.run_id,Issue.rule_id=='R06')),0)
+ async def test_mobile_run_uses_mobile_user_agent(self):
+  # #96: 모바일 측정은 모바일 브라우저로 접속해야 UA로 화면을 나누는 사이트가 모바일 페이지를 준다
+  self.path.write_text('<!doctype html><p id="ua">?</p><script>document.getElementById("ua").textContent=/Mobile/.test(navigator.userAgent)?"mobile-ua complete":"desktop-ua"</script>')
+  with self.factory.begin() as s: s.get(Run,self.run_id).viewport='mobile'
+  await self.run_replies([DONE])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+ async def test_visible_iframe_navigation_is_a_reaction(self):
+  # 달력처럼 숨은 iframe에 새 문서를 띄워 보여 주면 보이는 화면 변화다(시도 오류가 아님)
+  self.path.with_name('cal.html').write_text('<!doctype html><p>calendar 28</p>')
+  self.path.write_text('<!doctype html><button onclick="var f=document.getElementById(\'cal\');f.src=\'cal.html\';f.style.display=\'block\'">날짜</button><iframe id="cal" src="about:blank" style="display:none;width:300px;height:200px"></iframe><p>complete</p>')
+  await self.run_replies([action('click',target=1),DONE])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+   self.assertEqual(s.scalar(select(Step.effect_type).where(Step.attempt_id==a.id,Step.idx==0)),'dom_mutation')
+ async def test_hidden_iframe_navigation_does_not_end_attempt(self):
+  # 숨은 iframe이 새 문서를 불러오면 보이는 변화는 없지만, 성공한 네트워크 응답이 있으므로 ADR 0011 규칙대로 반응(dom_mutation)이다. 시도는 오류로 끝나지 않는다
+  self.path.with_name('cal.html').write_text('<!doctype html><p>calendar 28</p>')
+  self.path.write_text('<!doctype html><button onclick="document.getElementById(\'cal\').src=\'cal.html\'">날짜</button><iframe id="cal" src="about:blank" style="display:none"></iframe><p>complete</p>')
+  await self.run_replies([action('click',target=1),DONE])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+   self.assertEqual(s.scalar(select(Step.effect_type).where(Step.attempt_id==a.id,Step.idx==0)),'dom_mutation')
 if __name__=='__main__':unittest.main(verbosity=2)
