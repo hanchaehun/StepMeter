@@ -126,4 +126,31 @@ class AgentReviewTests(unittest.IsolatedAsyncioTestCase):
    a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
    self.assertEqual(a.end_reason,'success')
    self.assertIsNone(a.end_detail)
+ async def test_unusable_type_target_is_fed_back_not_fatal(self):
+  # 읽기 전용 칸에 입력하려 해도 시도를 끝내지 않고, 이유를 알려 다시 고르게 한다
+  self.path.write_text('<!doctype html><input readonly aria-label="날짜" value="2026-11-27"><button onclick="document.querySelector(\'p\').textContent=\'complete\'">확인</button><p>ready</p>')
+  adapter=FakeAdapter([action('type',target=1,text='2026-11-28'),action('click',target=2),DONE])
+  await execute_run(self.run_id,self.factory,adapter_factory=lambda m:adapter,browser=self.browser)
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+   self.assertEqual(s.scalar(select(func.count(Step.id)).where(Step.attempt_id==a.id)),2)
+  asks=[r for r in adapter.received if r.purpose=='action']
+  self.assertIn('invalid_action',json.loads(asks[1].user_text))
+ async def test_unusable_target_retry_limit_still_ends_attempt(self):
+  # 다시 고를 기회는 기존 다시 관찰 한도(3회)를 같이 쓴다. 한도를 넘으면 지금처럼 오류로 끝난다
+  self.path.write_text('<!doctype html><input readonly aria-label="날짜" value="2026-11-27"><p>ready</p>')
+  await self.run_replies([action('type',target=1,text='2026-11-28')])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'error')
+   self.assertEqual(a.end_detail,'EffectObservationError')
+ async def test_hidden_first_screen_waits_until_elements_show(self):
+  # 로딩 중 페이지 전체를 숨기는 사이트: 요소가 보이면 그때 첫 화면을 기록한다(보이는 버튼에 R06 없음)
+  self.path.write_text('<!doctype html><body style="opacity:0"><button onclick="document.querySelector(\'p\').textContent=\'complete\'">시작</button><p>ready</p><script>setTimeout(()=>{document.body.style.opacity=1},1200)</script></body>')
+  await self.run_replies([action('click',target=1),DONE])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+   self.assertEqual(s.scalar(select(func.count(Issue.id)).where(Issue.run_id==self.run_id,Issue.rule_id=='R06')),0)
 if __name__=='__main__':unittest.main(verbosity=2)

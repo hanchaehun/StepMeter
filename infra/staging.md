@@ -99,6 +99,7 @@ PR #36 PM 리뷰에서 `/api` 리버스 프록시 사용은 승인됐다.
    API pre-deploy가 `upgrade head`를 실행한다. API 배포 성공 후 worker를 배포한다.
 3. worker 변수: 같은 DB·Redis 주소, `ANTHROPIC_API_KEY`, `STEPMETER_ENV=staging`.
    `STEPMETER_LLM`, `STEPMETER_FAKE_REPLIES`는 설정하지 않는다.
+   `STEPMETER_MAX_PARALLEL_ATTEMPTS=1`(요금제 메모리 한도 1GB, 11/27, benchmark/w3.md 알려진 한계 12번).
 4. R2 저장 코드가 main에 들어온 후 API·worker 양쪽에 PM이 준비한
    `STEPMETER_R2_ENDPOINT`, `STEPMETER_R2_BUCKET`, `STEPMETER_R2_ACCESS_KEY_ID`,
    `STEPMETER_R2_SECRET_ACCESS_KEY`를 비공개 변수로 설정한다. 버킷은 비공개,
