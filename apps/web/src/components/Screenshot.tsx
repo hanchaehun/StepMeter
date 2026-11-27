@@ -29,6 +29,21 @@ interface Props {
 
 const pct = (v: number, base: number) => `${(v / base) * 100}%`;
 
+/**
+ * 누른 요소 이름표를 어디에 붙일지. 기본은 박스 위·왼쪽 맞춤.
+ * - 박스가 스크린샷 맨 위(높이의 8% 안)에 있으면 위에 붙이면 프레임 밖으로 잘리므로 박스 아래에 붙인다.
+ * - 박스 중심이 오른쪽 절반에 있으면 오른쪽 맞춤으로 붙여 오른쪽 끝에서 잘리지 않게 한다.
+ */
+export function labelPlacement(bbox: BBox, viewport: { width: number; height: number }): { below: boolean; alignRight: boolean } {
+  return {
+    below: bbox.y < viewport.height * 0.08,
+    alignRight: bbox.x + bbox.width / 2 > viewport.width / 2,
+  };
+}
+
+// 이름표 글자는 프레임 너비에 맞춰 줄인다(작은 모바일 스크린샷을 가리지 않게). cqw는 shot-frame 기준
+const labelText = 'text-[length:clamp(9px,3cqw,12px)]';
+
 /** 컨테이너(cw×ch) 안에 뷰포트 비율(vw:vh)을 유지하며 들어가는 가장 큰 크기. */
 export function fitContain(cw: number, ch: number, vw: number, vh: number): { width: number; height: number } {
   const byHeight = ch * (vw / vh);
@@ -114,7 +129,7 @@ export function Screenshot({ src, viewport, overlays, fit = 'width', className, 
     const style = box ? { width: `${box.width}px`, height: `${box.height}px` } : { width: '100%', paddingBottom: `${ratio * 100}%` };
     return (
       <div ref={containerRef} className="flex h-full w-full items-center justify-center">
-        <div data-testid="shot-frame" className={cn('relative overflow-hidden rounded bg-[#f3f4f6]', className)} style={style}>
+        <div data-testid="shot-frame" className={cn('relative overflow-hidden rounded bg-[#f3f4f6] [container-type:inline-size]', className)} style={style}>
           {inner}
         </div>
       </div>
@@ -122,7 +137,7 @@ export function Screenshot({ src, viewport, overlays, fit = 'width', className, 
   }
 
   return (
-    <div data-testid="shot-frame" className={cn('relative overflow-hidden rounded bg-[#f3f4f6]', className)} style={{ paddingBottom: `${ratio * 100}%` }}>
+    <div data-testid="shot-frame" className={cn('relative overflow-hidden rounded bg-[#f3f4f6] [container-type:inline-size]', className)} style={{ paddingBottom: `${ratio * 100}%` }}>
       {inner}
     </div>
   );
@@ -146,10 +161,22 @@ function OverlayBox({ overlay: o, viewport }: { overlay: Overlay; viewport: { wi
     height: pct(height, viewport.height),
   };
   if (o.kind === 'bbox') {
+    const place = labelPlacement(o.bbox, viewport);
     return (
       <div data-testid="ov-bbox" className="absolute border-[3px] border-mark shadow-[0_0_0_3px_#fff]" style={style}>
         {o.label && (
-          <span className="absolute -left-[3px] bottom-full whitespace-nowrap rounded-t bg-mark px-2 py-0.5 text-xs font-semibold text-white">{o.label}</span>
+          <span
+            data-testid="ov-bbox-label"
+            data-place={`${place.below ? 'below' : 'above'}-${place.alignRight ? 'right' : 'left'}`}
+            className={cn(
+              'absolute whitespace-nowrap bg-mark px-1.5 py-0.5 font-semibold text-white',
+              labelText,
+              place.below ? 'top-full rounded-b' : 'bottom-full rounded-t',
+              place.alignRight ? '-right-[3px]' : '-left-[3px]',
+            )}
+          >
+            {o.label}
+          </span>
         )}
       </div>
     );
@@ -167,7 +194,12 @@ function OverlayBox({ overlay: o, viewport }: { overlay: Overlay; viewport: { wi
   }
   return (
     <div data-testid="ov-nearby" className="absolute border-2 border-dashed border-control" style={style}>
-      {o.label && <span className="absolute left-0 top-full whitespace-nowrap bg-white px-1 text-[11px] text-muted">{o.label}</span>}
+      {/* 근처 박스가 나란히 있으면 이름표가 겹친다("근처 근처: 증권"). 박스 너비 안에서 줄임표로 자른다 */}
+      {o.label && (
+        <span data-testid="ov-nearby-label" className={cn('absolute left-0 top-full max-w-full truncate bg-white px-1 text-muted', labelText)}>
+          {o.label}
+        </span>
+      )}
     </div>
   );
 }

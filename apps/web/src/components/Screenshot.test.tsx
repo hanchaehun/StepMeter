@@ -123,3 +123,43 @@ test('이미지를 받는 동안 "불러오는 중", 다 받으면 문구를 숨
   fireEvent.load(screen.getByRole('presentation', { hidden: true }));
   expect(screen.queryByText('불러오는 중')).toBeNull();
 });
+
+// ---- 이름표 위치 (스테이징 측정 40: 맨 위 박스의 이름표가 프레임 밖으로 잘림, 측정 36: 근처 이름표 겹침) ----
+import { labelPlacement } from './Screenshot';
+
+// 손 계산: 390×844에서 맨 위 8%는 844×0.08 = 67.52px, 가운데는 390/2 = 195px
+test('labelPlacement: 맨 위 8% 안이면 아래, 박스 중심이 오른쪽 절반이면 오른쪽 맞춤', () => {
+  const vp = { width: 390, height: 844 };
+  expect(labelPlacement({ x: 150, y: 40, width: 120, height: 30 }, vp)).toEqual({ below: true, alignRight: true });   // y 40 < 67.52, 중심 210 > 195
+  expect(labelPlacement({ x: 20, y: 100, width: 100, height: 30 }, vp)).toEqual({ below: false, alignRight: false }); // y 100 ≥ 67.52, 중심 70 < 195
+  expect(labelPlacement({ x: 20, y: 67, width: 100, height: 30 }, vp)).toEqual({ below: true, alignRight: false });   // 67 < 67.52 (경계 바로 안)
+  expect(labelPlacement({ x: 20, y: 68, width: 100, height: 30 }, vp)).toEqual({ below: false, alignRight: false });  // 68 > 67.52
+});
+
+test('맨 위 박스의 이름표는 박스 아래에 붙인다', () => {
+  render(
+    <Screenshot
+      src={null}
+      viewport={{ width: 390, height: 844 }}
+      overlays={[{ kind: 'bbox', bbox: { x: 200, y: 10, width: 150, height: 40 }, label: '검색어를 입력해 주세요. 선택 상자' }]}
+    />,
+  );
+  // y 10 < 67.52 → 아래, 중심 275 > 195 → 오른쪽
+  expect(screen.getByTestId('ov-bbox-label')).toHaveAttribute('data-place', 'below-right');
+});
+
+test('근처 요소 이름표는 박스 너비 안에서 자른다 (나란한 박스끼리 겹치지 않게)', () => {
+  render(
+    <Screenshot
+      src={null}
+      viewport={{ width: 1280, height: 800 }}
+      overlays={[
+        { kind: 'nearby', bbox: { x: 400, y: 80, width: 40, height: 40 }, label: '근처: 뉴스' },
+        { kind: 'nearby', bbox: { x: 442, y: 80, width: 40, height: 40 }, label: '근처: 증권' },
+      ]}
+    />,
+  );
+  for (const label of screen.getAllByTestId('ov-nearby-label')) {
+    expect(label).toHaveClass('max-w-full', 'truncate');
+  }
+});
