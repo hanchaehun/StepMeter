@@ -118,4 +118,12 @@ class AgentReviewTests(unittest.IsolatedAsyncioTestCase):
    self.assertEqual(attempt.end_reason,'error')
    # #75 follow-up: the timeout detail names the running stage (model call = llm).
    self.assertEqual(attempt.end_detail,'TimeoutError@llm')
+ async def test_page_csp_does_not_end_attempt(self):
+  # #95: 측정 페이지의 CSP가 data: 이미지를 막아도 시도가 오류로 끝나면 안 된다
+  self.path.write_text('<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src \'self\'"><title>CSP</title><button>Next</button><p>complete</p>')
+  await self.run_replies([action('click',target=1),DONE])
+  with self.factory() as s:
+   a=s.scalar(select(Attempt).where(Attempt.run_id==self.run_id))
+   self.assertEqual(a.end_reason,'success')
+   self.assertIsNone(a.end_detail)
 if __name__=='__main__':unittest.main(verbosity=2)

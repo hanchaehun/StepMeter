@@ -81,10 +81,12 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 session.add(attempt)
                 session.flush()
                 replay_attempt_id = attempt.id
+            # 라벨 스크린샷이 data: 이미지를 페이지 안에서 읽으므로, 측정 대상의 CSP가 측정을 막지 않게 한다 (#95)
             context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
                                                 device_scale_factor=3 if config['viewport']=='mobile' else 1,
                                                 is_mobile=config['viewport']=='mobile',
-                                                has_touch=config['viewport']=='mobile')
+                                                has_touch=config['viewport']=='mobile',
+                                                bypass_csp=True)
             try:
                 page = await context.new_page()
                 page.set_default_timeout(10000)
@@ -111,10 +113,12 @@ async def execute_run(run_id, factory, *, adapter_factory=make_adapter, browser=
                 attempt_id = attempt.id
             adapter = adapter_factory(config['model'])
             adapters.append(adapter)
+            # 라벨 스크린샷이 data: 이미지를 페이지 안에서 읽으므로, 측정 대상의 CSP가 측정을 막지 않게 한다 (#95)
             context = await browser.new_context(viewport=VIEWPORTS[config['viewport']],
                                                 device_scale_factor=3 if config['viewport']=='mobile' else 1,
                                                 is_mobile=config['viewport']=='mobile',
-                                                has_touch=config['viewport']=='mobile')
+                                                has_touch=config['viewport']=='mobile',
+                                                bypass_csp=True)
             try:
                 page = await context.new_page()
                 page.set_default_timeout(10000)
