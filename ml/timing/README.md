@@ -206,7 +206,22 @@ python -m ml.timing.compare --human <private>/human-analysis.json \
 기본 과업 문장은 `human-study/session_plan.json`에서 읽는다. 같은 모델·페이지의 run을
 여러 개 넘기면 선택 기준 없이 합치지 않고 오류를 낸다. 비교할 run은 먼저 하나씩 선택한다.
 `--timing` 없이 실행하면 예측 자료 대기 상태를 낸다. 누락을 0초·오차 0·상관 0으로 만들지 않는다.
-비교 전 notes의 빌드 해시와 timing의 매니페스트 SHA256을 대조해야 한다.
+비교 전 아래 해시 종류 구분에 따라 대응 빌드의 커밋·패치·결과 정보를 확인해야 한다.
 notes가 없는 명령 방식 세션은 진행자 확인을 별도 보충 메모와 출처로 남기고,
 미확인 사항을 정상으로 추정하지 않는다. 원본 ZIP/세션 JSON을 고치지 않는다.
 보정 계수 학습, 수집기 수정과 홀드아웃 접근은 포함하지 않는다.
+
+### 독립 검증된 추정 성공의 참고 분석 (2026-11-28)
+
+기본값은 위의 비추정 성공 기준을 유지한다. 워커의 성공 조건이 null이면
+`success_estimated=true`로 저장될 수 있고, 별도 benchmark check·milestones가
+성공해 `verified_success=true`여도 기본 비교에서는 제외된다.
+`--include-verified-estimates`는 두 플래그가 모두 true인 성공도 별도 민감도 분석에 포함한다.
+독립 검증이 false/null인 성공은 여전히 제외한다. 원본 timing 플래그와 DB 값은 고치지 않는다.
+출력 `success_policy`로 기본 분석과 참고 분석을 구별하고, 참고 수치를 사전 정의된 주 결과로 바꾸지 않는다.
+자료를 확인한 뒤 추가한 분석이므로 탐색적 참고임을 명시한다. KLM 식·상수 보정은 하지 않는다.
+
+빌드 확인 시 해시 종류를 구별한다. 사람 notes의 `site_manifest_hashes`는
+`serve_variants` 결과 트리(`output.sha256`)이고, timing의 `build_manifest_sha256`은
+`stepmeter-build.json` 파일 해시다. 둘을 직접 대조하면 안 된다. 대응 매니페스트의
+앱·변이·고정 커밋·패치를 확인하고, 결과물 동일성 확인 여부를 따로 보고한다.
