@@ -88,6 +88,18 @@ class ComparisonTests(unittest.TestCase):
         payload=timing();payload['attempts']*=2
         with self.assertRaises(ValueError):prediction(payload,tasks)
 
+    def test_verified_estimates_are_explicit_sensitivity_not_default(self):
+        tasks={'a/task/baseline':'Do task'}
+        payload=timing();payload['attempts'][0]['success_estimated']=True
+        self.assertIsNone(prediction(payload,tasks)['prediction_seconds'])
+        self.assertEqual(prediction(payload,tasks,include_verified_estimates=True)['prediction_seconds'],12)
+        result=compare([human()],[payload],tasks,include_verified_estimates=True)
+        self.assertEqual(result['success_policy'],'sensitivity_independently_verified_estimates')
+        self.assertEqual(result['pairs'][0]['status'],'paired')
+        for verified in (False,None):
+            payload['attempts'][0]['verified_success']=verified
+            self.assertIsNone(prediction(payload,tasks,include_verified_estimates=True)['prediction_seconds'])
+
     def test_procedure_versions_and_models_remain_separate(self):
         result=compare([human(procedure='read_aloud'),human(procedure='self_guided_v1')],
                        [timing(model='haiku'),timing(value=20,model='sonnet')],

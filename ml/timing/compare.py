@@ -45,7 +45,7 @@ def spearman(xs, ys):
     return sum((x-ma)*(y-mb) for x, y in zip(a, b))/denominator if denominator else None
 
 
-def prediction(payload, tasks):
+def prediction(payload, tasks, *, include_verified_estimates=False):
     """Accept only matching desktop tasks and uncalibrated verified agent attempts."""
     page = payload['page_id']
     if payload.get('version') != 1 or payload.get('viewport') != 'desktop':
@@ -59,8 +59,10 @@ def prediction(payload, tasks):
         if row['id'] in seen:
             raise ValueError('Duplicate attempt')
         seen.add(row['id'])
+        estimated_ok = (row['success_estimated'] is False or
+                        include_verified_estimates and row['success_estimated'] is True)
         if (row['kind'] != 'agent' or row['success'] is not True
-                or row['success_estimated'] is not False or not row['end_reason']
+                or not estimated_ok or not row['end_reason']
                 or row['verified_success'] is not True):
             excluded['not_verified_agent_success'] += 1
             # The DB run median includes worker successes. Do not silently replace
@@ -94,7 +96,7 @@ def prediction(payload, tasks):
                 build_manifest_sha256=payload.get('build_manifest_sha256'))
 
 
-def compare(human_pages, exports, tasks):
+def compare(human_pages, exports, tasks, *, include_verified_estimates=False):
     """Pair each procedure stratum separately, plus all; require >=3 human successes.
 
     Summaries originate from analyze.summarize. Both observed and adjusted metrics
@@ -102,7 +104,7 @@ def compare(human_pages, exports, tasks):
     """
     predictions, seen = {}, set()
     for payload in exports:
-        item = prediction(payload, tasks)
+        item = prediction(payload, tasks, include_verified_estimates=include_verified_estimates)
         key = (item['page_id'], item['model'])
         if key in predictions:
             raise ValueError('Select one run per model/page before comparing')
@@ -145,6 +147,8 @@ def compare(human_pages, exports, tasks):
                 else 'fewer_than_three_pages_or_constant_ranks')
         scores.append(score)
     return dict(status='paired' if scores else 'pending_comparable_data', pairs=pairs, scores=scores,
+                success_policy=('sensitivity_independently_verified_estimates' if include_verified_estimates
+                                else 'strict_nonestimated_verified_success'),
                 limitations=['Build identity must be checked against the private session notes.',
                               'No calibration, imputation, or pooling of model runs.'])
 
@@ -153,6 +157,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--human', type=Path, required=True)
     parser.add_argument('--timing', type=Path, action='append', default=[])
+    parser.add_argument('--include-verified-estimates', action='store_true',
+                        help='Separate sensitivity analysis only: allow worker-estimated success if independently verified')
     parser.add_argument('--plan', type=Path, default=Path(__file__).resolve().parents[2]/'human-study/session_plan.json')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
@@ -162,7 +168,8 @@ def main():
     tasks = {row['page_id']: row['task_say'] for row in plan['pages']}
     human = json.loads(args.human.read_text(encoding='utf-8-sig'))
     exports = [json.loads(p.read_text(encoding='utf-8-sig')) for p in args.timing]
-    result = compare(human['pages'], exports, tasks)
+    result = compare(human['pages'], exports, tasks,
+                     include_verified_estimates=args.include_verified_estimates)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), encoding='utf-8')
 
