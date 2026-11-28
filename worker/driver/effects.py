@@ -80,7 +80,7 @@ class EffectObserver:
         self.count = 0
         self.urls = []
         self.navigated_frames = set()  # subframes that loaded a new document inside the window
-        self.new_frames = False
+        self.attached_frames = set()  # frames attached during installation, preparation or the window
         self.deadline = 0.0
         self.started = 0.0
         self.busy = False
@@ -138,7 +138,7 @@ class EffectObserver:
 
     def _attached(self, frame):
         if self.busy and (not self.started or time.monotonic() <= self.deadline):
-            self.new_frames = True
+            self.attached_frames.add(frame)
 
     def _failed(self, request):
         self.pending.pop(request, None)
@@ -166,7 +166,7 @@ class EffectObserver:
         self.count = 0
         self.urls.clear()
         self.navigated_frames.clear()
-        self.new_frames = False
+        self.attached_frames.clear()
         self.pending.clear()
         script = Path(__file__).with_name('effect_observer.js').read_text(encoding='utf-8')
         try:
@@ -211,9 +211,21 @@ class EffectObserver:
                 else:
                     lost_context = True
             opts = dict(ignored_query_keys=self.ignored_query_keys, hash_routes=self.hash_routes)
-            if any(url_identity(before, **opts) != url_identity(url, **opts) for url in self.urls):
+            url_changed = any(url_identity(before, **opts) != url_identity(url, **opts) for url in self.urls)
+            unobserved_frame = False
+            if not url_changed:
+                # A frame attached inside the window has no observer of its own (e.g. a booking
+                # calendar iframe created on click): judge its frame element the same way.
+                for frame in list(self.attached_frames):
+                    shown = await self._frame_shown(frame)
+                    if shown is None:
+                        unobserved_frame = True
+                        break
+                    if shown:
+                        dom = True
+            if url_changed:
                 effect = 'url_change'
-            elif self.new_frames:
+            elif unobserved_frame:
                 raise EffectObservationError('Frame attached during observation; inner activity is not fully observed')
             elif lost_context:
                 raise EffectObservationError('Frame context or visibility incomplete without a classifiable URL change')
@@ -229,6 +241,7 @@ class EffectObserver:
             self.pending.clear()
             self.urls.clear()
             self.navigated_frames.clear()
+            self.attached_frames.clear()
             for frame in frames:
                 try:
                     await frame.evaluate('(key) => globalThis[key]?.stop()', key)
